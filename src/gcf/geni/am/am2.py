@@ -80,6 +80,8 @@ class Slice(object):
         self.expiration = expiration
         self.resources = dict()
 
+    def getURN(self) : return self.urn
+
     def status(self, resources):
         """Determine the status of the sliver by examining the status
         of each resource in the sliver.
@@ -174,7 +176,7 @@ class ReferenceAggregateManager(object):
         # from the https connection by the SecureXMLRPCServer
         # to identify the caller.
         try:
-            self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                     credentials,
                                                     None,
                                                     privileges,
@@ -267,7 +269,7 @@ class ReferenceAggregateManager(object):
         # to identify the caller.
 
         try:
-            creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            creds = self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                             credentials,
                                                             slice_urn,
                                                             privileges,
@@ -363,7 +365,7 @@ class ReferenceAggregateManager(object):
         # from the https connection by the SecureXMLRPCServer
         # to identify the caller.
         try:
-            self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                     credentials,
                                                     slice_urn,
                                                     privileges,
@@ -411,7 +413,7 @@ class ReferenceAggregateManager(object):
         # listslices, listnodes, policy
         privileges = (SLIVERSTATUSPRIV,)
         try:
-            self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                     credentials,
                                                     slice_urn,
                                                     privileges,
@@ -472,7 +474,7 @@ class ReferenceAggregateManager(object):
         self.logger.info('RenewSliver(%r, %r)' % (slice_urn, expiration_time))
         privileges = (RENEWSLIVERPRIV,)
         try:
-            creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            creds = self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                             credentials,
                                                             slice_urn,
                                                             privileges,
@@ -522,7 +524,7 @@ class ReferenceAggregateManager(object):
         self.logger.info('Shutdown(%r)' % (slice_urn))
         privileges = (SHUTDOWNSLIVERPRIV,)
         try:
-            self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                     credentials,
                                                     slice_urn,
                                                     privileges,

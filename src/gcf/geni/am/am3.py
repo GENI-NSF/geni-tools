@@ -249,6 +249,8 @@ class Slice(object):
         self._resources = dict()
         self._shutdown = False
 
+    def getURN(self): return self.urn
+
     def add_resource(self, resource):
         sliver = Sliver(self, resource)
         self._slivers.append(sliver)
@@ -352,7 +354,7 @@ class ReferenceAggregateManager(object):
         credentials = [self.normalize_credential(c) for c in credentials]
         credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         try:
-            self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                     credentials,
                                                     None,
                                                     privileges,
@@ -449,7 +451,7 @@ class ReferenceAggregateManager(object):
         credentials = [self.normalize_credential(c) for c in credentials]
         credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         try:
-            creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            creds = self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                             credentials,
                                                             slice_urn,
                                                             privileges,
@@ -598,7 +600,7 @@ class ReferenceAggregateManager(object):
         credentials = [self.normalize_credential(c) for c in credentials]
         credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         try:
-            creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            creds = self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                             credentials,
                                                             the_slice.urn,
                                                             privileges,
@@ -662,14 +664,12 @@ class ReferenceAggregateManager(object):
         self.logger.info('Delete(%r)' % (urns))
         self.expire_slivers()
 
-        import pdb; pdb.set_trace()
-
         the_slice, slivers = self.decode_urns(urns)
         privileges = (DELETESLIVERPRIV,)
         credentials = [self.normalize_credential(c) for c in credentials]
         credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         try:
-            self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                     credentials,
                                                     the_slice.urn,
                                                     privileges,
@@ -719,7 +719,7 @@ class ReferenceAggregateManager(object):
         credentials = [self.normalize_credential(c) for c in credentials]
         credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         try:
-            _ = self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            _ = self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                         credentials,
                                                         the_slice.urn,
                                                         privileges,
@@ -799,7 +799,7 @@ class ReferenceAggregateManager(object):
         credentials = [self.normalize_credential(c) for c in credentials]
         credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         try:
-            self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                     credentials,
                                                     the_slice.urn,
                                                     privileges,
@@ -846,7 +846,7 @@ class ReferenceAggregateManager(object):
         credentials = [self.normalize_credential(c) for c in credentials]
         credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         try:
-            self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                     credentials,
                                                     the_slice.urn,
                                                     privileges,
@@ -915,7 +915,7 @@ class ReferenceAggregateManager(object):
         credentials = [self.normalize_credential(c) for c in credentials]
         credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         try:
-            creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            creds = self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                             credentials,
                                                             the_slice.urn,
                                                             privileges,
@@ -974,7 +974,7 @@ class ReferenceAggregateManager(object):
         credentials = [self.normalize_credential(c) for c in credentials]
         credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         try:
-            self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                     credentials,
                                                     slice_urn,
                                                     privileges,
