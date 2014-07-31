@@ -53,21 +53,29 @@ class ResourceBinder:
         sliver_urn = sliver_info['sliver_urn']
         slice_urn = sliver_info['slice_urn']
         user_urn = sliver_info['user_urn']
+        project_urn = None
+        authority_urn = None
         start_time = dateutil.parser.parse(sliver_info['start_time'])
         end_time = dateutil.parser.parse(sliver_info['end_time'])
         measurements = sliver_info['measurements']
 
-        project_urn = convert_slice_urn_to_project_urn(slice_urn)
-        authority_urn = convert_user_urn_to_authority_urn(user_urn)
+        if slice_urn:
+            project_urn = convert_slice_urn_to_project_urn(slice_urn)
+        if user_urn:
+            authority_urn = convert_user_urn_to_authority_urn(user_urn)
 
-        self._update_sliver(slice_urn, self._slice_urn, 'SLICE', 
-                            start_time, end_time, measurements)
-        self._update_sliver(user_urn, self._user_urn, 'USER', 
-                            start_time, end_time, measurements)
-        self._update_sliver(project_urn, self._project_urn, 'PROJECT', 
-                            start_time, end_time, measurements)
-        self._update_sliver(authority_urn, self._authority_urn, 'AUTHORITY', 
-                            start_time, end_time, measurements)
+        if slice_urn:
+            self._update_sliver(slice_urn, self._slice_urn, 'SLICE', 
+                                start_time, end_time, measurements)
+        if user_urn:
+            self._update_sliver(user_urn, self._user_urn, 'USER', 
+                                start_time, end_time, measurements)
+        if project_urn:
+            self._update_sliver(project_urn, self._project_urn, 'PROJECT', 
+                                start_time, end_time, measurements)
+        if authority_urn:
+            self._update_sliver(authority_urn, self._authority_urn, 'AUTHORITY', 
+                                start_time, end_time, measurements)
 
     # Update measurements based on a sliver if it is relevant 
     # to our calling context

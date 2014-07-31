@@ -27,6 +27,7 @@ from gcf.sfa.trust.credential import Credential
 from gcf.sfa.trust.certificate import Certificate
 from gcf.sfa.trust.abac_credential import ABACCredential
 from gcf.geni.util.speaksfor_util import determine_speaks_for
+from gcf.geni.SecureThreadedXMLRPCServer import SecureThreadedXMLRPCRequestHandler
 
 
 # A class to support wrapping AM API calls from AggregateManager
@@ -52,7 +53,8 @@ class AMMethodContext:
         self._credentials = credentials
         self._args = args
         self._options = options
-        self._caller_cert = self._aggregate_manager._delegate._server.pem_cert
+#        self._caller_cert = self._aggregate_manager._delegate._server.pem_cert
+        self._caller_cert = aggregate_manager._delegate._server.get_pem_cert()
         self._caller_urn = gid.GID(string=self._caller_cert).get_urn()
         self._is_v3 = is_v3
         self._resource_bindings = resource_bindings
@@ -92,8 +94,8 @@ class AMMethodContext:
                     urns = args['urns']
                     the_slice, the_slivers = \
                         self._aggregate_manager._delegate.decode_urns(urns)
-                    if 'slice_urn' not in args:
-                        args['slice_urn'] = the_slice.urn
+                    if the_slice and 'slice_urn' not in args:
+                        args['slice_urn'] = the_slice.getURN()
                 credentials = self._normalize_credentials(self._credentials)
 
             if self._authorizer is not None:

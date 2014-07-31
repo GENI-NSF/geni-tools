@@ -61,13 +61,13 @@ class Standard_Binder(Base_Binder):
         caller_urn = gid.GID(string=caller).get_urn()
         bindings['$CALLER'] = caller_urn
 
-        slice_urn = args['slice_urn']
-        bindings['$SLICE_URN'] = slice_urn
+        if 'slice_urn' in args:
+            slice_urn = args['slice_urn']
+            bindings['$SLICE_URN'] = slice_urn
 
-
-        project_urn = convert_slice_urn_to_project_urn(slice_urn)
-        if project_urn:
-            bindings['$PROJECT_URN'] = project_urn
+            project_urn = convert_slice_urn_to_project_urn(slice_urn)
+            if project_urn:
+                bindings['$PROJECT_URN'] = project_urn
 
         caller_authority = convert_user_urn_to_authority_urn(caller_urn)
         bindings['$CALLER_AUTHORITY'] = caller_authority
