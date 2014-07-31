@@ -834,7 +834,9 @@ class StitchingHandler(object):
                         # assume it is willing to produce a VLAN tag
                         self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. Assuming 'any' is OK.", hop)
                         requestAny = True
-                if requestAny:
+                if self.opts.useSCSSugg and requestAny:
+                    self.logger.info("Would request 'any', but user requested to stick to SCS suggestions.")
+                elif requestAny:
                     if len(am.dependsOn) != 0:
                         self.logger.debug("%s appears OK to request tag 'any', but the AM says it depends on other AMs?", hop)
                     if hop._hop_link.vlan_suggested_request != VLANRange.fromString("any"):
