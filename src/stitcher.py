@@ -137,6 +137,8 @@ def call(argv, options=None):
                       default=None)
     parser.add_option("--savedSCSResults", default=None,
                       help="Developers only: Use this saved file of SCS results instead of calling SCS (saved previously using --debug)")
+    parser.add_option("--useSCSSugg", default=False, action="store_true",
+                      help="Developers only: Always use the VLAN tags the SCS suggests, not 'any'.")
     #  parser.add_option("--script",
     #                    help="If supplied, a script is calling this",
     #                    action="store_true", default=False)
