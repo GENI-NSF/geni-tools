@@ -435,8 +435,13 @@ class CHCallHandler(object):
 
         retStr = ""
         projectnames = list()
-        ((projects, samsg), message) = _do_ssl(self.framework, None, "List Projects from Slice Authority", self.framework.list_my_projects, username)
-        if projects is None:
+        projects = None
+        samsg = None
+#        ((projects, samsg), message) = _do_ssl(self.framework, None, "List Projects from Slice Authority", self.framework.list_my_projects, username)
+        (res, message) = _do_ssl(self.framework, None, "List Projects from Slice Authority", self.framework.list_my_projects, username)
+        if res is not None:
+            (projects, samsg) = res
+        if res is None or projects is None:
             # only end up here if call to _do_ssl failed
             projects = []
             self.logger.error("Failed to list projects for user '%s'"%(username))
