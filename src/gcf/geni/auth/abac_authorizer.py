@@ -52,15 +52,6 @@ class ABAC_Authorizer(Base_Authorizer):
 
         policy_file = opts.authorizer_policy_file
 
-        self._resource_manager = None
-        if hasattr(opts, 'authorizer_resource_manager'):
-            resource_manager_classname = opts.authorizer_resource_manager
-            resource_manager_class_module = \
-                ".".join(resource_manager_classname.split('.')[:-1])
-            __import__(resource_manager_class_module)
-            resource_manager_class = eval(resource_manager_classname)
-            self._resource_manager = resource_manager_class()
-
         RULES_RAW = open(policy_file).read()
         self.RULES = json.loads(RULES_RAW)
 
@@ -297,22 +288,44 @@ class ABAC_Authorizer(Base_Authorizer):
             assert_rhs = assertion_parts[1].strip()
             if assert_lhs not in parsed_assertions:
                 parsed_assertions[assert_lhs] = []
-            parsed_assertions[assert_lhs].append(assert_rhs)
+            assertion_info = {'rhs' : assert_rhs, 'assertion' : assertion}
+            parsed_assertions[assert_lhs].append(assertion_info)
 
-        result = \
+        result, chain = \
             self._prove_query_internal(query_lhs, query_rhs, parsed_assertions)
 
         self._logger.info("QUERY (%s) : %s" % (result, query))
+        if result:
+            self._logger.info("PROOF_CHAIN : %s" % chain)
         return result
 
     # Internal method supporting _prove_query as a recursive call
+    # Return the proof chain if success
     def _prove_query_internal(self, lhs, target, parsed_assertions):
-        if lhs not in parsed_assertions: return False
-        if target in parsed_assertions[lhs]: return True
-        for new_lhs in parsed_assertions[lhs]:
-            if self._prove_query_internal(new_lhs, target, parsed_assertions):
-                return True
-        return False
+        if lhs not in parsed_assertions: return False, None
+
+        found_direct_link = False
+        for pa in parsed_assertions[lhs]:
+            rhs = pa['rhs']
+            assertion = pa['assertion']
+            if rhs == target:
+                found_direct_link = True
+                break
+        if found_direct_link:
+            return True, [assertion]
+
+
+        found_indrect_link = False
+        for pa in parsed_assertions[lhs]:
+            new_lhs = pa['rhs']
+            assertion = pa['assertion']
+            result, chain = \
+                self._prove_query_internal(new_lhs, target, parsed_assertions)
+            if result:
+                new_chain = list(chain)
+                new_chain.insert(0, assertion)
+                return True, new_chain
+        return False, None
 
     # Initialize a binder from its classname
     def _initialize_binder(self, binder_classname):
