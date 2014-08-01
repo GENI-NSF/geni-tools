@@ -1262,6 +1262,7 @@ class Framework(Framework_Base):
             if uc is not None:
                 creds.append(uc)
         options = {'match': {'MEMBER_URN': urn}, 'filter': ['MEMBER_EMAIL']}
+        creds, options = self._add_credentials_and_speaksfor(creds, options)
         if not self.speakV2:
             res, mess = _do_ssl(self, None, "Looking up member email",
                                 self.ma().lookup_identifying_member_info, creds, options)
