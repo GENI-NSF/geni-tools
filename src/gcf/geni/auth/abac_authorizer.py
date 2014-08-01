@@ -31,7 +31,6 @@ from gcf.sfa.trust.certificate import Certificate
 from gcf.sfa.trust.abac_credential import ABACCredential
 from gcf.geni.util.speaksfor_util import get_cert_keyid
 from .util import *
-from .resource_binder import ResourceBinder
 
 # AM authorizer class that uses policies to generate ABAC proofs 
 # for authorization decisions
@@ -98,16 +97,12 @@ class ABAC_Authorizer(Base_Authorizer):
         caller_keyid = self._compute_keyid(cert_string=caller)
         self._keyid_name_map[caller_keyid] = "$CALLER"
 
-        bindings = self._generate_bindings(method, caller, creds, args, opts)
+        bindings = self._generate_bindings(method, caller, creds, args, opts,
+                                           requested_allocation_state)
 
         # Add 'constants' to bindings
         if 'constants' in self.RULES:
             bindings = dict(bindings.items() + self.RULES['constants'].items())
-
-        resource_bindings = \
-            self._generate_resource_bindings(caller, args,
-                                             requested_allocation_state)
-        bindings = dict(bindings.items() + resource_bindings.items())
 
         self._logger.info("BINDINGS = %s" % bindings)
 
@@ -131,11 +126,13 @@ class ABAC_Authorizer(Base_Authorizer):
             raise Exception(msg)
 
     # Get each binder to generate bindings
-    def _generate_bindings(self, method, caller, creds, args, opts):
+    def _generate_bindings(self, method, caller, creds, args, opts,
+                           requested_state):
         bindings = {}
         for binder in self._binders:
             new_bindings = binder.generate_bindings(method, caller, creds,
-                                                    args, opts)
+                                                    args, opts,
+                                                    requested_state)
             bindings = dict(bindings.items() + new_bindings.items())
         return bindings
 
@@ -182,31 +179,6 @@ class ABAC_Authorizer(Base_Authorizer):
             assertions.append(bound_assertion)
 
         return assertions
-
-    # Generate bindings based on current and requested resource allocations
-    def _generate_resource_bindings(self, caller, args, 
-                                    requested_allocation_state):
-
-        self._logger.info("REQUESTED = %s" % requested_allocation_state)
-
-        bindings = {}
-
-        if 'slice_urn' not in args: return bindings
-
-        caller_urn = gid.GID(string=caller).get_urn()
-        slice_urn = args['slice_urn']
-        project_urn = convert_slice_urn_to_project_urn(slice_urn)
-        authority_urn = convert_user_urn_to_authority_urn(caller_urn)
-
-
-        resource_binder = ResourceBinder(caller_urn, slice_urn, 
-                                           project_urn, authority_urn)
-        for sliver_info in requested_allocation_state:
-            resource_binder.updateForSliver(sliver_info)
-
-        bindings = resource_binder.getBindings()
-
-        return bindings
 
     # Determine if all positive queries are proven and no negative
     # query is proven

@@ -9,7 +9,11 @@
     "binders" : [
         "gcf.geni.auth.binders.Standard_Binder",
         "gcf.geni.auth.binders.SFA_Binder",
-        "gcf.geni.auth.binders.Stitching_Binder"
+        "gcf.geni.auth.binders.Stitching_Binder",
+	"gcf.geni.auth.resource_binder.MAX_Binder",
+	"gcf.geni.auth.resource_binder.TOTAL_Binder",
+	"gcf.geni.auth.resource_binder.HOURS_Binder",
+	"gcf.geni.auth.resource_binder.User_Slice_Binder"
         ],
     "constants" : {
        "$BLUE_AUTHS" : "['urn:publicid:IDN+ch1.gpolab.bbn.com+authority+ca', 'urn:publicid:IDN+wall2.ilabt.iminds.be+authority+ca']",
@@ -35,6 +39,10 @@
 	    "'$CALLER_AUTHORITY' in $BLUE_AUTHS and $AUTHORITY_NODE_TOTAL > 4",
             "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
             },
+        {
+	    "condition" : "$USER_NUM_SLICES > 2",
+	    "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
+	    },
         {
             "condition" : "$PROJECT_NODE_TOTAL > 7",
             "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"

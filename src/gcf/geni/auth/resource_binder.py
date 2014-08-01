@@ -22,6 +22,8 @@
 #----------------------------------------------------------------------       
 
 from .util import *
+from binders import Base_Binder
+import gcf.sfa.trust.gid as gid
 import dateutil.parser
 
 # A class to compute resource bindings from a set of 
@@ -38,18 +40,37 @@ import dateutil.parser
 #           HOURS [Sum metric * (end_time - start_time) of relevant slivers]
 #           MAX [Maximum concurrent total metric over relevant slivers
 
-class ResourceBinder:
+class Resource_Binder(Base_Binder):
 
-    def __init__(self, user_urn, slice_urn, project_urn, authority_urn):
-        self._user_urn = user_urn
-        self._slice_urn = slice_urn
-        self._project_urn = project_urn
-        self._authority_urn = authority_urn
+    def __init__(self, root_cert):
+        Base_Binder.__init__(self, root_cert)
+        self._slice_urn = None
+        self._project_urn = None
+        self._user_urn = None
+        self._authority_urn = None
 
-        self._measurement_states = {}
+    # Generate bindings for given context and requested state
+    # Based on the kind of measurements we're looking for and
+    # Aggregation (SUM, MAX, etc.) we're applying to measurements
+    def generate_bindings(self, method, caller, creds, args, opts,
+                          requested_state = []):
+        measurement_states = {}
+        self._user_urn = gid.GID(string=caller).get_urn()
+        self._authority_urn = \
+            convert_user_urn_to_authority_urn(self._user_urn)
+
+        if 'slice_urn' in args: 
+            self._slice_urn = args['slice_urn']
+            self._project_urn = \
+                convert_slice_urn_to_project_urn(self._slice_urn)
+
+        for sliver_info in requested_state:
+            self.updateForSliverInfo(sliver_info, measurement_states)
+
+        return self.getBindings(measurement_states)
 
     # For a given sliver, try to update measurement for each aspect 
-    def updateForSliver(self, sliver_info):
+    def updateForSliverInfo(self, sliver_info, measurement_states):
         sliver_urn = sliver_info['sliver_urn']
         slice_urn = sliver_info['slice_urn']
         user_urn = sliver_info['user_urn']
@@ -66,21 +87,27 @@ class ResourceBinder:
 
         if slice_urn:
             self._update_sliver(slice_urn, self._slice_urn, 'SLICE', 
-                                start_time, end_time, measurements)
+                                start_time, end_time, measurements, 
+                                measurement_states, sliver_info)
         if user_urn:
             self._update_sliver(user_urn, self._user_urn, 'USER', 
-                                start_time, end_time, measurements)
+                                start_time, end_time, measurements,
+                                measurement_states, sliver_info)
         if project_urn:
             self._update_sliver(project_urn, self._project_urn, 'PROJECT', 
-                                start_time, end_time, measurements)
+                                start_time, end_time, measurements,
+                                measurement_states, sliver_info)
         if authority_urn:
             self._update_sliver(authority_urn, self._authority_urn, 'AUTHORITY', 
-                                start_time, end_time, measurements)
+                                start_time, end_time, measurements,
+                                measurement_states, sliver_info)
 
-    # Update measurements based on a sliver if it is relevant 
-    # to our calling context
-    def _update_sliver(self, sliver_context_urn, self_urn, urn_type, 
-                       start_time, end_time, measurements):
+
+    # Go through all slivers and update measurements if the sliver
+    # matches the call context
+    def _update_sliver(self, sliver_context_urn, self_urn, urn_type,
+                       start_time, end_time, measurements,
+                       measurement_states, sliver_info):
         # If this isn't a sliver we care about, ignore
         if sliver_context_urn == None \
                 or self_urn == None \
@@ -89,63 +116,128 @@ class ResourceBinder:
 
         # Update for each measurement
         for meas_type, value in measurements.items():
-            self._update_measurement(urn_type, start_time, end_time, 
-                                     meas_type, value)
+            self.update_measurement(urn_type, start_time, end_time, 
+                                     meas_type, value, 
+                                    measurement_states, sliver_info)
 
     # For a given sliver and URN/MEAS type, 
     # update the relevant measurement state
-    def _update_measurement(self, urn_type, start_time, end_time, 
-                            meas_type, value):
+    def update_measurement(self, urn_type, start_time, end_time, 
+                            meas_type, value, measurement_states, sliver_info):
         key = "%s:%s" % (urn_type, meas_type)
-        if key not in self._measurement_states:
-            self._measurement_states[key] = \
-                ResourceMeasurementState(urn_type, meas_type)
-        measurement_state = self._measurement_states[key]
-        measurement_state.update(start_time, end_time, value)
+        if key not in measurement_states:
+            new_measurement_state = \
+                self.get_measurement_state(urn_type, meas_type)
+            measurement_states[key] = new_measurement_state
+        measurement_state = measurement_states[key]
+        measurement_state.update(start_time, end_time, value, sliver_info)
 
+    # Override this method to return different resource states
+    # For computing different metrics
+    def get_measurement_state(self, urn_type, meas_type):
+        return None
 
-    # Grab all bindings from all measurement states
-    def getBindings(self):
+    # Grab and return all bindings from all measurement states
+    def getBindings(self, measurement_states):
         bindings = {}
-        for meas_state in self._measurement_states.values():
+        for meas_state in measurement_states.values():
             meas_state_bindings = meas_state.getBindings()
             bindings = dict(bindings.items() + meas_state_bindings.items())
         return bindings
 
-# A class to maintain state about a 
-# particular urn_type (USER, SLICE, PROJECT, AUTHORITY)
-# and a particular meas_type (from the aggregate on a per-sliver basis)
-#
-# From these individual sliver measurements we compute
-# TOTAL: Total of the metric over all relevant slivers
-# HOURS :  Total metric-hours over all relevant slivers
-# MAX : Max concurrent of that metric over all relevant slivers
-class ResourceMeasurementState:
+# Resource_Binder subclass to compute total allocation measurements
+# for a given context
+class TOTAL_Binder(Resource_Binder):
+        def __init__(self, root_cert): 
+            Resource_Binder.__init__(self, root_cert)
+
+        def get_measurement_state(self, urn_type, meas_type):
+            return TOTAL_ResourceMeasurementState(urn_type, meas_type)
+
+# Resource_Binder subclass to compute total allocation measurement-hours
+# for a given context
+class HOURS_Binder(Resource_Binder):
+        def __init__(self, root_cert): 
+            Resource_Binder.__init__(self, root_cert)
+
+        def get_measurement_state(self, urn_type, meas_type):
+            return HOURS_ResourceMeasurementState(urn_type, meas_type)
+
+# Resource_Binder subclass to compute max SIMULTANEOUS 
+# allocation measurement for a given context
+class MAX_Binder(Resource_Binder):
+        def __init__(self, root_cert): 
+            Resource_Binder.__init__(self, root_cert)
+
+        def get_measurement_state(self, urn_type, meas_type):
+            return MAX_ResourceMeasurementState(urn_type, meas_type)
+
+# Resource Binder that computes the number of slices to which a user belongs
+class User_Slice_Binder(Resource_Binder):
+        def __init__(self, root_cert): 
+            Resource_Binder.__init__(self, root_cert)
+
+        def get_measurement_state(self, urn_type, meas_type):
+            return User_Slice_ResourceMeasurementState(urn_type, meas_type)
+
+
+
+# Base class for computing aggregate metrics from alloction metric values
+class Base_ResourceMeasurementState:
     def __init__(self, urn_type, meas_type):
         self._urn_type = urn_type
         self._meas_type = meas_type
-        
-        # Maintain running ottals for TOTAL and HOURS
+
+    # Override this to return the bindings for this measurement state
+    def getBindings(self):
+        pass
+
+    # Override this method to compute different aggregate metrics
+    def update(self, start_time, end_time, value, sliver_info):
+        pass
+
+# ResourceMeasurementState sub-Class to compute the 
+# total of allocation measurement values
+class TOTAL_ResourceMeasurementState(Base_ResourceMeasurementState):
+    def __init__(self, urn_type, meas_type):
+        Base_ResourceMeasurementState.__init__(self, urn_type, meas_type)
         self._meas_total = 0
+
+    def update(self, start_time, end_time, value, sliver_info):
+        self._meas_total = self._meas_total + value
+
+    def getBindings(self):
+        total_key = "$%s_%s_%s" % (self._urn_type, self._meas_type, 'TOTAL')
+        return {total_key : str(self._meas_total) }
+
+# ResourceMeasurementState sub-Class to compute the 
+# measurement-hours of allocation measurements
+class HOURS_ResourceMeasurementState(Base_ResourceMeasurementState):
+    def __init__(self, urn_type, meas_type):
+        Base_ResourceMeasurementState.__init__(self, urn_type, meas_type)
         self._meas_hours = 0
 
+    def update(self, start_time, end_time, value, sliver_info):
+        dt = (end_time - start_time)
+        num_hours = (dt.days*24) + (dt.seconds/3600.0)
+        self._meas_hours = self._meas_hours + (value * num_hours)
+
+    def getBindings(self):
+        hours_key = "$%s_%s_%s" % (self._urn_type, self._meas_type, 'HOURS')
+        return {hours_key : str(self._meas_hours) }
+
+# ResourceMeasurementState sub-Class to compute the 
+# maximum total of SIMULTANOUS allocation measurement values
+class MAX_ResourceMeasurementState(Base_ResourceMeasurementState):
+    def __init__(self, urn_type, meas_type):
+        Base_ResourceMeasurementState.__init__(self, urn_type, meas_type)
         # Maintain list of times
         self._times = set()
 
         # Maintain list of [value, start, end] tuples
         self._entries = []
 
-        
-    # Update for a given sliver measurement with time bounds
-    def update(self, start_time, end_time, value):
-        # Update TOTAL
-        self._meas_total = self._meas_total + value
-
-        # Update HOURS
-        dt = (end_time - start_time)
-        num_hours = (dt.days*24) + (dt.seconds/3600.0)
-        self._meas_hours = self._meas_hours + (value * num_hours)
-
+    def update(self, start_time, end_time, value, sliver_info):
         # Register times
         self._times.add(start_time)
         self._times.add(end_time)
@@ -153,18 +245,8 @@ class ResourceMeasurementState:
         # Registry entry for later 'MAX' calculation
         self._entries.append((start_time, end_time, value))
 
-    # Grab the bindings provided by this state
+
     def getBindings(self):
-        bindings = {}
-
-        total_key = "$%s_%s_%s" % (self._urn_type, self._meas_type, 'TOTAL')
-        bindings[total_key] = str(self._meas_total)
-
-        hours_key = "$%s_%s_%s" % (self._urn_type, self._meas_type, 'HOURS')
-        bindings[hours_key] = str(self._meas_hours)
-
-
-        # Compute the max value at one time
 
         # Get a sorted list of all the start/end times
         time_boundaries = [tm for tm in self._times]
@@ -194,6 +276,33 @@ class ResourceMeasurementState:
                     max_total = max(totals[i], max_total)
 
         max_key = "$%s_%s_%s" % (self._urn_type, self._meas_type, 'MAX')
-        bindings[max_key] = str(max_total)
+        return {max_key : str(max_total) }
 
-        return bindings
+# ResourceMeasurementState sub-Class to compute the 
+# number of slices at which a user has slivers
+class User_Slice_ResourceMeasurementState(Base_ResourceMeasurementState):
+    def __init__(self, urn_type, meas_type):
+        Base_ResourceMeasurementState.__init__(self, urn_type, meas_type)
+        self._active = urn_type == "USER" # Ignore all but user info
+        self._slices = set()
+        self._projects = set()
+
+    def update(self, start_time, end_time, value, sliver_info):
+        if self._active:
+            slice_urn = sliver_info['slice_urn']
+            self._slices.add(slice_urn)
+            project_urn = convert_slice_urn_to_project_urn(slice_urn)
+            self._projects.add(project_urn)
+
+
+    def getBindings(self):
+        if self._active:
+            user_num_slices_key = "$USER_NUM_SLICES"
+            user_num_projects_key = "$USER_NUM_PROJECTS"
+            return {
+                user_num_slices_key : str(len(self._slices)),
+                user_num_projects_key : str(len(self._projects))
+                }
+        else:
+            return {}
+
