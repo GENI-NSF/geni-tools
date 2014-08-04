@@ -37,51 +37,69 @@ from .util import *
 
 class ABAC_Authorizer(Base_Authorizer):
 
-    # Hard code some test rules for ABAC Authorizer
-    # Rules consist of
+    # Rules for ABAC Authorizer
+    # Rules consist of:
+    # List of identities (name => cert)
     # List of binders
-    # List of conditional assertions
+    # List of constants
+    # List of policies (unconditional  ABAC assertions)
+    # List of conditional ABAC assertions
     # List of queries (positive and negative)
-    RULES = {}
+
+    # We have a default set of rules
+    DEFAULT_RULES = {}
+
+    # And a set of per-authority rules (use the default if the authority
+    # is not found in this dictionary
+    AUTHORITY_SPECIFIC_RULES = {}
 
     def __init__(self, root_cert, opts):
         Base_Authorizer.__init__(self, root_cert, opts)
-        if not hasattr(opts, 'authorizer_policy_file'):
-            raise Exception("authorizer_policy_file not specified")
-
-        policy_file = opts.authorizer_policy_file
-
-        RULES_RAW = open(policy_file).read()
-        self.RULES = json.loads(RULES_RAW)
 
         self._logger = logging.getLogger('abac_auth')
         logging.basicConfig(level=logging.INFO)
 
-        self._binders = \
-            [self._initialize_binder(b) for b in self.RULES['binders']]
-        self._conditional_assertions = self.RULES['conditional_assertions']
+        if not hasattr(opts, 'authorizer_policy_map_file'):
+            raise Exception("authorizer_policy_map_file not specified")
 
-        self._positive_queries = \
-            [q['statement'] for q in self.RULES['queries'] \
-                 if q['is_positive']]
-        self._negative_queries = \
-            [q['statement'] for q in self.RULES['queries']\
-                 if not q['is_positive']]
+        policy_map_file = opts.authorizer_policy_map_file
 
-        self._query_message_map = {}
-        for q in self.RULES['queries']:
-            self._query_message_map[q['statement']] = q['message']
+        policy_map_raw = open(policy_map_file).read()
+        policy_map = json.loads(policy_map_raw)
 
-        self._query_condition_map = {}
-        for q in self.RULES['queries']:
-            if 'condition' in q:
-                self._query_condition_map[q['statement']] = q['condition']
+        if "default" not in policy_map:
+            raise Exception("No default specified in authorizer policy map file: %s" %\
+                                policy_map_file)
 
-        self._keyid_name_map = {}
-        for id_name, id_pem in self.RULES['identities'].items():
-            id_keyid = self._compute_keyid(cert_filename=id_pem)
-            if id_keyid:
-                self._keyid_name_map[id_keyid] = id_name
+        self._AUTHORITY_SPECIFIC_RULES = {}
+        for label, filenames in policy_map.items():
+            rules = self.generate_rules(label, filenames)
+#            rules.dump()
+            if label == 'default' : 
+                self._DEFAULT_RULES = rules
+            else:
+                self._AUTHORITY_SPECIFIC_RULES[label] = rules
+
+    # Generate a rule set (identities, biners, constants
+    # conditional_assertions, policies, queries)
+    # from a set of files. These are ordered and thus later files add to or
+    # replace previous entries
+    def generate_rules(self, label, filenames):
+        rule_set = ABAC_Authorizer_Rule_Set(label, self._root_cert)
+        for filename in filenames:
+            rule_set.parse(filename)
+        return rule_set
+
+    # Find the correct set of rules for the given caller based on authority
+    def lookup_rules_for_caller(self, caller):
+        caller_urn = gid.GID(string=caller).get_urn()
+        caller_authority = convert_user_urn_to_authority_urn(caller_urn)
+        caller_authority_name = caller_authority.split('+')[1]
+        rules = self._DEFAULT_RULES
+        if caller_authority_name in self._AUTHORITY_SPECIFIC_RULES:
+            rules = self._AUTHORITY_SPECIFIC_RULES[caller_authority_name]
+        print "Rules for %s : %s" % (caller_urn, rules.getLabel())
+        return rules
 
     # Bind all bindings in current context
     # For all assertions, evaluate precondition and if True, 
@@ -94,42 +112,44 @@ class ABAC_Authorizer(Base_Authorizer):
         self._logger.info("RAS = %s" % requested_allocation_state)
         self._logger.info("In ABAC AUTHORIZER...")
 
+        rules = self.lookup_rules_for_caller(caller)
+
         caller_keyid = self._compute_keyid(cert_string=caller)
-        self._keyid_name_map[caller_keyid] = "$CALLER"
+        key_id_name_map = rules.getKeyIdNameMap()
+        key_id_name_map[caller_keyid] = "$CALLER"
 
         bindings = self._generate_bindings(method, caller, creds, args, opts,
-                                           requested_allocation_state)
+                                           requested_allocation_state, rules)
 
         # Add 'constants' to bindings
-        if 'constants' in self.RULES:
-            bindings = dict(bindings.items() + self.RULES['constants'].items())
+        bindings = dict(bindings.items() + rules.getConstants().items())
 
         self._logger.info("BINDINGS = %s" % bindings)
 
-        assertions = self._generate_assertions(bindings)
+        assertions = self._generate_assertions(bindings, rules)
 
         credential_assertions = \
-            self._generate_credential_assertions(caller, creds, bindings)
+            self._generate_credential_assertions(caller, creds, bindings, rules)
 
-        fixed_policies = self.RULES['policies']
+        fixed_policies = rules.getPolicies()
 
         assertions = \
             assertions + credential_assertions + fixed_policies
 
         self._logger.info("ASSERTIONS = %s" % assertions)
 
-        success, msg = self._evaluate_queries(bindings, assertions)
+        success, msg = self._evaluate_queries(bindings, assertions, rules)
         
-        del self._keyid_name_map[caller_keyid]
+        del key_id_name_map[caller_keyid]
 
         if not success:
             raise Exception(msg)
 
     # Get each binder to generate bindings
     def _generate_bindings(self, method, caller, creds, args, opts,
-                           requested_state):
+                           requested_state, rules):
         bindings = {}
-        for binder in self._binders:
+        for binder in rules.getBinders():
             new_bindings = binder.generate_bindings(method, caller, creds,
                                                     args, opts,
                                                     requested_state)
@@ -139,9 +159,9 @@ class ABAC_Authorizer(Base_Authorizer):
     # For each conditional assertion, evaluate the condition
     # If true and if the associated assertion is completely bound,
     # generate the assertion
-    def _generate_assertions(self, bindings):
+    def _generate_assertions(self, bindings, rules):
         assertions = []
-        for ca in self._conditional_assertions:
+        for ca in rules.getConditionalAssertions():
             condition = ca['condition']
             assertion = ca['assertion']
             bound_condition = self._bind_expression(condition, bindings)
@@ -155,7 +175,7 @@ class ABAC_Authorizer(Base_Authorizer):
 
     # If provided a set of ABAC assertions, import them into our set
     # of assertions
-    def _generate_credential_assertions(self, caller, creds, bindings):
+    def _generate_credential_assertions(self, caller, creds, bindings, rules):
         assertions = []
         abac_cred_objects = [CredentialFactory.createCred(credString=cred) \
                                  for cred in creds \
@@ -163,11 +183,11 @@ class ABAC_Authorizer(Base_Authorizer):
                                  ABACCredential.ABAC_CREDENTIAL_TYPE]
         for abac_cred in abac_cred_objects:
             head_principal = abac_cred.head.get_principal_keyid()
-            head_principal_name = self._lookup_name_from_keyid(head_principal)
+            head_principal_name = rules._lookup_name_from_keyid(head_principal)
             head_role = abac_cred.head.get_role()
             tail = abac_cred.tails[0] # Only take the first one
             tail_principal = tail.get_principal_keyid()
-            tail_principal_name = self._lookup_name_from_keyid(tail_principal)
+            tail_principal_name = rules._lookup_name_from_keyid(tail_principal)
             tail_role = tail.get_role()
             if tail_role:
                 assertion = "%s.%s<-%s.%s" % (head_principal_name, head_role, 
@@ -182,23 +202,23 @@ class ABAC_Authorizer(Base_Authorizer):
 
     # Determine if all positive queries are proven and no negative
     # query is proven
-    def _evaluate_queries(self, bindings, assertions):
+    def _evaluate_queries(self, bindings, assertions, rules):
 
         messages = []
 
         all_positive_proved = True
-        for q in self._positive_queries:
+        for q in rules.getPositiveQueries():
             evaluated, proven, msg = \
-                self._evaluate_query(bindings, assertions, q)
+                self._evaluate_query(bindings, assertions, q, rules)
             if not evaluated: continue
             if not proven:
                 all_positive_proved = False
                 messages.append(msg)
 
         all_negative_disproved = True
-        for q in self._negative_queries:
+        for q in rules.getNegativeQueries():
             evaluated, proven, msg = \
-                self._evaluate_query(bindings, assertions, q)
+                self._evaluate_query(bindings, assertions, q, rules)
             if not evaluated: continue
             if proven:
                 all_negative_disproved = False
@@ -210,11 +230,11 @@ class ABAC_Authorizer(Base_Authorizer):
     # Evaluate a single query
     # If there is a condition, it must be true to considered
     # Return evaluated, evaluation, failure_message
-    def _evaluate_query(self, bindings, assertions, query):
+    def _evaluate_query(self, bindings, assertions, query, rules):
         # If there is a condition on this query, only evaluate if 
         # condition is satisfied
-        if query in self._query_condition_map:
-            condition = self._query_condition_map[query]
+        if query in rules.getQueryConditionMap():
+            condition = rules.getQueryConditionMap()[query]
             bound_condition = self._bind_expression(condition, bindings)
             if self._has_unbound_variables(bound_condition):
                 raise Exception("Illegal query condition: unbound variable %s"\
@@ -228,7 +248,7 @@ class ABAC_Authorizer(Base_Authorizer):
             raise Exception("Illegal query: unbound variable %s" % bound_q)
 
         evaluation = self._prove_query(bound_q, assertions)
-        msg = self._query_message_map[query]
+        msg = rules.getQueryMessageMap()[query]
         return True, evaluation, msg
         
 
@@ -299,16 +319,9 @@ class ABAC_Authorizer(Base_Authorizer):
                 return True, new_chain
         return False, None
 
-    # Initialize a binder from its classname
-    def _initialize_binder(self, binder_classname):
-        binder_class_module = ".".join(binder_classname.split('.')[:-1])
-        __import__(binder_class_module)
-        binder_class = eval(binder_classname)
-        binder = binder_class(self._root_cert)
-        return binder
-
     # Compute keyid from a cert
-    def _compute_keyid(self, cert_string=None, cert_filename=None):
+    @staticmethod
+    def _compute_keyid(cert_string=None, cert_filename=None):
         if cert_string:
             cert_gid = gid.GID(string=cert_string)
         else:
@@ -318,12 +331,121 @@ class ABAC_Authorizer(Base_Authorizer):
             return None
         return get_cert_keyid(cert_gid)
 
+# Class to hold the rules to be invoked for members of a given authority
+# We have per-authority rule sets and a default rule set
+class ABAC_Authorizer_Rule_Set:
+    
+    def __init__(self, label, root_cert):
+        self._label = label
+        self._root_cert = root_cert
+        self._identities = {}
+        self._binders = []
+        self._constants = {}
+        self._conditional_assertions = []
+        self._policies = []
+        self._queries = []
+        self._positive_queries = []
+        self._negative_queries = []
+        self._query_message_map = {}
+        self._query_condition_map = {}
+        self._keyid_name_map = {}
+
+    # Parse rule content from a file and add to existing rule content (if any)
+    # That is, we may parse multiple files in sequence, thus adding to lists
+    # and adding/replacing elements in dictionaries
+    def parse(self, filename):
+        data = open(filename).read()
+        raw_rules = json.loads(data)
+
+        if 'binders' in raw_rules:
+            for b in raw_rules['binders']:
+                binder = self._initialize_binder(b)
+                self._binders.append(binder)
+
+        if 'constants' in raw_rules:
+            self._constants = \
+                dict(self._constants.items() + raw_rules['constants'].items())
+
+        if 'conditional_assertions' in raw_rules:
+            self._conditional_assertions = \
+                self._conditional_assertions + raw_rules['conditional_assertions']
+
+        if 'policies' in raw_rules:
+            self._policies = self._policies + raw_rules['policies']
+
+        if 'queries' in raw_rules:
+            new_positive_queries = \
+                [q['statement'] for q in raw_rules['queries'] \
+                     if q['is_positive']]
+            self._positive_queries = self._positive_queries + new_positive_queries
+
+            new_negative_queries = \
+                [q['statement'] for q in raw_rules['queries']\
+                     if not q['is_positive']]
+            self._negative_queries = self._negative_queries + new_negative_queries
+
+            for q in raw_rules['queries']:
+                self._query_message_map[q['statement']] = q['message']
+
+            for q in raw_rules['queries']:
+                if 'condition' in q:
+                    self._query_condition_map[q['statement']] = q['condition']
+
+        if 'identities' in raw_rules:
+            for id_name, id_pem in raw_rules['identities'].items():
+                id_keyid = ABAC_Authorizer._compute_keyid(cert_filename=id_pem)
+                if id_keyid:
+                    self._keyid_name_map[id_keyid] = id_name
+
+    # Dump contents to stdout
+    def dump(self):
+        print "RULE SET : %s" % self._label
+        print 'BINDERS:'
+        for binder in self._binders:
+            print "   %s" % binder
+        print "CONSTANTS:"
+        print "   %s" % self._constants
+        print "CONDITIONAL ASSERTIONS:"
+        print "   %s" % self._conditional_assertions
+        print "POLLICIES:"
+        for policy in self._policies:
+            print "   %s" % policy
+        print "POSITIVE QUERIES:"
+        for pos in self._positive_queries:
+            print "   %s" % pos
+        print "NEGATIVE QUERIES:"
+        for neg in self._negative_queries:
+            print "   %s" % neg
+        print "QUERY_MESSAGE_MAP:"
+        print "   %s" % self._query_message_map
+        print "QUERY_CONDITION_MAP:"
+        print "   %s" % self._query_condition_map
+        print "KEYID_NAME_MAP:"
+        print "   %s" % self._keyid_name_map
+
     # Find the name assocaited to a given keyid
     def _lookup_name_from_keyid(self, keyid):
         if keyid not in self._keyid_name_map:
             raise Exception("Unknown keyid : %s" % keyid)
         return self._keyid_name_map[keyid]
 
+    # Initialize a binder from its classname
+    def _initialize_binder(self, binder_classname):
+        binder_class_module = ".".join(binder_classname.split('.')[:-1])
+        __import__(binder_class_module)
+        binder_class = eval(binder_classname)
+        binder = binder_class(self._root_cert)
+        return binder
 
-
-
+    # Accessors to rule content
+    def getIdentities(self) : return self._identities
+    def getBinders(self) : return self._binders
+    def getConstants(self) : return self._constants
+    def getConditionalAssertions(self) : return self._conditional_assertions
+    def getPolicies(self) : return self._policies
+    def getPositiveQueries(self) : return self._positive_queries
+    def getNegativeQueries(self) : return self._negative_queries
+    def getLabel(self) : return self._label
+    def getQueryMessageMap(self): return self._query_message_map
+    def getQueryConditionMap(self): return self._query_condition_map
+    def getKeyIdNameMap(self) : return self._keyid_name_map
