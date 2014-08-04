@@ -47,6 +47,7 @@ New in v2.7:
  * Look for fallback `agg_nick_cache` in correct location (#662)
  * Honor the `useslicemembers` and `ignoreconfigusers` options in the `omni_config` (#671)
  * Fix `get_member_email` e.g. from `listprojectmembers` for speaks-for. (#676)
+ * Use relative imports in `speaksfor_util` if possible. (#657)
 
 New in v2.6:
  * New function `removeslicemember <slice> <username>`: 
