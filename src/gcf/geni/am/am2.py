@@ -669,12 +669,13 @@ class AggregateManager(object):
     """
 
     def __init__(self, trust_roots_dir, delegate, authorizer=None,
-                 resource_manager=None):
+                 resource_manager=None, argument_guard=None):
         self._trust_roots_dir = trust_roots_dir
         self._delegate = delegate
         self.logger = logging.getLogger('gcf.am2')
         self.authorizer = authorizer
         self.resource_manager = resource_manager
+        self.argument_guard = argument_guard
         if authorizer:
             authorizer._logger = self.logger
 
@@ -713,6 +714,7 @@ class AggregateManager(object):
         with AMMethodContext(self, method,
                              self.logger, self.authorizer, 
                              self.resource_manager,
+                             self.argument_guard,
                              credentials,
                              args, options) as amc:
             if not amc._error:
@@ -731,9 +733,13 @@ class AggregateManager(object):
         with AMMethodContext(self, AM_Methods.CREATE_SLIVER_V2, 
                              self.logger, self.authorizer, 
                              self.resource_manager,
+                             self.argument_guard,
                              credentials, 
                              args, options, resource_bindings=True) as amc:
             if not amc._error:
+                slice_urn = amc._args['slice_urn']
+                rspec = amc._args['rspec']
+                users = amc._args['users']
                 amc._result = self._delegate.CreateSliver(slice_urn, 
                                                           credentials,
                                                           rspec, users, options)
@@ -745,9 +751,11 @@ class AggregateManager(object):
         with AMMethodContext(self, AM_Methods.DELETE_SLIVER_V2,
                              self.logger, self.authorizer, 
                              self.resource_manager,
+                             self.argument_guard,
                              credentials,
                              args, options) as amc:
             if not amc._error:
+                slice_urn = amc._args['slice_urn']
                 amc._result = \
                     self._delegate.DeleteSliver(slice_urn, credentials, options)
         return amc._result
@@ -759,9 +767,11 @@ class AggregateManager(object):
         with AMMethodContext(self, AM_Methods.SLIVER_STATUS_V2,
                              self.logger, self.authorizer, 
                              self.resource_manager,
+                             self.argument_guard,
                              credentials,
                              args, options) as amc:
             if not amc._error:
+                slice_urn = amc._args['slice_urn']
                 amc._result = \
                     self._delegate.SliverStatus(slice_urn, credentials, options)
         return amc._result
@@ -773,8 +783,11 @@ class AggregateManager(object):
         with AMMethodContext(self, AM_Methods.RENEW_SLIVER_V2,
                              self.logger, self.authorizer, credentials,
                              self.resource_manager,
+                             self.argument_guard,
                              args, options, resource_bindings=True) as amc:
             if not amc._error:
+                slice_urn = amc._args['slice_urn']
+                expiration_time = anc._args['expiration_time']
                 amc._result = \
                     self._delegate.RenewSliver(slice_urn, credentials, 
                                                expiration_time, options)
@@ -787,8 +800,10 @@ class AggregateManager(object):
         with AMMethodContext(self, AM_Methods.SHUTDOWN_V2,
                              self.logger, self.authorizer, credentials,
                              self.resource_manager,
+                             self.argument_guard,
                              args, options) as amc:
             if not amc._error:
+                slice_urn = amc._args['slice_urn']
                 amc._result = \
                     self._delegate.Shutdown(slice_urn, credentials, options)
         return amc._result
@@ -801,7 +816,7 @@ class AggregateManagerServer(object):
     def __init__(self, addr, keyfile=None, certfile=None,
                  trust_roots_dir=None,
                  ca_certs=None, base_name=None,
-                 authorizer=None, resource_manager=None):
+                 authorizer=None, resource_manager=None, argument_guard=None):
         # ca_certs arg here must be a file of concatenated certs
         if ca_certs is None:
             raise Exception('Missing CA Certs')
@@ -815,8 +830,9 @@ class AggregateManagerServer(object):
         # FIXME: set logRequests=true if --debug
         self._server = SecureXMLRPCServer(addr, keyfile=keyfile,
                                           certfile=certfile, ca_certs=ca_certs)
-        aggregate_manager = AggregateManager(trust_roots_dir, delegate, \
-                                                 authorizer, resource_manager)
+        aggregate_manager = AggregateManager(trust_roots_dir, delegate, 
+                                             authorizer, resource_manager,
+                                             argument_guard)
         self._server.register_instance(aggregate_manager)
         # Set the server on the delegate so it can access the
         # client certificate.

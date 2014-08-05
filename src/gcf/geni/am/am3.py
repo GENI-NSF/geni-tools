@@ -1238,12 +1238,13 @@ class AggregateManager(object):
     """
 
     def __init__(self, trust_roots_dir, delegate, authorizer=None,
-                 resource_manager=None):
+                 resource_manager=None, argument_guard=None):
         self._trust_roots_dir = trust_roots_dir
         self._delegate = delegate
         self.logger = logging.getLogger('gcf.am3')
         self.authorizer = authorizer
         self.resource_manager = resource_manager
+        self.argument_guard = argument_guard
 
     def _exception_result(self, exception):
         output = str(exception)
@@ -1283,6 +1284,7 @@ class AggregateManager(object):
         with AMMethodContext(self, AM_Methods.LIST_RESOURCES_V3,
                              self.logger, self.authorizer, 
                              self.resource_manager,
+                             self.argument_guard,
                              credentials,
                              args, options, is_v3=True) as amc:
             if not amc._error:
@@ -1301,10 +1303,13 @@ class AggregateManager(object):
         with AMMethodContext(self, AM_Methods.ALLOCATE_V3,
                              self.logger, self.authorizer, 
                              self.resource_manager,
+                             self.argument_guard,
                              credentials,
                              args, options, is_v3=True, 
                              resource_bindings=True) as amc:
             if not amc._error:
+                slice_urn = amc._args['slice_urn']
+                rspec = amc._args['rspec']
                 amc._result = \
                     self._delegate.Allocate(slice_urn, credentials, 
                                             rspec, options)
@@ -1319,9 +1324,11 @@ class AggregateManager(object):
         with AMMethodContext(self, AM_Methods.PROVISION_V3,
                              self.logger, self.authorizer, 
                              self.resource_manager,
+                             self.argument_guard,
                              credentials,
                              args, options, is_v3=True) as amc:
             if not amc._error:
+                urns = amc._args['urns']
                 amc._result = \
                     self._delegate.Provision(urns, credentials, options)
         return amc._result
@@ -1333,9 +1340,11 @@ class AggregateManager(object):
         with AMMethodContext(self, AM_Methods.DELETE_V3,
                              self.logger, self.authorizer, 
                              self.resource_manager,
+                             self.argument_guard,
                              credentials,
                              args, options, is_v3=True) as amc:
             if not amc._error:
+                urns = amc._args['urns']
                 amc._result = \
                     self._delegate.Delete(urns, credentials, options)
         return amc._result
@@ -1350,9 +1359,12 @@ class AggregateManager(object):
         with AMMethodContext(self, AM_Methods.PERFORM_OPERATIONAL_ACTION_V3,
                              self.logger, self.authorizer, 
                              self.resource_manager,
+                             self.argument_guard,
                              credentials,
                              args, options, is_v3=True) as amc:
             if not amc._error:
+                urns = amc._args['urns']
+                action = amc._args['action']
                 amc._result = \
                     self._delegate.PerformOperationalAction(urns, credentials, 
                                                             action, options)
@@ -1365,9 +1377,11 @@ class AggregateManager(object):
         with AMMethodContext(self, AM_Methods.STATUS_V3,
                              self.logger, self.authorizer, 
                              self.resource_manager,
+                             self.argument_guard,
                              credentials,
                              args, options, is_v3 = True) as amc:
             if not amc._error:
+                urns = amc._args['urns']
                 amc._result = \
                     self._delegate.Status(urns, credentials, options)
         return amc._result
@@ -1381,9 +1395,11 @@ class AggregateManager(object):
         with AMMethodContext(self, AM_Methods.DESCRIBE_V3,
                              self.logger, self.authorizer, 
                              self.resource_manager,
+                             self.argument_guard,
                              credentials,
                              args, options, is_v3 = True) as amc:
             if not amc._error:
+                urns = amc._args['urns']
                 amc._result = \
                     self._delegate.Describe(urns, credentials, options)
         return amc._result
@@ -1395,10 +1411,13 @@ class AggregateManager(object):
         with AMMethodContext(self, AM_Methods.RENEW_V3,
                              self.logger, self.authorizer, 
                              self.resource_manager,
+                             self.argument_guard,
                              credentials,
                              args, options, is_v3 = True,
                              resource_bindings=True) as amc:
             if not amc._error:
+                urns = amc._args['urns']
+                expiration_time = amc._args['expiration_time']
                 amc._result = \
                     self._delegate.Renew(urns, credentials, expiration_time, 
                                          options)
@@ -1411,9 +1430,11 @@ class AggregateManager(object):
         with AMMethodContext(self, AM_Methods.SHUTDOWN_V3,
                              self.logger, self.authorizer, 
                              self.resource_manager,
+                             self.argument_guard,
                              credentials,
                              args, options, is_v3 = True) as amc:
             if not amc._error:
+                slice_urn = amc._args['slice_urn']
                 amc._result = \
                     self._delegate.Shutdown(slice_urn, credentials, options)
         return amc._result
@@ -1426,7 +1447,7 @@ class AggregateManagerServer(object):
     def __init__(self, addr, keyfile=None, certfile=None,
                  trust_roots_dir=None,
                  ca_certs=None, base_name=None,
-                 authorizer=None, resource_manager=None):
+                 authorizer=None, resource_manager=None, argument_guard=None):
         # ca_certs arg here must be a file of concatenated certs
         if ca_certs is None:
             raise Exception('Missing CA Certs')
@@ -1440,8 +1461,9 @@ class AggregateManagerServer(object):
         # FIXME: set logRequests=true if --debug
         self._server = SecureXMLRPCServer(addr, keyfile=keyfile,
                                           certfile=certfile, ca_certs=ca_certs)
-        aggregate_manager = AggregateManager(trust_roots_dir, delegate, \
-                                                 authorizer, resource_manager)
+        aggregate_manager = AggregateManager(trust_roots_dir, delegate, 
+                                             authorizer, resource_manager,
+                                             argument_guard)
         self._server.register_instance(aggregate_manager)
         # Set the server on the delegate so it can access the
         # client certificate.

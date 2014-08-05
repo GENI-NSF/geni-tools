@@ -43,6 +43,7 @@ class AMMethodContext:
     def __init__(self, aggregate_manager, 
                  method_name, logger, authorizer,
                  resource_manager, 
+                 argument_guard, 
                  credentials, args, options, 
                  is_v3=False, resource_bindings=False):
         self._aggregate_manager = aggregate_manager
@@ -50,6 +51,7 @@ class AMMethodContext:
         self._logger = logger
         self._authorizer = authorizer
         self._resource_manager = resource_manager
+        self._argument_guard = argument_guard
         self._credentials = credentials
         self._args = args
         self._options = options
@@ -68,6 +70,17 @@ class AMMethodContext:
                                   (self._method_name, self._caller_urn, 
                                    self._args, self._options))
             credentials = self._credentials
+
+
+            # Possibly modify args and options
+            if self._argument_guard:
+                self._args, self._options = \
+                    self._argument_guard.check_arguments(self._method_name,
+                                                         self._args, 
+                                                         self._options)
+#                self._logger.info("New Args %s New Options %s" % \
+#                                      (self._args, self._options))
+
             args = self._args
 
             # Change client cert if valid speaks-for invocation

@@ -109,8 +109,8 @@ class ABAC_Authorizer(Base_Authorizer):
                   requested_allocation_state):
         Base_Authorizer.authorize(self, method, caller, creds, args, opts,
                                   requested_allocation_state)
-        self._logger.info("RAS = %s" % requested_allocation_state)
-        self._logger.info("In ABAC AUTHORIZER...")
+#        self._logger.info("RAS = %s" % requested_allocation_state)
+#        self._logger.info("In ABAC AUTHORIZER...")
 
         rules = self.lookup_rules_for_caller(caller)
 
@@ -124,7 +124,7 @@ class ABAC_Authorizer(Base_Authorizer):
         # Add 'constants' to bindings
         bindings = dict(bindings.items() + rules.getConstants().items())
 
-        self._logger.info("BINDINGS = %s" % bindings)
+#        self._logger.info("BINDINGS = %s" % bindings)
 
         assertions = self._generate_assertions(bindings, rules)
 
@@ -136,7 +136,7 @@ class ABAC_Authorizer(Base_Authorizer):
         assertions = \
             assertions + credential_assertions + fixed_policies
 
-        self._logger.info("ASSERTIONS = %s" % assertions)
+#        self._logger.info("ASSERTIONS = %s" % assertions)
 
         success, msg = self._evaluate_queries(bindings, assertions, rules)
         

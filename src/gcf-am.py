@@ -37,6 +37,7 @@ if sys.version_info < (2, 6):
 elif sys.version_info >= (3,):
     raise Exception('Not python 3 ready')
 
+import importlib
 import logging
 import optparse
 import os
@@ -84,6 +85,16 @@ def getAbsPath(path):
     else:
         return os.path.abspath(path)
 
+# Return an instance of a class given by fully qualified name 
+# (module_path.classname) with variable constructor args
+def getInstanceFromClassname(class_name, *argv):
+    class_module_name = ".".join(class_name.split('.')[:-1])
+    class_base_name = class_name.split('.')[-1]
+    class_module = importlib.import_module(class_module_name)
+    class_instance = eval("class_module.%s" % class_base_name)
+    object_instance = class_instance(*argv)
+    return object_instance
+
 def main(argv=None):
     if argv is None:
         argv = sys.argv
@@ -125,16 +136,12 @@ def main(argv=None):
 
     # Instantiate authorizer from 'authorizer' config argument
     # By default, use the SFA authorizer
-    authorizer = None
     if hasattr(opts, 'authorizer'):
         authorizer_classname = opts.authorizer
     else:
         authorizer_classname = "gcf.geni.auth.sfa_authorizer.SFA_Authorizer"
-
-    authorizer_class_module = '.'.join(authorizer_classname.split('.')[:-1])
-    __import__(authorizer_class_module)
-    authorizer_class = eval(authorizer_classname)
-    authorizer = authorizer_class(opts.rootcadir, opts)
+    authorizer = getInstanceFromClassname(authorizer_classname, 
+                                          opts.rootcadir, opts)
 
     # Use XMLRPC authorizer if opt.remote_authorizer is set
     if hasattr(opts, 'remote_authorizer'):
@@ -145,12 +152,14 @@ def main(argv=None):
     # config argument. Default = None
     resource_manager = None
     if hasattr(opts, 'authorizer_resource_manager'):
-        res_mgr_classname = opts.authorizer_resource_manager
-        res_mgr_module = \
-            ".".join(res_mgr_classname.split('.')[:-1])
-        __import__(res_mgr_module)
-        res_mgr_class = eval(res_mgr_classname)
-        resource_manager = res_mgr_class()
+        resource_manager = \
+            getInstanceFromClassname(opts.authorizer_resource_manager)
+
+    # Instantiate an argument guard that will reject or modify
+    # arguments and options provided to calls
+    argument_guard = None
+    if hasattr(opts, 'argument_guard'):
+        argument_guard = getInstanceFromClassname(opts.argument_guard)
 
     # rootcadir is  dir of multiple certificates
     delegate = geni.ReferenceAggregateManager(getAbsPath(opts.rootcadir))
@@ -174,7 +183,8 @@ def main(argv=None):
                                                      ca_certs=comboCertsFile,
                                                      base_name=config['global']['base_name'], 
                                                      authorizer=authorizer,
-                                                     resource_manager=resource_manager)
+                                                     resource_manager=resource_manager,
+                                                     argument_guard=argument_guard)
     elif opts.api_version == 3:
         ams = gcf.geni.am.am3.AggregateManagerServer((opts.host, int(opts.port)),
                                                      keyfile=keyfile,
@@ -183,7 +193,8 @@ def main(argv=None):
                                                      ca_certs=comboCertsFile,
                                                      base_name=config['global']['base_name'],
                                                      authorizer=authorizer,
-                                                     resource_manager=resource_manager)
+                                                     resource_manager=resource_manager,
+                                                     argument_guard=argument_guard)
     else:
         msg = "Unknown API version: %d. Valid choices are \"1\", \"2\", or \"3\""
         sys.exit(msg % (opts.api_version))
