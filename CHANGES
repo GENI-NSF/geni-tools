@@ -23,6 +23,9 @@ gcf 2.7:
    * Remove defunct code (#666)
    * Remove reliance on 'pg_manifest' field of SliverStatus return.  Leave fallback code for now. (#665)
 
+ * gcf
+   * Return `geni-expires` from the AM API v2 AM. (#679)
+
 gcf 2.6:
  * Omni
   * New function `removeslicemember <slice> <username>`: 
