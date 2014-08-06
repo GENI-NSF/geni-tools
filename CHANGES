@@ -16,6 +16,7 @@ gcf 2.7:
   * Added new option `useSCSSugg` to always use VLAN tags picked
     by the SCS, not letting the AM pick. (#675)
   * Use relative imports in `scs` if possible. (#658)
+  * `Insufficient rights` error is fatal at SFA AMs. (#677)
 
  * readyToLogin
    * Handle when omni switches AM API version number (#643)
