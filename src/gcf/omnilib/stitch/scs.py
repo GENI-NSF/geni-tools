@@ -32,10 +32,16 @@ import pprint
 import sys
 import xmlrpclib
 
-from gcf.omnilib.stitch.utils import StitchingError, StitchingServiceFailedError
-from gcf.omnilib.xmlrpc.client import make_client
+try:
+    from .utils import StitchingError, StitchingServiceFailedError
+    from ..xmlrpc.client import make_client
 
-from gcf.omnilib.util.json_encoding import DateTimeAwareJSONDecoder
+    from ..util.json_encoding import DateTimeAwareJSONDecoder
+except:
+    from gcf.omnilib.stitch.utils import StitchingError, StitchingServiceFailedError
+    from gcf.omnilib.xmlrpc.client import make_client
+
+    from gcf.omnilib.util.json_encoding import DateTimeAwareJSONDecoder
 
 # Tags used in the options to the SCS
 HOP_EXCLUSION_TAG = 'hop_exclusion_list'
