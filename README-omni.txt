@@ -42,6 +42,12 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 == Release Notes ==
 
 New in v2.7:
+ * Fix nickname cache updating when temp and home directories are on 
+   different disks - use `shutil.move`. (#646)
+ * Look for fallback `agg_nick_cache` in correct location (#662)
+ * Honor the `useslicemembers` and `ignoreconfigusers` options in the `omni_config` (#671)
+ * Fix `get_member_email` e.g. from `listprojectmembers` for speaks-for. (#676)
+ * Use relative imports in `speaksfor_util` if possible. (#657)
 
 New in v2.6:
  * New function `removeslicemember <slice> <username>`: 

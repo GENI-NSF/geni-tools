@@ -471,7 +471,7 @@ class Framework(Framework_Base):
             # In V1, we get a dictionary of KEY_MEMBER => KEY_PUBLIC, KEY_PRIVATE
             # In V2, we get a dictionary of KEY_ID => KEY_MEMBER, KEY_PUBLIC, KEY_PRIVATE
             # We only asked for one person so flip back to V1 format
-            if res['code'] == 0:
+            if res and res['code'] == 0:
                 res['value'] = {fetch_urn : res['value'].values()}
 
         keys = []
@@ -1262,6 +1262,7 @@ class Framework(Framework_Base):
             if uc is not None:
                 creds.append(uc)
         options = {'match': {'MEMBER_URN': urn}, 'filter': ['MEMBER_EMAIL']}
+        creds, options = self._add_credentials_and_speaksfor(creds, options)
         if not self.speakV2:
             res, mess = _do_ssl(self, None, "Looking up member email",
                                 self.ma().lookup_identifying_member_info, creds, options)

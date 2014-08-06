@@ -291,6 +291,7 @@ class Aggregate(object):
         self.isExoSM = False # Maybe we need to handle the ExoSM differently too?
         self.isPG = False
         self.isGRAM = False
+        self.isOESS = False
         # reservation tries since last call to SCS
         self.allocateTries = 0 # see MAX_TRIES
         self.localPickNewVlanTries = 1 # see MAX_AGG_NEW_VLAN_TRIES
@@ -1549,6 +1550,10 @@ class Aggregate(object):
                                 self.logger.debug("Fatal error from GRAM AM")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. You already have a reservation here in this slice using the specified node client_id. Consider calling deletesliver at this AM: %s..." % (self, str(ae)[:120])
+                        elif amtype == 'sfa' and ("Insufficient rights" in msg or "Access denied" in msg):
+                            isFatal = True
+                            self.logger.debug("AuthZ error from SFA AM")
+                            fatalMsg = "Reservation impossible at %s. This aggregate does not trust your certificate or credential.: %s..." % (self, str(ae)[:120])
                     except Exception, e:
                         if isinstance(e, StitchingError):
                             raise e
@@ -1963,6 +1968,8 @@ class Aggregate(object):
                 omniargs = ['-o', '--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename]
             try:
                 # FIXME: Suppressing all but WARN messages, but I'll lose PG log URL?
+                # FIXME: Currently I see this info: 11:24:37 INFO    : Getting credential from file 
+                # Suppress using the code that manipulatest levels on handlers as around line 1186?
                 (text, result) = self.doAMAPICall(omniargs, opts, opName, slicename, ctr, suppressLogs=True)
                 self.logger.debug("%s %s at %s got: %s", opName, slicename, self, text)
             except Exception, e:

@@ -1,6 +1,27 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
 gcf 2.7:
+ * Omni
+  * Fix nickname cache updating when temp and home directories are on 
+    different disks - use `shutil.move`. (#646)
+  * Look for fallback `agg_nick_cache` in correct location (#662)
+  * Honor the `useslicemembers` and `ignoreconfigusers` options in the `omni_config` (#671)
+  * Fix `get_member_email` e.g. from `listprojectmembers` for speaks-for. (#676)
+  * Use relative imports in `speaksfor_util` if possible. (#657)
+
+ * Stitcher
+  * Avoid requesting VLAN tag 'any' at OESS and DCN AMs. (#644)
+  * In `devmode`, keep going if request RSpec is of wrong schema. (#673)
+  * Always allow a request RSpec of either PGv2 or GENIv3. (#673)
+  * Added new option `useSCSSugg` to always use VLAN tags picked
+    by the SCS, not letting the AM pick. (#675)
+  * Use relative imports in `scs` if possible. (#658)
+  * `Insufficient rights` error is fatal at SFA AMs. (#677)
+
+ * readyToLogin
+   * Handle when omni switches AM API version number (#643)
+   * Remove defunct code (#666)
+   * Remove reliance on 'pg_manifest' field of SliverStatus return.  Leave fallback code for now. (#665)
 
 gcf 2.6:
  * Omni
