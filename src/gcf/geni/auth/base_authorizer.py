@@ -73,6 +73,13 @@ class Base_Authorizer(object):
                                   (method, caller_urn, len(creds), \
                                        args.keys(), opts.keys()))
 
+    # Validate that the given set of arguments and options are
+    # appropriate for this method
+    # Raise an exception if not, or 
+    # return a (possiblly revised) set of arguments and options
+    def validate_arguments(self, method_name, arguments, options):
+        return arguments, options
+
 
         
 

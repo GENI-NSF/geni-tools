@@ -25,7 +25,7 @@ import optparse
 import sys
 import SocketServer
 import SimpleXMLRPCServer
-from gcf.geni.auth.abac_authorizer import ABAC_Authorizer
+from gcf.geni.auth.util import getInstanceFromClassname
 
 class AsyncXMLRPCServer(SocketServer.ThreadingMixIn,
                         SimpleXMLRPCServer.SimpleXMLRPCServer):
@@ -37,14 +37,18 @@ def parse_args(argv):
     parser.add_option("--trusted_roots", 
                       help="directory of trusted root certs")
     parser.add_option("--port", help="Port number for server")
-    parser.add_option("--authorizer_policy_file", help="JSON policy file")
-    parser.add_option("--authorizer_resource_manager", 
-                      help="class name for abac resource manager", 
-                      default="gcf.geni.auth.abac_resource_manager.GCFAM_Resource_Manager")
+    parser.add_option("--authorizer_policy_map_file", 
+                      help="JSON policy map file")
+    parser.add_option("--authorizer", 
+                      help="class name for authorizer", 
+                      default="gcf.geni.auth.abac_authorizer.ABAC_Authorizer")
+    parser.add_option("--argument_guard",
+                      help="class name for argument guard",
+                      default=None)
 
     opts = parser.parse_args()[0]
     if not opts.port and \
-            not opts.authorizer_policy_file and \
+            not opts.authorizer_policy_map_file and \
             not opts.trusted_roots:
         parser.print_help()
         sys.exit()
@@ -57,10 +61,21 @@ def main():
 
     server = AsyncXMLRPCServer(('localhost', int(opts.port)), allow_none=True)
 
-    abac_auth = ABAC_Authorizer(opts.trusted_roots, opts)
-    server.register_instance(abac_auth)
-    print "ABAC Authorizer Server [%s] running on port %s..." % \
-        (opts.authorizer_policy_file, opts.port)
+    argument_guard = None
+    if opts.argument_guard:
+        argument_guard = getInstanceFromClassname(opts.argument_guard)
+        
+    authorizer = getInstanceFromClassname(opts.authorizer, 
+                                          opts.trusted_roots, opts, 
+                                          argument_guard)
+
+#    authorizer._DEFAULT_RULES.dump()
+#    for rules in authorizer._AUTHORITY_SPECIFIC_RULES.values():
+#        rules.dump()
+
+    server.register_instance(authorizer)
+    print "Authorizer Server [%s] [%s] running on port %s..." % \
+        (opts.authorizer, opts.authorizer_policy_map_file, opts.port)
     server.serve_forever()
 
 

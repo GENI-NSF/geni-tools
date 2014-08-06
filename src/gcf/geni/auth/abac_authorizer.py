@@ -46,15 +46,10 @@ class ABAC_Authorizer(Base_Authorizer):
     # List of conditional ABAC assertions
     # List of queries (positive and negative)
 
-    # We have a default set of rules
-    DEFAULT_RULES = {}
-
-    # And a set of per-authority rules (use the default if the authority
-    # is not found in this dictionary
-    AUTHORITY_SPECIFIC_RULES = {}
-
-    def __init__(self, root_cert, opts):
+    def __init__(self, root_cert, opts, argument_guard=None):
         Base_Authorizer.__init__(self, root_cert, opts)
+
+        self._argument_guard = argument_guard
 
         self._logger = logging.getLogger('abac_auth')
         logging.basicConfig(level=logging.INFO)
@@ -331,6 +326,11 @@ class ABAC_Authorizer(Base_Authorizer):
             return None
         return get_cert_keyid(cert_gid)
 
+    def validate_arguments(self, method_name, arguments, options):
+        if self._argument_guard:
+            return self._argument_guard.validate_arguments(method_name, 
+                                                           arguments, options)
+
 # Class to hold the rules to be invoked for members of a given authority
 # We have per-authority rule sets and a default rule set
 class ABAC_Authorizer_Rule_Set:
@@ -431,11 +431,7 @@ class ABAC_Authorizer_Rule_Set:
 
     # Initialize a binder from its classname
     def _initialize_binder(self, binder_classname):
-        binder_class_module = ".".join(binder_classname.split('.')[:-1])
-        __import__(binder_class_module)
-        binder_class = eval(binder_classname)
-        binder = binder_class(self._root_cert)
-        return binder
+        return getInstanceFromClassname(binder_classname, self._root_cert)
 
     # Accessors to rule content
     def getIdentities(self) : return self._identities

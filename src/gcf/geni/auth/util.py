@@ -21,6 +21,8 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
+import importlib
+
 # Some helper functions to manage conversions between URN types
 
 # Convert a slice urn to a project urn (noting that there may not be one)
@@ -43,3 +45,12 @@ def convert_user_urn_to_authority_urn(user_urn):
 def _convert_urn(value, obj_type, obj_name):
     return 'urn:publicid:IDN+%s+%s+%s' % (value, obj_type, obj_name)
 
+# Return an instance of a class given by fully qualified name 
+# (module_path.classname) with variable constructor args
+def getInstanceFromClassname(class_name, *argv):
+    class_module_name = ".".join(class_name.split('.')[:-1])
+    class_base_name = class_name.split('.')[-1]
+    class_module = importlib.import_module(class_module_name)
+    class_instance = eval("class_module.%s" % class_base_name)
+    object_instance = class_instance(*argv)
+    return object_instance

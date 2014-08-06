@@ -43,7 +43,6 @@ class AMMethodContext:
     def __init__(self, aggregate_manager, 
                  method_name, logger, authorizer,
                  resource_manager, 
-                 argument_guard, 
                  credentials, args, options, 
                  is_v3=False, resource_bindings=False):
         self._aggregate_manager = aggregate_manager
@@ -51,7 +50,6 @@ class AMMethodContext:
         self._logger = logger
         self._authorizer = authorizer
         self._resource_manager = resource_manager
-        self._argument_guard = argument_guard
         self._credentials = credentials
         self._args = args
         self._options = options
@@ -73,15 +71,13 @@ class AMMethodContext:
 
 
             # Possibly modify args and options
-            if self._argument_guard:
+            if self._authorizer is not None:
                 self._args, self._options = \
-                    self._argument_guard.check_arguments(self._method_name,
-                                                         self._args, 
-                                                         self._options)
+                    self._authorizer.validate_arguments(self._method_name,
+                                                        self._args, 
+                                                        self._options)
 #                self._logger.info("New Args %s New Options %s" % \
 #                                      (self._args, self._options))
-
-            args = self._args
 
             # Change client cert if valid speaks-for invocation
             caller_gid = gid.GID(string=self._caller_cert)
@@ -103,12 +99,12 @@ class AMMethodContext:
                 self._aggregate_manager._delegate._my_urn
 
             if self._is_v3:
-                if 'urns' in args: 
-                    urns = args['urns']
+                if 'urns' in self._args: 
+                    urns = self._args['urns']
                     the_slice, the_slivers = \
                         self._aggregate_manager._delegate.decode_urns(urns)
-                    if the_slice and 'slice_urn' not in args:
-                        args['slice_urn'] = the_slice.getURN()
+                    if the_slice and 'slice_urn' not in self._args:
+                        self._args['slice_urn'] = the_slice.getURN()
                 credentials = self._normalize_credentials(self._credentials)
 
             if self._authorizer is not None:
@@ -119,12 +115,12 @@ class AMMethodContext:
                     requested_allocation_state = \
                         my_rm.get_requested_allocation_state(my_am, 
                                                              self._method_name, 
-                                                             args, 
+                                                             self._args, 
                                                              self._options, 
                                                              credentials)
                 self._authorizer.authorize(self._method_name, 
                                            self._caller_cert, 
-                                           credentials, args, 
+                                           credentials, self._args, 
                                            self._options,
                                            requested_allocation_state)
         except Exception, e:
