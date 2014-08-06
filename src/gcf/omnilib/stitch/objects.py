@@ -1550,6 +1550,10 @@ class Aggregate(object):
                                 self.logger.debug("Fatal error from GRAM AM")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. You already have a reservation here in this slice using the specified node client_id. Consider calling deletesliver at this AM: %s..." % (self, str(ae)[:120])
+                        elif amtype == 'sfa' and ("Insufficient rights" in msg or "Access denied" in msg):
+                            isFatal = True
+                            self.logger.debug("AuthZ error from SFA AM")
+                            fatalMsg = "Reservation impossible at %s. This aggregate does not trust your certificate or credential.: %s..." % (self, str(ae)[:120])
                     except Exception, e:
                         if isinstance(e, StitchingError):
                             raise e
