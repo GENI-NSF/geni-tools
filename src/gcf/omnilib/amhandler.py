@@ -3232,6 +3232,7 @@ class AMCallHandler(object):
                     self._raise_omni_error("\nSliverStatus failed: " + retVal)
                 continue
 
+            rawResult = status
             # Get the dict status out of the result (accounting for API version diffs, ABAC)
             (status, message) = self._retrieve_value(status, message, self.framework)
 
@@ -3401,7 +3402,19 @@ class AMCallHandler(object):
             else:
                 # #634:
                 # delete any sliver_infos for this am/slice
-                if not self.opts.noExtraCHCalls:
+                # However, not all errors mean there are no slivers here.
+                # Based on testing 8/2014, all AMs return code 2 or code 12 if there are no slivers here
+                # so that it's safe to delete any sliver_info records. 
+                # Use code 15 too as that seems reasonable.
+                # SEARCHFAILED (12), EXPIRED (15), ERROR (2)
+                doDelete = False
+                code = -1
+                if rawResult is not None and isinstance(rawResult, dict) and rawResult.has_key('code') and isinstance(rawResult['code'], dict) and 'geni_code' in rawResult['code']:
+                    code = rawResult['code']['geni_code']
+                if code==12 or code==15 or code==2:
+                    doDelete=True
+                if doDelete and not self.opts.noExtraCHCalls:
+                    self.logger.debug("SliverStatus failed with an error that suggests no slice at this AM - delete all sliverinfo records: %s", message)
                     # delete sliver info from SA database
                     try:
                         # Get the Agg URN for this client
@@ -3553,6 +3566,51 @@ class AMCallHandler(object):
             # Get the dict status out of the result (accounting for API version diffs, ABAC)
             (status, message) = self._retrieve_value(status, message, self.framework)
             if not status:
+                # #634:
+                # delete any sliver_infos for this am/slice
+                # However, not all errors mean there are no slivers here.
+                # Based on testing 8/2014, all AMs return code 2 or code 12 if there are no slivers here
+                # so that it's safe to delete any sliver_info records. 
+                # Use code 15 too as that seems reasonable.
+                # SEARCHFAILED (12), EXPIRED (15), ERROR (2)
+                # Also note that if not geni_best_effort
+                # that a failure may mean only part failed
+                doDelete = False
+                raw = retItem[client.url]
+                code = -1
+                if raw is not None and isinstance(raw, dict) and raw.has_key('code') and isinstance(raw['code'], dict) and 'geni_code' in raw['code']:
+                    code = raw['code']['geni_code']
+                if self.opts.geni_best_effort or len(slivers) == 0:
+                    if code==12 or code==15 or code==2:
+                        doDelete=True
+                if doDelete and not self.opts.noExtraCHCalls:
+                    self.logger.debug("Status failed with an error that suggests no slice at this AM or requested slivers not at this AM - delete all/requested sliverinfo records: %s", message)
+                    # delete sliver info from SA database
+                    try:
+                        if len(slivers) > 0:
+                            self.logger.debug("Status failed - assuming all %d sliver URNs asked about are invalid at not at this AM - delete from CH", len(slivers))
+                            for sliver in slivers:
+                                self.framework.delete_sliver_info(sliver_urn)
+                        else:
+                            self.logger.debug("Status failed: assuming this slice has 0 slivers at this AM. Ensure CH lists none.")
+                            # Get the Agg URN for this client
+                            agg_urn = self._getURNForClient(client)
+                            if urn_util.is_valid_urn(agg_urn):
+                                # I'd like to be able to tell the SA to delete all slivers registered for
+                                # this slice/AM, but the API says sliver_urn is required
+                                sliver_urns = self.framework.list_sliverinfo_urns(urn, agg_urn)
+                                for sliver_urn in sliver_urns:
+                                    self.framework.delete_sliver_info(sliver_urn)
+                            else:
+                                self.logger.debug("Not ensuring with CH that AM %s slice %s has no slivers - no valid AM URN known")
+                    except NotImplementedError, nie:
+                        self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
+                    except Exception, e:
+                        self.logger.info('Error ensuring slice has no slivers recorded in SA database at this AM')
+                        self.logger.debug(e)
+                else:
+                    self.logger.debug("Per commandline option, not ensuring clearinghouse lists no slivers for this slice.")
+
                 # FIXME: Put the message error in retVal?
                 # FIXME: getVersion uses None as the value in this case. Be consistent
                 fmt = "\nFailed to get Status on %s at AM %s: %s\n"
@@ -3560,6 +3618,7 @@ class AMCallHandler(object):
                     message = "(no reason given)"
                 retVal += fmt % (descripMsg, client.str, message)
                 continue
+            # End of block to handle got no good status (got an error)
 
             missingSlivers = self._findMissingSlivers(status, slivers)
             if len(missingSlivers) > 0:
