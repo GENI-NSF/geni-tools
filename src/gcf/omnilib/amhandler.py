@@ -3406,12 +3406,13 @@ class AMCallHandler(object):
                 # Based on testing 8/2014, all AMs return code 2 or code 12 if there are no slivers here
                 # so that it's safe to delete any sliver_info records. 
                 # Use code 15 too as that seems reasonable.
-                # SEARCHFAILED (12), EXPIRED (15), ERROR (2)
+                # SEARCHFAILED (12), EXPIRED (15)
+                # EG uses ERROR (2), but that's too general so avoid that one
                 doDelete = False
                 code = -1
                 if rawResult is not None and isinstance(rawResult, dict) and rawResult.has_key('code') and isinstance(rawResult['code'], dict) and 'geni_code' in rawResult['code']:
                     code = rawResult['code']['geni_code']
-                if code==12 or code==15 or code==2:
+                if code==12 or code==15:
                     doDelete=True
                 if doDelete and not self.opts.noExtraCHCalls:
                     self.logger.debug("SliverStatus failed with an error that suggests no slice at this AM - delete all sliverinfo records: %s", message)
@@ -3572,7 +3573,8 @@ class AMCallHandler(object):
                 # Based on testing 8/2014, all AMs return code 2 or code 12 if there are no slivers here
                 # so that it's safe to delete any sliver_info records. 
                 # Use code 15 too as that seems reasonable.
-                # SEARCHFAILED (12), EXPIRED (15), ERROR (2)
+                # Use SEARCHFAILED (12), EXPIRED (15)
+                # EG uses ERROR (2), but that will show up in other places. So avoid that one.
                 # Also note that if not geni_best_effort
                 # that a failure may mean only part failed
                 doDelete = False
@@ -3581,7 +3583,7 @@ class AMCallHandler(object):
                 if raw is not None and isinstance(raw, dict) and raw.has_key('code') and isinstance(raw['code'], dict) and 'geni_code' in raw['code']:
                     code = raw['code']['geni_code']
                 if self.opts.geni_best_effort or len(slivers) == 0:
-                    if code==12 or code==15 or code==2:
+                    if code==12 or code==15:
                         doDelete=True
                 if doDelete and not self.opts.noExtraCHCalls:
                     self.logger.debug("Status failed with an error that suggests no slice at this AM or requested slivers not at this AM - delete all/requested sliverinfo records: %s", message)
