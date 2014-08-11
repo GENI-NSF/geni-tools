@@ -1724,10 +1724,13 @@ class Framework(Framework_Base):
             self.logger.debug("Recording new slivers in struct")
             for sliver in slivers:
                 if not (isinstance(sliver, dict) and \
-                            sliver.has_key('geni_sliver_urn')):
+                            (sliver.has_key('geni_sliver_urn') or sliver.has_key('geni_urn'))):
                     continue
-                sliver_urn = sliver['geni_sliver_urn']
-                exp = None
+                if sliver.has_key('geni_sliver_urn'):
+                    sliver_urn = sliver['geni_sliver_urn']
+                else:
+                    sliver_urn = sliver['geni_urn']
+                exp = expiration
                 if sliver.has_key('geni_expires'):
                     exp = sliver['geni_expires']
                 msg = msg + str(self._record_one_new_sliver(sliver_urn,
@@ -1920,6 +1923,7 @@ class Framework(Framework_Base):
 
     # Find all slivers the SA lists for the given slice
     # Return a struct by AM URN containing a struct: sliver_urn = sliver info struct
+    # Compare with list_sliverinfo_urns which only returns the sliver URNs
     def list_sliver_infos_for_slice(self, slice_urn):
         slivers_by_agg = {}
         slice_urn = self.slice_name_to_urn(slice_urn)

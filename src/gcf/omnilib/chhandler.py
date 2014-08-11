@@ -260,7 +260,7 @@ class CHCallHandler(object):
         Return summary string, new slice expiration (string)
         """
         if len(args) != 2 or args[0] == None or args[0].strip() == "":
-            self._raise_omni_error('renewslice missing or too many args: Supply <slice name> <expiration date>')
+            self._raise_omni_error('renewslice missing args or too many args: Supply <slice name> <expiration date>')
         name = args[0]
         expire_str = args[1]
 

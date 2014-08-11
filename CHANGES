@@ -8,6 +8,9 @@ gcf 2.7:
   * Honor the `useslicemembers` and `ignoreconfigusers` options in the `omni_config` (#671)
   * Fix `get_member_email` e.g. from `listprojectmembers` for speaks-for. (#676)
   * Use relative imports in `speaksfor_util` if possible. (#657)
+  * Calls to `status` and `sliverstatus` will also call the CH
+    to try to sync up the CH records of slivers with truth
+    as reported by the AM. (#634)
 
  * Stitcher
   * Avoid requesting VLAN tag 'any' at OESS and DCN AMs. (#644)
@@ -22,6 +25,9 @@ gcf 2.7:
    * Handle when omni switches AM API version number (#643)
    * Remove defunct code (#666)
    * Remove reliance on 'pg_manifest' field of SliverStatus return.  Leave fallback code for now. (#665)
+
+ * gcf
+   * Return `geni-expires` from the AM API v2 AM. (#679)
 
 gcf 2.6:
  * Omni
