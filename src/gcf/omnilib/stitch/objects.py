@@ -390,7 +390,7 @@ class Aggregate(object):
         self.pgLogUrl = None # For PG AMs, any log url returned by Omni that we could capture
 
         # Will be a single or list of naive UTC datetime objects
-        self.sliverExpirations = None
+        self.sliverExpirations = []
 
         # Have we tried an allocation at this AM in this latest round?
         # Used by stitchhandler to decide which AMs were tried the last time through, 
@@ -2079,7 +2079,7 @@ class Aggregate(object):
             # In practice this means any circuit reserved within 24 hours of expiration
             # will have this problem for something < 24 hours.
             # check for that, log the issue, renew to the slice expiration if necessary.
-            if len(self.sliverExpirations) > 0:
+            if self.sliverExpirations is not None and len(self.sliverExpirations) > 0:
                 thisExp = self.sliverExpirations[-1]
                 thisExp = naiveUTC(thisExp)
 
