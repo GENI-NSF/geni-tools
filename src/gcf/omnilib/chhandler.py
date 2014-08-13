@@ -260,7 +260,7 @@ class CHCallHandler(object):
         Return summary string, new slice expiration (string)
         """
         if len(args) != 2 or args[0] == None or args[0].strip() == "":
-            self._raise_omni_error('renewslice missing or too many args: Supply <slice name> <expiration date>')
+            self._raise_omni_error('renewslice missing args or too many args: Supply <slice name> <expiration date>')
         name = args[0]
         expire_str = args[1]
 
@@ -435,8 +435,13 @@ class CHCallHandler(object):
 
         retStr = ""
         projectnames = list()
-        ((projects, samsg), message) = _do_ssl(self.framework, None, "List Projects from Slice Authority", self.framework.list_my_projects, username)
-        if projects is None:
+        projects = None
+        samsg = None
+#        ((projects, samsg), message) = _do_ssl(self.framework, None, "List Projects from Slice Authority", self.framework.list_my_projects, username)
+        (res, message) = _do_ssl(self.framework, None, "List Projects from Slice Authority", self.framework.list_my_projects, username)
+        if res is not None:
+            (projects, samsg) = res
+        if res is None or projects is None:
             # only end up here if call to _do_ssl failed
             projects = []
             self.logger.error("Failed to list projects for user '%s'"%(username))

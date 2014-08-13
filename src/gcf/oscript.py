@@ -111,6 +111,7 @@ import inspect
 import logging.config
 import optparse
 import os
+import shutil
 import sys
 import urllib
 
@@ -157,7 +158,7 @@ def load_agg_nick_config(opts, logger):
 
     # the directory of this file
     curr_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    parent_dir = curr_dir.rsplit(os.sep,1)[0]
+    parent_dir = curr_dir.rsplit(os.sep,2)[0]
 
     # Load up the config file
     configfiles = [os.path.join(parent_dir, 'agg_nick_cache.base')]
@@ -316,7 +317,7 @@ def load_config(opts, logger, config={}, filename=None):
             opts.project = config['omni']['default_project']
 
     # Config of useslicemembers some value of true sets the option
-    if hasattr(opts,'useslicemembers') and config['omni'].has_key('useslicemembers'):
+    if hasattr(opts,'useSliceMembers') and config['omni'].has_key('useslicemembers'):
         usm = config['omni']['useslicemembers'].strip().lower()
         if usm in ('t', 'true', 'y', 'yes', '1', 'on'):
             usm = True
@@ -324,7 +325,7 @@ def load_config(opts, logger, config={}, filename=None):
                 logger.info("Setting option useSliceMembers based on omni_config setting")
                 opts.useSliceMembers = True
     # Config of ignoreconfigusers some value of true sets the option
-    if  hasattr(opts,'ignoreconfigusers') and config['omni'].has_key('ignoreconfigusers'):
+    if hasattr(opts,'ignoreConfigUsers') and config['omni'].has_key('ignoreconfigusers'):
         usm = config['omni']['ignoreconfigusers'].strip().lower()
         if usm in ('t', 'true', 'y', 'yes', '1', 'on'):
             usm = True
@@ -456,11 +457,12 @@ def update_agg_nick_cache( opts, logger ):
             logger.debug("Temp file: '%s'. Exists? %s", tmpcache, os.path.exists(tmpcache))
         if good:
             # On Windows, rename doesn't delete any existing file, so explicitly delete the old one first
+            # And shutil.move also wants the destination to be gone
             try:
                 os.unlink(opts.aggNickCacheName)
             except:
                 pass
-            os.rename(tmpcache, opts.aggNickCacheName)
+            shutil.move(tmpcache, opts.aggNickCacheName)
             logger.info("Downloaded latest `agg_nick_cache` from '%s' and copied to '%s'." % (opts.aggNickDefinitiveLocation, opts.aggNickCacheName))
     except Exception, e:
         logger.info("Attempted to download latest `agg_nick_cache` from '%s' but could not." % opts.aggNickDefinitiveLocation )

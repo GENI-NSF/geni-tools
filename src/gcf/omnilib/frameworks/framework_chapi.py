@@ -471,7 +471,7 @@ class Framework(Framework_Base):
             # In V1, we get a dictionary of KEY_MEMBER => KEY_PUBLIC, KEY_PRIVATE
             # In V2, we get a dictionary of KEY_ID => KEY_MEMBER, KEY_PUBLIC, KEY_PRIVATE
             # We only asked for one person so flip back to V1 format
-            if res['code'] == 0:
+            if res and res['code'] == 0:
                 res['value'] = {fetch_urn : res['value'].values()}
 
         keys = []
@@ -1262,6 +1262,7 @@ class Framework(Framework_Base):
             if uc is not None:
                 creds.append(uc)
         options = {'match': {'MEMBER_URN': urn}, 'filter': ['MEMBER_EMAIL']}
+        creds, options = self._add_credentials_and_speaksfor(creds, options)
         if not self.speakV2:
             res, mess = _do_ssl(self, None, "Looking up member email",
                                 self.ma().lookup_identifying_member_info, creds, options)
@@ -1723,10 +1724,13 @@ class Framework(Framework_Base):
             self.logger.debug("Recording new slivers in struct")
             for sliver in slivers:
                 if not (isinstance(sliver, dict) and \
-                            sliver.has_key('geni_sliver_urn')):
+                            (sliver.has_key('geni_sliver_urn') or sliver.has_key('geni_urn'))):
                     continue
-                sliver_urn = sliver['geni_sliver_urn']
-                exp = None
+                if sliver.has_key('geni_sliver_urn'):
+                    sliver_urn = sliver['geni_sliver_urn']
+                else:
+                    sliver_urn = sliver['geni_urn']
+                exp = expiration
                 if sliver.has_key('geni_expires'):
                     exp = sliver['geni_expires']
                 msg = msg + str(self._record_one_new_sliver(sliver_urn,
@@ -1919,6 +1923,7 @@ class Framework(Framework_Base):
 
     # Find all slivers the SA lists for the given slice
     # Return a struct by AM URN containing a struct: sliver_urn = sliver info struct
+    # Compare with list_sliverinfo_urns which only returns the sliver URNs
     def list_sliver_infos_for_slice(self, slice_urn):
         slivers_by_agg = {}
         slice_urn = self.slice_name_to_urn(slice_urn)

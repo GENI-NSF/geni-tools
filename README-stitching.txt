@@ -242,6 +242,9 @@ Other options you should not need to use:
  - `--logconfig` to use a non standard logging configuration. Stitcher
  expects one `StreamHandler` for the console. Default configuration is
  in `gcf\stitcher_logging.conf`.
+ - `--useSCSugg`: Always use the VLAN tag suggested by the
+ SCS. Usually stitcher asks the aggregate to pick, despite what the
+ SCS suggested.
 
 == Tips and Details ==
 

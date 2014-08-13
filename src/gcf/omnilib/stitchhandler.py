@@ -769,8 +769,9 @@ class StitchingHandler(object):
                             self.logger.debug("%s imports VLANs from %s which is OK to request 'any', so this hop should request 'any'.", hop, hop2)
                 if not hop._hop_link.vlan_producer:
                     if not imports and not isConsumer:
-                        if am.isEG or am.isGRAM:
-                            self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG or GRAM AM, where we cannot assume 'any' works.", hop)
+                        # See http://groups.geni.net/geni/ticket/1263 and http://groups.geni.net/geni/ticket/1262
+                        if am.isEG or am.isGRAM or am.isOESS or am.dcn:
+                            self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG or GRAM or OESS or DCN AM, where we cannot assume 'any' works.", hop)
                             requestAny = False
                         else:
                             # If this hop doesn't import and isn't explicitly marked as either a consumer or a producer, then
@@ -787,14 +788,16 @@ class StitchingHandler(object):
                     isProducer = True
                     self.logger.debug("%s marked as a VLAN producer", hop)
                 if not requestAny and not imports and not isConsumer and not isProducer:
-                    if am.isEG or am.isGRAM:
-                        self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG or GRAM AM, where we cannot assume 'any' works.", hop)
+                    if am.isEG or am.isGRAM or am.isOESS or am.dcn:
+                        self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG or GRAM or OESS or DCN AM, where we cannot assume 'any' works.", hop)
                     else:
                         # If this hop doesn't import and isn't explicitly marked as either a consumer or a producer, then
                         # assume it is willing to produce a VLAN tag
                         self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. Assuming 'any' is OK.", hop)
                         requestAny = True
-                if requestAny:
+                if self.opts.useSCSSugg and requestAny:
+                    self.logger.info("Would request 'any', but user requested to stick to SCS suggestions.")
+                elif requestAny:
                     if len(am.dependsOn) != 0:
                         self.logger.debug("%s appears OK to request tag 'any', but the AM says it depends on other AMs?", hop)
                     if hop._hop_link.vlan_suggested_request != VLANRange.fromString("any"):
@@ -919,9 +922,13 @@ class StitchingHandler(object):
             raise OmniError("Empty %s rspec" % typeStr)
         if not is_rspec_string(requestString, None, None, logger=self.logger):
             raise OmniError("%s RSpec file did not contain an RSpec" % typeStr)
-        if not is_rspec_of_type(requestString, rspecType):
+#        if not is_rspec_of_type(requestString, rspecType):
 #        if not is_rspec_of_type(requestString, rspecType, "GENI 3", False, logger=self.logger):
-            raise OmniError("%s RSpec file did not contain a %s RSpec (wrong type or schema)" % (typeStr, typeStr))
+        if not (is_rspec_of_type(requestString, rspecType, "GENI 3", False) or is_rspec_of_type(requestString, rspecType, "ProtoGENI 2", False)):
+            if self.opts.devmode:
+                self.logger.info("RSpec of wrong type or schema, but continuing...")
+            else:
+                raise OmniError("%s RSpec file did not contain a %s RSpec (wrong type or schema)" % (typeStr, typeStr))
 
         # Run rspeclint
         if doRSpecLint:
@@ -930,7 +937,7 @@ class StitchingHandler(object):
             except:
                 self.logger.debug("No rspeclint found")
                 return
-            # FIXME: Make this support GENIv4+?
+            # FIXME: Make this support GENIv4+? PGv2?
             schema = rspec_schema.GENI_3_REQ_SCHEMA
             if rspecType == rspec_schema.MANIFEST:
                 schema = rspec_schema.GENI_3_MAN_SCHEMA
@@ -1616,6 +1623,9 @@ class StitchingHandler(object):
                     if version[agg.url]['value'].has_key('GRAM_version'):
                         agg.isGRAM = True
                         self.logger.debug("AM %s is GRAM", agg)
+                    if version[agg.url]['value'].has_key('foam_version') and 'oess' in agg.url:
+                        agg.isOESS = True
+                        self.logger.debug("AM %s is OESS", agg)
                     if version[agg.url]['value'].has_key('geni_request_rspec_versions') and \
                             isinstance(version[agg.url]['value']['geni_request_rspec_versions'], list):
                         for rVer in version[agg.url]['value']['geni_request_rspec_versions']:
@@ -1723,6 +1733,8 @@ class StitchingHandler(object):
                     self.logger.debug("   A ProtoGENI Aggregate")
                 if agg.isGRAM:
                     self.logger.debug("   A GRAM Aggregate")
+                if agg.isOESS:
+                    self.logger.debug("   An OESS Aggregate")
                 if agg.isEG:
                     self.logger.debug("   An Orca Aggregate")
                 if agg.isExoSM:
