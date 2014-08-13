@@ -388,6 +388,11 @@ class Framework(Framework_Base):
                     'SLICE_EXPIRED': 'f',
                     }}
 
+        if self.needcred:
+            uc, msg = self.get_user_cred(True)
+            if uc is not None:
+                scred.append(uc)
+
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
         # This call is the same for CHAPI v1 and V2
