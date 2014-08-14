@@ -321,107 +321,73 @@ class StitchingHandler(object):
             self.opts.output = ot
 
             # Print something about sliver expiration times
-            soonest = None
+
+            # FIXME: 15min? 30min?
+            # FIXME: Old code printed per agg exp at debug level
+
+            sortedAggs = Aggregate.sortAggsByExpirations(15) # 15min apart counts as same
+            firstTime = None
+            firstCount = 0
+            firstLabel = ""
             secondTime = None
+            secondCount = 0
+            secondLabel = ""
+            noPrint = False
+            msgAdd = ''
             msg = None
-            for am in self.ams_to_process:
-                exps = am.sliverExpirations
-                if exps is not None:
-                    if len(exps) > 1:
-                        # More than 1 distinct sliver expiration found
-                        # Sort and take first
-                        nextTime = exps[0]
-                        if soonest is None:
-                            soonest = (nextTime, str(am), 1)
-                        elif nextTime < soonest[0]:
-                            # Only increment soonest[2] if the difference is more than a few minutes
-                            # - that is, more than the stitcher runtime
-                            count = soonest[2]
-                            if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
-                                count = count + 1
-                                secondTime = soonest[0]
-                                soonest = (nextTime, str(am), count)
-                            else:
-                                label = soonest[1] + " and %s" % str(am)
-                                soonest = (soonest[0], label, soonest[2])
-                        elif nextTime > soonest[0]:
-                            # Only increment soonest[2] if the difference is more than a few minutes
-                            # - that is, more than the stitcher runtime
-                            count = soonest[2]
-                            if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
-                                count = count + 1
-                                soonest = (soonest[0], soonest[1], count)
-                            else:
-                                label = soonest[1] + " and %s" % str(am)
-                                soonest = (soonest[0], label, soonest[2])
-                        elif abs(nextTime - soonest[0]) < datetime.timedelta(seconds=1):
-                            label = soonest[1] + " and %s" % str(am)
-                            soonest = (soonest[0], label, soonest[2])
-
-                        # If this isn't the next expiration, is it the 2nd?
-                        if nextTime > soonest[0] and abs(nextTime - soonest[0]) > datetime.timedelta(minutes=30):
-                            if secondTime is None:
-                                secondTime = nextTime
-                            elif nextTime < secondTime:
-                                secondTime = nextTime
-
-                        outputstr = nextTime.isoformat()
-                        msg = "Resources in slice %s at %s expire at %d different times. First expiration is %s UTC. " % (self.slicename, am, len(exps), outputstr)
-                    elif len(exps) == 0:
-                        msg = "Failed to get sliver expiration from %s - try print_sliver_expirations. " % am
+            if len(sortedAggs) == 0:
+                msg = "No aggregates"
+                self.logger.debug("Got no aggregates?")
+                noPrint = True
+            else:
+                self.logger.debug("AMs expire at %d time(s).", len(sortedAggs))
+                firstSlotTimes = sortedAggs[0][0].sliverExpirations
+                skipFirst = False
+                if firstSlotTimes is None or len(firstSlotTimes) == 0:
+                    skipFirst = True
+                    if len(sortedAggs) == 1:
+                        msg = "Aggregates did not report sliver expiration"
+                        self.logger.debug("Only expiration timeslot has an agg with no expirations")
+                        noPrint = True
                     else:
-                        outputstr = exps[0].isoformat()
-                        msg = "Resources in slice %s at %s expire at %s UTC. " % (self.slicename, am, outputstr)
-                        if soonest is None:
-                            soonest = (exps[0], str(am), 1)
-                        elif exps[0] < soonest[0]:
-                            # Only increment soonest[2] if the difference is more than a few minutes
-                            # - that is, more than the stitcher runtime
-                            count = soonest[2]
-                            if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
-                                count = count + 1
-                                secondTime = soonest[0]
-                                soonest = (exps[0], str(am), count)
-                            else:
-                                label = soonest[1] + " and %s" % str(am)
-                                soonest = (soonest[0], label, soonest[2])
-                        elif exps[0] > soonest[0]:
-                            # Only increment soonest[2] if the difference is more than a few minutes
-                            # - that is, more than the stitcher runtime
-                            count = soonest[2]
-                            if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
-                                count = count + 1
-                                soonest = (soonest[0], soonest[1], count)
-                            else:
-                                label = soonest[1] + " and %s" % str(am)
-                                soonest = (soonest[0], label, soonest[2])
-                        elif abs(exps[0] - soonest[0]) < datetime.timedelta(seconds=1):
-                            label = soonest[1] + " and %s" % str(am)
-                            soonest = (soonest[0], label, soonest[2])
-
-                        # If this isn't the next expiration, is it the 2nd?
-                        if exps[0] > soonest[0] and abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
-                            if secondTime is None:
-                                secondTime = exps[0]
-                            elif exps[0] < secondTime:
-                                secondTime = exps[0]
+                        msgAdd = "Resource expiration unknown at %d aggregate(s)" % len(sortedAggs[0])
+                        self.logger.debug("First slot had no times, but there are other slots")
+                ind = -1
+                for slot in sortedAggs:
+                    ind += 1
+                    if skipFirst and ind == 0:
+                        continue
+                    if firstTime is None:
+                        firstTime = slot[0].sliverExpirations[0]
+                        firstCount = len(slot)
+                        firstLabel = str(slot[0])
+                        self.logger.debug("First expiration at %s UTC at %s at %d AM(s).", firstTime.isoformat(), firstLabel, firstCount)
+                        if firstCount == 1:
+                            continue
+                        elif firstCount == 2:
+                            firstLabel += " and " + str(slot[1])
+                        else:
+                            firstLabel += " and %d other AM(s)" % (firstCount - 1)
+                        continue
+                    elif secondTime is None:
+                        secondTime = slot[0].sliverExpirations[0]
+                        secondCount = len(slot)
+                        secondLabel = str(slot[0])
+                        self.logger.debug("Second expiration at %s UTC at %s at %d AM(s)", secondTime.isoformat(), secondLabel, secondCount)
+                        if secondCount == 1:
+                            break
+                        elif secondCount == 2:
+                            secondLabel += " and " + str(slot[1])
+                        else:
+                            secondLabel += " and %d other AM(s)" % (secondCount - 1)
+                        break
+                # Done looping over agg exp times in sortedAggs
+            # Done handling sortedAggs
+            if not noPrint:
+                if len(sortedAggs) == 1:
+                    msg = "Your resources expire at %s (UTC). %s" % (firstTime.isoformat(), msgAdd)
                 else:
-                    # else got no sliver expiration for this AM
-                    # Like at EG or GRAM AMs. See ticket #318
-                    msg = "Resource expiration at %s unknown - try print_sliver_expirations. " % am
-
-                self.logger.debug(msg)
-                #retVal += msg + "\n"
-            # End of loop over AMs
-
-            msg = None
-            if soonest is not None and soonest[2] > 1:
-                # Diff parts of the slice expire at different times
-                msg = "Your resources expire at %d different times at different AMs. The first expiration is %s UTC at %s. " % (soonest[2], soonest[0], soonest[1])
-                if secondTime:
-                    msg += "Second expiration is %s UTC. " % secondTime.isoformat()
-            elif soonest:
-                msg = "Your resources expire at %s (UTC). " % (soonest[0])
+                    msg = "Your resources expire at %d different times. The first resources expire at %s (UTC) at %s. The second expiration time is %s (UTC) at %s. %s" % (len(sortedAggs), firstTime.isoformat(), firstLabel, secondTime.isoformat(), secondLabel, msgAdd)
 
             if msg:
                 self.logger.info(msg)

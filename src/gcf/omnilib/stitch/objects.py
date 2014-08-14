@@ -297,11 +297,17 @@ class Aggregate(object):
     def sortAggsByExpirations(cls, delta=0):
         # Make a list of lists
         # Each entry in list is a collection of aggs with the same expiration
+        # Where same means within delta minutes
+        # Note that the return could be an empty list (no aggs), and that the first slot
+        # Could contain aggs with no sliver expirations
+
         # FIXME: if AM has multiple sliver expiration times, do I look at first or last?
         # for now first
         aggs = cls.aggs
-        if aggs is None or len(aggs) == 0:
-            return aggs
+        if aggs is None or len(aggs) == 0 or len(aggs.values()) == 0:
+            return []
+
+        aggs = aggs.values()
 
         # If there's just one agg, return it in a list
         if len(aggs) == 1:
@@ -321,33 +327,35 @@ class Aggregate(object):
         prev = None
         slotInd = -1
         for agg in aggs:
+
+            # init vars for first agg
             if not prev:
                 aggs2.append([agg])
                 prev = agg
                 slotInd = 0
                 continue
+
+            # compare this agg to the first agg in the previous time slot
             prev = aggs2[slotInd][0]
             comp = expComparator(prev, agg)
             if comp == 0:
+                # Same time, so put it in this bucket
                 aggs2[slotInd].append(agg)
+                # Sort aggs within the bucket, so first is earliest
                 if delta > 0:
                     aggs2[slotInd].sort(Aggregate.getExpComparator())
                 continue
-            # comp should never be > 0
+            # comp should never be > 0 cause we're looping over sorted aggs
             elif comp > 0:
                 pass
                 #logger = logging.getLogger('stitcher')
                 #logger.warn("comp > 0?!")
             else:
+                # This agg goes later (by delta), so put it in a new bucket
                 aggs2.append([agg])
                 slotInd += 1
-                prev = agg
                 continue
-
-        if delta > 0:
-            # Now sort each slot by expiration (strictly)
-            for slot in aggs2:
-                slot.sort(Aggregate.getExpComparator())
+        # End of loop over aggs
 
         return aggs2
 
@@ -459,7 +467,8 @@ class Aggregate(object):
             return
         if not isinstance(expirations, list):
             expirations = [expirations]
-        self.sliverExpirations = expirations.sort()
+        expirations.sort()
+        self.sliverExpirations = expirations
 
     @property
     def dependencies_complete(self):
