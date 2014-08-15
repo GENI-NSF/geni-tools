@@ -388,6 +388,7 @@ class Framework(Framework_Base):
                     'SLICE_EXPIRED': 'f',
                     }}
 
+        # PG implementation needs a user cred
         if self.needcred:
             uc, msg = self.get_user_cred(True)
             if uc is not None:
@@ -457,6 +458,12 @@ class Framework(Framework_Base):
                 return [], "%s is not a valid user name or urn" % username
 
         options = {'match': {'KEY_MEMBER': fetch_urn}, 'filter': ['KEY_PUBLIC','KEY_PRIVATE']}
+
+        # PG implementation requires a user cred
+        if self.needcred:
+            uc, msg = self.get_user_cred(True)
+            if uc is not None:
+                scred.append(uc)
 
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
@@ -531,6 +538,8 @@ class Framework(Framework_Base):
 
     def create_slice(self, urn):
         scred = []
+
+        # PG implementation needs a user cred
         if self.needcred:
             uc, msg = self.get_user_cred(True)
             if uc is not None:
@@ -678,6 +687,7 @@ class Framework(Framework_Base):
             return "%s does not support deleting slices. (And no slice name was specified)" % self.fwtype
 
         scred = []
+        # PG implemenation needs a user cred
         if self.needcred:
             uc, msg = self.get_user_cred(True)
             if uc is not None:
@@ -815,6 +825,7 @@ class Framework(Framework_Base):
         '''List slices owned by the user (name or URN) provided, returning a list of slice URNs.'''
 
         scred = []
+        # PG implementation needs a user cred
         if self.needcred:
             uc, msg = self.get_user_cred(True)
             if uc is not None:
@@ -880,6 +891,7 @@ class Framework(Framework_Base):
             return (None, msg)
 
         scred = []
+        # If PG supported projects, it would likely need a user cred
         if self.needcred:
             uc, msg = self.get_user_cred(True)
             if uc is not None:
@@ -1068,6 +1080,7 @@ class Framework(Framework_Base):
 
     def get_slice_expiration(self, urn):
         scred = []
+        # PG implementation needs a user cred
         if self.needcred:
             uc, msg = self.get_user_cred(True)
             if uc is not None:
@@ -1140,6 +1153,7 @@ class Framework(Framework_Base):
         print it and return None.
         """
         scred = []
+        # PG implementation needs a user cred
         if self.needcred:
             uc, msg = self.get_user_cred(True)
             if uc is not None:
@@ -1262,6 +1276,7 @@ class Framework(Framework_Base):
         if urn is None or urn.strip() == "" or not is_valid_urn_bytype(urn, 'user', None):
             return None
         creds = []
+        # PG implementation seems to want a user cred
         if self.needcred:
             uc, msg = self.get_user_cred(True)
             if uc is not None:
@@ -1294,6 +1309,12 @@ class Framework(Framework_Base):
         # Could grab KEY_PRIVATE here too, but not useful I think
         options = {'match': {'KEY_MEMBER': urn}, 'filter': ['KEY_PUBLIC']}
 
+        # PG implementation seems to want a user cred
+        if self.needcred:
+            uc, msg = self.get_user_cred(True)
+            if uc is not None:
+                creds.append(uc)
+
         creds, options = self._add_credentials_and_speaksfor(creds, options)
 
         if not self.speakV2:
@@ -1307,8 +1328,6 @@ class Framework(Framework_Base):
             # We only asked for one person so flip back to V1 format
             if res['code'] == 0:
                 res['value'] = {urn : res['value'].values()}
-
-
 
         logr = self._log_results((res, mess), 'Lookup member %s SSH keys' % urn)
         if logr == True:
@@ -1400,6 +1419,7 @@ class Framework(Framework_Base):
         project_urn = self.project_name_to_urn(project_name)
 
         creds = []
+        # If PG supported projects, they'd want a user cred
         if self.needcred:
             uc, msg = self.get_user_cred(True)
             if uc is not None:
@@ -1447,7 +1467,7 @@ class Framework(Framework_Base):
         slice_urn = self.slice_name_to_urn(slice_urn)
         creds = []
         if self.needcred:
-            # FIXME: Neither user or slice cred work at PG. Which is correct?
+            # FIXME: Either user or slice cred work at PG. Which is correct?
             sc = self.get_slice_cred_struct(slice_urn)
             if sc is not None:
                 creds.append(sc)
@@ -1482,7 +1502,7 @@ class Framework(Framework_Base):
         slice_urn = self.slice_name_to_urn(slice_urn)
         creds = []
         if self.needcred:
-            # FIXME: Neither user or slice cred work at PG. Which is correct?
+            # FIXME: Either user or slice cred work at PG. Which is correct?
             sc = self.get_slice_cred_struct(slice_urn)
             if sc is not None:
                 creds.append(sc)
