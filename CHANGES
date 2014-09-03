@@ -20,6 +20,8 @@ gcf 2.7:
     by the SCS, not letting the AM pick. (#675)
   * Use relative imports in `scs` if possible. (#658)
   * `Insufficient rights` error is fatal at SFA AMs. (#677)
+  * Loop over all links when adding `component_manager` and `property`
+    elements, rather than exit on first. (#680)
 
  * readyToLogin
    * Handle when omni switches AM API version number (#643)
