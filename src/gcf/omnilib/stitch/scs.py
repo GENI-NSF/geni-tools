@@ -222,6 +222,7 @@ def main(argv=None):
         argv = sys.argv[1:]
     SCS_URL = "http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc"
     # Dev SCS: http://geni.maxgigapop.net:8081/geni/xmlrpc
+    # Test SCS: http://nutshell.maxgigapop.net:8081/geni/xmlrpc
     
     ind = -1
     printR = True
