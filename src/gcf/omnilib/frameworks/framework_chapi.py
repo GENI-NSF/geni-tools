@@ -1157,7 +1157,7 @@ class Framework(Framework_Base):
         scred = []
         # PG implementation needs a slice cred
         if self.needcred:
-            sc, msg = self.get_slice_cred(urn)
+            sc = self.get_slice_cred_struct(urn)
             if sc is not None:
                 scred.append(sc)
 
