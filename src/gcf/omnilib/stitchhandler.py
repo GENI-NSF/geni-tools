@@ -1191,11 +1191,14 @@ class StitchingHandler(object):
                 link.aggregates.append(am)
 
     def hasGRELink(self, requestRSpecObject):
+        # Make sure links explicitly lists all its aggregates, so this test is valid
+        if requestRSpecObject:
+            for link in requestRSpecObject.links:
+                self.ensureLinkListsAMs(link, requestRSpecObject)
+
         # has a link that has 2 interface_refs and has a link type of *gre_tunnel and endpoint nodes are PG
         if requestRSpecObject:
             for link in requestRSpecObject.links:
-                # Make sure this link explicitly lists all its aggregates, so this test is valid
-                self.ensureLinkListsAMs(link, requestRSpecObject)
                 if not (link.typeName == link.GRE_LINK_TYPE or link.typeName == link.EGRE_LINK_TYPE):
                     # Not GRE
 #                    self.logger.debug("Link %s not GRE but %s", link.id, link.typeName)
@@ -1229,32 +1232,35 @@ class StitchingHandler(object):
                 if isGRE:
                     self.logger.debug("Link %s is GRE", link.id)
                     self.isGRE = True
-                    return True
 
         # Extra: ensure endpoints are xen for link type egre, openvz or rawpc for gre
 
-        return False
+        return self.isGRE
 
     def mustCallSCS(self, requestRSpecObject):
         '''Does this request actually require stitching?
         Check: >=1 link in main body with >= 2 diff component_manager
         names and no shared_vlan extension and no non-VLAN link_type
         '''
+        needSCS = False
+        # Make sure links explicitly lists all its aggregates, so this test is valid
         if requestRSpecObject:
             for link in requestRSpecObject.links:
-                # Make sure this link explicitly lists all its aggregates, so this test is valid
                 self.ensureLinkListsAMs(link, requestRSpecObject)
+
+        if requestRSpecObject:
+            for link in requestRSpecObject.links:
                 if len(link.aggregates) > 1 and not link.hasSharedVlan and link.typeName == link.VLAN_LINK_TYPE:
                     # Ensure this link has 2 well formed property elements with explicity capacities
                     self.addCapacityOneLink(link)
-                    return True
+                    needSCS = True
 
             # FIXME: Can we be robust to malformed requests, and stop and warn the user?
                 # EG the link has 2+ interface_ref elements that are on 2+ nodes belonging to 2+ AMs?
                 # Currently the parser only saves the IRefs on Links - no attempt to link to Nodes
                 # And for Nodes, we don't even look at the Interface sub-elements
 
-        return False
+        return needSCS
 
     def callSCS(self, sliceurn, requestDOM, existingAggs):
         '''Construct SCS args, call the SCS service'''
