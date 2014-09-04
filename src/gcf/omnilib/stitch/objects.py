@@ -527,6 +527,8 @@ class Aggregate(object):
         for hop in self.hops:
             if not (hop._hop_link.vlan_suggested_request == VLANRange.fromString("any") or hop._hop_link.vlan_suggested_request <= hop._hop_link.vlan_range_request):
                 raise StitchingError("%s hop %s suggested %s not in avail %s" % (self, hop, hop._hop_link.vlan_suggested_request, hop._hop_link.vlan_range_request))
+            if hop._hop_link.vlan_suggested_request == VLANRange.fromString("any") and (self.isEG or self.isGRAM or self.isOESS or self.dcn):
+                raise StitchingError("%s hop %s suggested is 'any' which is not supported at this AM type" % (self, hop))
 
         # Check that if a hop has the same URN as another on this AM, that it has a different VLAN tag
         tagByURN = dict()
@@ -704,6 +706,13 @@ class Aggregate(object):
                 # FIXME: use handleVlanUnavailable? Is that right?
                 self.handleVlanUnavailable("reserve", "Calculated new_suggested for %s of %s is in set of VLANs we know won't work" % (hop, new_suggested))
 #                raise StitchingError("%s picked new_suggested %s that is in the set of VLANs that we know won't work: %s" % (hop, new_suggested, hop.vlans_unavailable))
+
+            if new_suggested == VLANRange.fromString("any"):
+                if self.isEG or self.isGRAM or self.isOESS or self.dcn:
+                    # copy of tags trying to use 'any' at an AM that doesn't support it
+                    # This should never happen cause we should only be looking at hops that import tags
+                    # where the hop we import from has a manifest, which would not be 'any'
+                    raise StitchingError("%s picked new suggested 'any' which is not supported at this AM" % hop)
 
             int1 = VLANRange.fromString("any")
             int2 = VLANRange.fromString("any")
@@ -2726,8 +2735,9 @@ class Aggregate(object):
                     self.logger.debug("%s re-using already picked tag %s", hop, pick)
                 else:
                     # Pick a new tag if we can
-                    if hop._hop_link.vlan_producer:
-                        self.logger.debug("%s is a vlan producer, so after all that let it pick any tag", hop)
+                    if (hop._hop_link.vlan_producer or not hop._import_vlans) and not (self.isEG or self.isGRAM or self.isOESS or self.dcn):
+                        # If this hop picks the VLAN tag, and this AM accepts 'any', then we leave pick as 'any'
+                        self.logger.debug("%s is a vlan producer or doesn't import vlans and handles suggested of 'any', so after all that let it pick any tag.", hop)
                     elif len(nextRequestRangeByHop[hop]) == 0:
                         self.inProcess = False
                         self.logger.debug("%s nextRequestRange was empty but vlan_range_request was %s", hop, hop._hop_link.vlan_range_request)

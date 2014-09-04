@@ -367,7 +367,7 @@ class Framework(Framework_Base):
                         msg = msg + ". %s" % message
                     if res.has_key('protogeni_error_url'):
                         msg += " (Log url - look here for details on any failures: %s)" % res['protogeni_error_url']
-                    self.logger.error(msg)
+                    self.logger.error("Failed to get user credential. Server says: %s", msg)
             else:
                 msg = message
 
@@ -785,7 +785,7 @@ class Framework(Framework_Base):
             msg = "%s does not support deleting slices - delete your resources and let slice %s expire instead" % (self.fwtype,
                                                                                                                    slice_name)
             if slice_expiration is not None:
-                msg = msg + " at %s UTC." % slice_expiration
+                msg = msg + " at %s (UTC)." % slice_expiration
             else:
                 msg = msg + "."
         return msg
@@ -830,6 +830,8 @@ class Framework(Framework_Base):
             uc, msg = self.get_user_cred(True)
             if uc is not None:
                 scred.append(uc)
+            else:
+                self.logger.debug("Failed to get user credential: %s", msg)
 
         userurn = self.member_name_to_urn(user)
 
@@ -1153,11 +1155,11 @@ class Framework(Framework_Base):
         print it and return None.
         """
         scred = []
-        # PG implementation needs a user cred
+        # PG implementation needs a slice cred
         if self.needcred:
-            uc, msg = self.get_user_cred(True)
-            if uc is not None:
-                scred.append(uc)
+            sc = self.get_slice_cred_struct(urn)
+            if sc is not None:
+                scred.append(sc)
 
         expiration = naiveUTC(expiration_dt).isoformat()
         self.logger.info('Requesting new slice expiration %r', expiration)
