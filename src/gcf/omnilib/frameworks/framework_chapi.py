@@ -785,7 +785,7 @@ class Framework(Framework_Base):
             msg = "%s does not support deleting slices - delete your resources and let slice %s expire instead" % (self.fwtype,
                                                                                                                    slice_name)
             if slice_expiration is not None:
-                msg = msg + " at %s UTC." % slice_expiration
+                msg = msg + " at %s (UTC)." % slice_expiration
             else:
                 msg = msg + "."
         return msg
