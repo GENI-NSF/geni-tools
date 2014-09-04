@@ -774,11 +774,20 @@ class StitchingHandler(object):
 
         # While doing this, make sure the tells for whether we can tell the hop to pick the tag are consistent.
         for am in self.ams_to_process:
+            if self.opts.useSCSSugg:
+                self.logger.info("Per option, requesting SCS suggested VLAN tags")
+                continue
+            if am.isEG or am.isGRAM or am.isOESS or am.dcn:
+                self.logger.debug("%s doesn't support requesting 'any' VLAN tag - move on", am)
+                continue
             # Could a complex topology have some hops producing VLANs and some accepting VLANs at the same AM?
 #            if len(am.dependsOn) == 0:
 #                self.logger.debug("%s says it depends on no other AMs", am)
             for hop in am.hops:
-                requestAny = True
+                # Init requestAny so we never request 'any' when option says not or it is one of the non-supported AMs
+                requestAny = not (self.opts.useSCSSugg or am.isEG or am.isGRAM or am.isOESS or am.dcn)
+                if not requestAny:
+                    continue
                 isConsumer = False
                 isProducer = False
                 imports = False
@@ -844,6 +853,8 @@ class StitchingHandler(object):
                         hop._hop_link.vlan_suggested_request = VLANRange.fromString("any")
 #                    else:
 #                        self.logger.debug("%s suggested request was already 'any'.", hop)
+            # End of loop over hops in AM
+        # End of loop over AMs to process
 
         if self.opts.noReservation:
             self.logger.info("Not reserving resources")
@@ -1191,6 +1202,8 @@ class StitchingHandler(object):
                 link.aggregates.append(am)
 
     def hasGRELink(self, requestRSpecObject):
+        isGRE = False
+
         # Make sure links explicitly lists all its aggregates, so this test is valid
         if requestRSpecObject:
             for link in requestRSpecObject.links:
@@ -1231,11 +1244,10 @@ class StitchingHandler(object):
                         self.logger.warn("GRE link %s has unknown interface_ref %s - assuming it is OK", link.id, ifc.client_id)
                 if isGRE:
                     self.logger.debug("Link %s is GRE", link.id)
-                    self.isGRE = True
 
         # Extra: ensure endpoints are xen for link type egre, openvz or rawpc for gre
 
-        return self.isGRE
+        return isGRE
 
     def mustCallSCS(self, requestRSpecObject):
         '''Does this request actually require stitching?
@@ -2084,6 +2096,7 @@ class StitchingHandler(object):
 
                     # FIXME: agg.allocateTries?
                     agg.dcn = oldAgg.dcn
+                    agg.isOESS = oldAgg.isOESS
                     agg.isPG = oldAgg.isPG
                     agg.isEG = oldAgg.isEG
                     agg.isExoSM = oldAgg.isExoSM
