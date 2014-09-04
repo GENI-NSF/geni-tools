@@ -22,6 +22,8 @@ gcf 2.7:
   * `Insufficient rights` error is fatal at SFA AMs. (#677)
   * Loop over all links when adding `component_manager` and `property`
     elements, rather than exit on first. (#680)
+  * Be sure to avoid requesting 'any' from AMs that do not support it. 
+    Copy the `isOESS` attribute across SCS calls. (#681)
 
  * readyToLogin
    * Handle when omni switches AM API version number (#643)
