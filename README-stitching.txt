@@ -183,7 +183,13 @@ options as Omni. `stitcher` however adds several options:
  - `--includehop <hop URN>`: When supplied, the Stitching Computation
  Service will insist on including the specified switch/port on ANY computed
  stitching paths. You can supply this argument many times. Use this
- with caution, particularly if your request has multiple `<link>`s.
+ with caution, particularly if your request has multiple
+ `<link>`s. For many cases, see the following option instead.
+ - `--includehoponpath <hop URN> <path id or link client_id>`: When supplied, the Stitching Computation
+ Service will insist on including the specified switch/port on only
+ the named computed stitching path. You can supply this argument many times. Use this
+ with caution. Note that this only includes the hop on the named link,
+ in contrast to `--includehop`.
 
 Together, the above options should allow you some control over the
 paths used for your circuits, without requiring that you construct the

@@ -1378,14 +1378,17 @@ class StitchingHandler(object):
 
         # Exclude any hops given as an option from _all_ hops
         links = None
-        if (self.opts.excludehop and len(self.opts.excludehop) > 0) or (self.opts.includehop and len(self.opts.includehop) > 0):
+        if (self.opts.excludehop and len(self.opts.excludehop) > 0) or (self.opts.includehop and len(self.opts.includehop) > 0) or \
+                (self.opts.includehoponpath and len(self.opts.includehoponpath) > 0):
             links = requestDOM.getElementsByTagName(defs.LINK_TAG)
         if links and len(links) > 0:
             if not self.opts.excludehop:
                 self.opts.excludehop = []
             if not self.opts.includehop:
                 self.opts.includehop = []
-            self.logger.debug("Got links and option to exclude hops: %s, include hops: %s", self.opts.excludehop, self.opts.includehop)
+            if not self.opts.includehoponpath:
+                self.opts.includehoponpath= []
+            self.logger.debug("Got links and option to exclude hops: %s, include hops: %s, include hops on paths: %s", self.opts.excludehop, self.opts.includehop, self.opts.includehoponpath)
             for exclude in self.opts.excludehop:
                 # For each path
                 for link in links:
@@ -1427,6 +1430,31 @@ class StitchingHandler(object):
 
                     includes.append(include)
                     self.logger.debug("Including %s on path %s", include, path)
+
+                    # Put the new objects in the struct
+                    pathStruct[scs.HOP_INCLUSION_TAG] = includes
+                    profile[path] = pathStruct
+
+            for (includehop, includepath) in self.opts.includehoponpath:
+                # For each path
+                for link in links:
+                    path = link.getAttribute(Link.CLIENT_ID_TAG)
+                    path = str(path).strip()
+                    if not path.lower() == includepath.lower():
+                        continue
+                    if profile.has_key(path):
+                        pathStruct = profile[path]
+                    else:
+                        pathStruct = {}
+
+                    # Get hop_inclusion_list
+                    if pathStruct.has_key(scs.HOP_INCLUSION_TAG):
+                        includes = pathStruct[scs.HOP_INCLUSION_TAG]
+                    else:
+                        includes = []
+
+                    includes.append(includehop)
+                    self.logger.debug("Including %s on path %s", includehop, path)
 
                     # Put the new objects in the struct
                     pathStruct[scs.HOP_INCLUSION_TAG] = includes
