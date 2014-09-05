@@ -24,6 +24,8 @@ gcf 2.7:
     elements, rather than exit on first. (#680)
   * Be sure to avoid requesting 'any' from AMs that do not support it. 
     Copy the `isOESS` attribute across SCS calls. (#681)
+  * Add new option `--includehoponpath <hop> <path>` for requiring
+    a particular hop only on a particular path, not all paths. (#654)
 
  * readyToLogin
    * Handle when omni switches AM API version number (#643)
