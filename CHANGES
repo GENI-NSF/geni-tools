@@ -31,6 +31,7 @@ gcf 2.7:
    * Handle when omni switches AM API version number (#643)
    * Remove defunct code (#666)
    * Remove reliance on 'pg_manifest' field of SliverStatus return.  Leave fallback code for now. (#665)
+   * Replace --noFallbackToStatusForPG with --fallbackToStatusForPG with the opposite meaning (#393)
 
  * remote-execute
    * All --host to be specified multiple times (#668)
