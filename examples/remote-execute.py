@@ -113,8 +113,8 @@ def getParser() :
                     help="[REQUIRED]Command to execute in all remote hosts.")
 
   parser.add_option("--host", dest="host",
-                    default="",
-                    help="Specify in which host you would like the command to be executed. This has to be the clientId. If omitted the command will be ran in all hosts.")
+                    default=[], action="append",
+                    help="Specify in which host you would like the command to be executed. This has to be the clientId. If omitted the command will be ran in all hosts. --host may be used multiple times on the same call.")
 
   return parser
 
@@ -155,14 +155,16 @@ def main(argv=None):
   loginInfoDict, keyList = readyToLogin.main_no_print(argv=argv, opts=options, slicen = slicename)
   loginCommands = getLoginCommands(loginInfoDict, keyList)
   modifyToIgnoreHostChecking(loginCommands)
-  # If the user explicitely passed a host then use only that to execute the
+  # If the user explicitly passed a host then use only that to execute the
   # command
   # First check if the specified host exists
-  if options.host != '' and not loginCommands.has_key(options.host):
-    sys.exit("No host with clientId '%s' in slice %s and AMs %s" %(options.host,
+  if len(options.host) != 0:
+      for host in options.host:
+          if not loginCommands.has_key(host):
+              sys.exit("No host with clientId '%s' in slice %s and AMs %s" %(host,
                                             slicename, str(loginInfoDict.keys())))
-  if options.host != '':
-    hosts = [options.host]
+  if len(options.host) != 0:
+    hosts = options.host
   else :
     hosts = loginCommands.keys()
 
