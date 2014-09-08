@@ -191,11 +191,29 @@ class StitchingHandler(object):
 
         self.isStitching = self.mustCallSCS(self.parsedUserRequest)
         self.isGRE = self.hasGRELink(self.parsedUserRequest)
+        self.isMultiAM = False
+        # If any node is unbound, then all AMs will try to allocate it. So bail
+        unboundNode = self.getUnboundNode()
 
-        # If this is not a real stitching thing, just let Omni handle this.
-        # This will also ensure each stitched link has an explicit capacity on 2 properties
-        if not self.isStitching and not self.isGRE:
-            self.logger.info("Not a stitching or GRE request - let Omni handle this.")
+        self.isBound = (unboundNode is None)
+        if self.isBound:
+            self.logger.debug("Request appears to be fully bound")
+        if (self.isGRE or self.isStitching) and not self.isMultiAM:
+            self.logger.debug("Nodes seemed to list <2 AMs, but rspec appears GRE or stitching, so it is multi AM")
+            self.isMultiAM = True
+
+        # FIXME:
+        # If it is bound, make sure all the implied AMs are known (have a URL)
+
+        # FIXME:
+        # If any node is unbound: Check that there is exactly 1 -a AM that is not one of the AMs a node is bound to, and then 
+        # edit the request to bind the nodes to that AM.
+
+        # If this is not a bound multi AM RSpec, just let Omni handle this.
+        if not self.isBound or not self.isMultiAM:
+            self.logger.info("Not a bound multi-aggregate request - let Omni handle this.")
+            if unboundNode is not None:
+                self.logger.info("Node '%s' is unbound in request - all nodes must be bound for stitcher, as all aggregates get the same request RSpec" % unboundNode)
 
             if self.opts.noReservation:
                 self.logger.info("Not reserving resources")
@@ -309,7 +327,7 @@ class StitchingHandler(object):
                         handler.setLevel(logging.WARN)
                         break
 
-            retVal, filename = handler_utils._writeRSpec(self.opts, self.logger, combinedManifest, self.slicename, 'stitching-combined', '', None)
+            retVal, filename = handler_utils._writeRSpec(self.opts, self.logger, combinedManifest, self.slicename, 'multiam-combined', '', None)
             if not self.opts.debug:
                 handlers = self.logger.handlers
                 if len(handlers) == 0:
@@ -714,16 +732,14 @@ class StitchingHandler(object):
                 am = Aggregate.find(amURN)
                 addedAMs.append(am)
                 if not am.url:
-                    # Try to pull from agg nicknames in the omni_config
-                    for (amURNNick, amURLNick) in self.config['aggregate_nicknames'].values():
-                        if amURNNick and amURNNick.strip() in am.urn_syns and amURLNick.strip() != '':
-                            # Avoid apparent v1 URLs
-                            if amURLNick.strip().endswith('/1') or amURLNick.strip().endswith('/1.0'):
-                                self.logger.debug("Skipping apparent v1 URL %s for URN %s", amURLNick, amURN)
-                            else:
-                                am.url = amURLNick
-                                self.logger.debug("Found AM %s URL from omni_config AM nicknames: %s", amURN, amURLNick)
-                                break
+                    # FIXME: Avoid apparent v1 URLs
+                    for urn in am.urn_syns:
+                        (nick, url) = handler_utils._lookupAggNickURLFromURNInNicknames(self.logger, self.config, urn)
+                        if url and url.strip() != '':
+                            self.logger.debug("Found AM %s URL using URN %s from omni_config AM nicknames: %s", amURN, urn, nick)
+                            am.url = url
+                            am.nick = nick
+                            break
 
                 if not am.url:
                     # Try asking our CH for AMs to get the URL for the
@@ -860,7 +876,7 @@ class StitchingHandler(object):
             self.logger.info("Not reserving resources")
             # Write the request rspec to a string that we save to a file
             requestString = self.parsedSCSRSpec.dom.toxml(encoding="utf-8")
-            header = "<!-- Expanded Resource request for stitching for:\n\tSlice: %s -->" % (self.slicename)
+            header = "<!-- Expanded Resource request for:\n\tSlice: %s -->" % (self.slicename)
             content = stripBlankLines(string.replace(requestString, "\\n", '\n'))
             filename = None
 
@@ -1265,6 +1281,7 @@ class StitchingHandler(object):
                 if len(link.aggregates) > 1 and not link.hasSharedVlan and link.typeName == link.VLAN_LINK_TYPE:
                     # Ensure this link has 2 well formed property elements with explicity capacities
                     self.addCapacityOneLink(link)
+                    self.logger.debug("Requested link %s is stitching", link.id)
                     needSCS = True
 
             # FIXME: Can we be robust to malformed requests, and stop and warn the user?
@@ -1872,7 +1889,7 @@ class StitchingHandler(object):
         # Top level link element is effectively arbitrary, but with comments on what other AMs said
         lastDom = None
         if lastAM is None:
-            self.logger.debug("Combined manifest will start from SCS expanded request RSpec")
+            self.logger.debug("Combined manifest will start from expanded request RSpec")
             lastDom = self.parsedSCSRSpec.dom
             # Change that dom to be a manifest RSpec
             # for each attribute on the dom root node, change "request" to "manifest"
@@ -2050,11 +2067,10 @@ class StitchingHandler(object):
         rspecs[0].setAttribute(defs.EXPIRES_ATTRIBUTE, sliceexp.strftime('%Y-%m-%dT%H:%M:%SZ'))
         self.logger.debug("Added expires %s", rspecs[0].getAttribute(defs.EXPIRES_ATTRIBUTE))
  
-    def confirmSafeRequest(self):
-        '''Confirm this request is not asking for a loop. Bad things should
-        not be allowed, dangerous things should get a warning.'''
-
+    def getUnboundNode(self):
         # If any node is unbound, then all AMs will try to allocate it.
+        amURNs = []
+        unboundNode = None
         for node in self.parsedUserRequest.nodes:
             if node.amURN is None:
                 if self.opts.devmode:
@@ -2062,9 +2078,20 @@ class StitchingHandler(object):
                     # code 65535: std::exception
                     self.logger.warn("Node %s is unbound in request", node.id)
                 else:
-                    raise OmniError("Node %s is unbound in request - all nodes must be bound as all aggregates get the same request RSpec" % node.id)
-#            else:
+                    self.logger.debug("Node %s is unbound in request", node.id)
+                    unboundNode = node.id
+            else:
 #                self.logger.debug("Node %s is on AM %s", node.id, node.amURN)
+                if node.amURN not in amURNs:
+                    amURNs.append(node.amURN)
+        self.logger.debug("Request RSpec binds nodes to %d AMs", len(amURNs))
+        if len(amURNs) > 1:
+            self.isMultiAM = True
+        return unboundNode
+
+    def confirmSafeRequest(self):
+        '''Confirm this request is not asking for a loop. Bad things should
+        not be allowed, dangerous things should get a warning.'''
 
         # FIXME FIXME - what other checks go here?
 
