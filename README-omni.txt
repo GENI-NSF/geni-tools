@@ -51,6 +51,7 @@ New in v2.7:
  * Calls to `status` and `sliverstatus` will also call the CH
    to try to sync up the CH records of slivers with truth
    as reported by the AM. (#634)
+ * Fix URL to URN lookups to better handle names that differ by a prefix. (#683)
 
 New in v2.6:
  * New function `removeslicemember <slice> <username>`: 

@@ -98,7 +98,7 @@ def call(argv, options=None):
     omni_usage = parser.get_usage()
     parser.set_usage("\n" + "GENI Omni Stitching Tool\n" + "Copyright (c) 2014 Raytheon BBN Technologies\n" + 
                      omni_usage+
-                     "\nstitcher.py does stitching if the call is createsliver or allocate, else it just calls Omni.\n")
+                     "\nstitcher.py reserves multi-aggregate fully bound topologies, including stitching, if the call is createsliver or allocate; else it just calls Omni.\n")
 
    ##############################################################################
     # Add additional optparse.OptionParser style options
