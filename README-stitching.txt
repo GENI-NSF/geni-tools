@@ -8,7 +8,8 @@ N.B. This page is formatted for a Trac Wiki.
 
 = Stitcher: The Omni GENI Experimenter-Defined Cross-Aggregate Topologies Client =
 
-'''stitcher''' is an Omni based script for instantiating experimenter
+'''stitcher''' is an Omni based script for instantiating multi
+aggregate topologies, including in particular experimenter
 defined topologies that cross multiple aggregates, aka 'network
 stitching' or just 'stitching'. Experimenters specify their desired
 network topology, and this client expands that request using the
@@ -37,15 +38,17 @@ time, this restriction will be lifted.
 == Usage ==
 stitcher is a simple extension of Omni. Use stitcher just as you would
 use Omni. If you try to allocate (using `CreateSliver` or `Allocate`)
-resources that include a link that requires stitching, then the new
-code will be exercised (otherwise you are just running Omni).
+resources at multiple aggregates, and specifically if you request a
+link that requires stitching, then the new 
+code will be exercised (otherwise you are running Omni as usual).
 
 To use stitcher:
 
  1. Be sure you can run Omni.
 
  2. Design a topology. Write a standard GENI v3 RSpec or build one
- with a graphical tool like Flack. Include 1 or more `<link>`s
+ with a graphical tool like Flack, jFed, or Jacks. For a stitched
+ topology, include 1 or more `<link>`s
  between interfaces on 2 compute nodes. E.G.
 {{{
 #!xml
@@ -94,9 +97,10 @@ To delete from only 1 aggregate:
 
 === Notes ===
 
-`createsliver` or `allocate` commands with an RSpec that requires
-stitching or GRE links will be processed by the stitcher code. All other calls will
-be passed directly to Omni.
+`createsliver` or `allocate` commands with an RSpec that is bound to
+multiple aggregates (one that requires allocations at multiple aggregates),
+including those with stitched links and GRE links, will be processed
+by the stitcher code. All other calls will be passed directly to Omni.
 
 The same request RSpec will be submitted to every aggregate required
 for your topology. Stitcher will create reservations at each of these
@@ -127,7 +131,7 @@ stitcher output is controlled using the same options as Omni,
 including `-o` to send RSpecs to files, and `--WARN` to turn down most
 logging. However, stitcher always saves your combined result manifest
 RSpec to a file (named
-'`<slicename>-manifest-rspec-stitching-combined.xml`'), unless you specify the `--tostdout` option.
+'`<slicename>-manifest-rspec-multiam-combined.xml`'), unless you specify the `--tostdout` option.
 Currently, stitcher will (at least temporarily) write several files to the current
 working directory (results from `GetVersion` and `SliverStatus`, plus
 several manifest RSpecs) (change this directory using the option `--fileDir`).
@@ -183,7 +187,13 @@ options as Omni. `stitcher` however adds several options:
  - `--includehop <hop URN>`: When supplied, the Stitching Computation
  Service will insist on including the specified switch/port on ANY computed
  stitching paths. You can supply this argument many times. Use this
- with caution, particularly if your request has multiple `<link>`s.
+ with caution, particularly if your request has multiple
+ `<link>`s. For many cases, see the following option instead.
+ - `--includehoponpath <hop URN> <path id or link client_id>`: When supplied, the Stitching Computation
+ Service will insist on including the specified switch/port on only
+ the named computed stitching path. You can supply this argument many times. Use this
+ with caution. Note that this only includes the hop on the named link,
+ in contrast to `--includehop`.
 
 Together, the above options should allow you some control over the
 paths used for your circuits, without requiring that you construct the
@@ -249,10 +259,11 @@ Other options you should not need to use:
 == Tips and Details ==
 
 In running stitcher, follow these various tips:
- - Create a single GENI v3 request RSpec for all aggregates you want linked.
+ - Create a single GENI v3 request RSpec for all resources at all
+ aggregates you want linked. 
  Stitcher sends the same request RSpec to all aggregates involved in
  your request.
- - Be sure all nodes in the request are bound to specific nodes.
+ - Be sure all nodes in the request are bound to specific aggregates.
  - Include the necessary 2 `<component_manager>` elements for the 2
  different AMs in each `<link>`
  - This script can take a while - it must make reservations at all the
@@ -268,7 +279,7 @@ In running stitcher, follow these various tips:
  retry that up to 5 times. After that or on other kinds of errors,
  stitcher will delete any existing reservations and exit.
  - When the script completes, you will have reservations at each of the
- aggregates involved in stitched links in your request RSpec, plus any intermediate
+ aggregates where you requested nodes in your request RSpec, plus any intermediate
  aggregates required to complete your circuit (e.g. ION) - or none, if
  your request failed.
  - Stitcher makes reservations at ''all'' aggregates involved in your
@@ -281,7 +292,7 @@ In running stitcher, follow these various tips:
  stitcher should find it.
  - The script return is a single GENI v3 manifest RSpec for all the aggregates
  where you have reservations for this request, saved to a file named
- '<slicename>-manifest-rspec-stitching-combined.xml'
+ '<slicename>-manifest-rspec-multiam-combined.xml'
  - Stitcher remembers the aggregates where it made reservations. If
  you use `stitcher.py` for later `renewsliver` or `sliverstatus` or
  `deletesliver` or other calls, stitcher will invoke the command at

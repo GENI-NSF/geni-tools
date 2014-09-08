@@ -98,7 +98,7 @@ def call(argv, options=None):
     omni_usage = parser.get_usage()
     parser.set_usage("\n" + "GENI Omni Stitching Tool\n" + "Copyright (c) 2014 Raytheon BBN Technologies\n" + 
                      omni_usage+
-                     "\nstitcher.py does stitching if the call is createsliver or allocate, else it just calls Omni.\n")
+                     "\nstitcher.py reserves multi-aggregate fully bound topologies, including stitching, if the call is createsliver or allocate; else it just calls Omni.\n")
 
    ##############################################################################
     # Add additional optparse.OptionParser style options
@@ -111,6 +111,8 @@ def call(argv, options=None):
                       help="Hop URN to exclude from any path")
     parser.add_option("--includehop", metavar="HOP_INCLUDE", action="append",
                       help="Hop URN to include on every path - use with caution")
+    parser.add_option("--includehoponpath", metavar="HOP_INCLUDE PATH", action="append", nargs=2,
+                      help="Hop URN to include and then path (link client_id) to include it on")
     parser.add_option("--fixedEndpoint", default=False, action="store_true",
                       help="RSpec uses a static endpoint - add a fake node with an interface on every link")
     parser.add_option("--noExoSM", default=False, action="store_true",
