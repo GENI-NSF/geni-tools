@@ -337,10 +337,10 @@ def getParser() :
                     dest="include_keys",
                     help="Do not include ssh keys in output",
                     action="store_false", default=True)
-  parser.add_option("--noFallbackToStatusForPG", 
+  parser.add_option("--fallbackToStatusForPG",
                     dest="fallback_status_PG",
-                    help="For ProtoGENI/InstaGENI nodes, do not fallback to querying login info from SliverStatus if it contains login info not found in the manifest.",
-                    action="store_false", default=True)
+                    help="For ProtoGENI/InstaGENI nodes, fallback to querying login info from SliverStatus if it contains login info not found in the manifest.",
+                    action="store_true", default=False)
   return parser
 
 
@@ -388,6 +388,7 @@ def addNodeStatus(amUrl, amType, amLoginInfo):
     # 10/9/13 PG code is switching to include login info in manifest
     # a future release should remove the following line so that we don't fall back to SliverStatus
     if options.fallback_status_PG:
+        print "Looking for information in the result of SliverStatus/Status"
         amLoginInfo = addNodeStatusCheckForPGFallback( amLoginInfo, amSliverStat )
   elif amType == "GRAM":
       amLoginInfo = addNodeStatusGRAM( amLoginInfo, amSliverStat )
