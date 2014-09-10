@@ -767,6 +767,9 @@ class StitchingHandler(object):
 
         # FIXME: check each AM reachable, and we know the URL/API version to use
 
+        # If requesting from >1 ExoGENI AM, then use ExoSM. And use ExoSM only once.
+        self.ensureOneExoSM()
+
         self.dump_objects(self.parsedSCSRSpec, self.ams_to_process)
 
         self.logger.info("Multi-AM reservation will include resources from these aggregates:")
@@ -1563,6 +1566,129 @@ class StitchingHandler(object):
           # All AMs must be listed in workflow data at least once per path they are in
 
         return parsed_rspec, workflow_parser
+
+    def ensureOneExoSM(self):
+        '''If 2 AMs in ams_to_process are ExoGENI, ensure we use the ExoSM. If 2 AMs use the ExoSM URL, combine them into a single AM.'''
+        if len(self.ams_to_process) < 2:
+            return
+        exoSMCount = 0
+        exoSMs = []
+        nonExoSMs = []
+        egAMCount = 0
+        egAMs = []
+        for am in self.ams_to_process:
+            if am.isExoSM:
+                egAMCount += 1
+                exoSMCount += 1
+                exoSMs.append(am)
+                self.logger.debug("%s is ExoSM", am)
+            else:
+                nonExoSMs.append(am)
+                if am.isEG:
+                    egAMs.append(am)
+                    egAMCount += 1
+
+        if egAMCount > 1:
+            self.logger.debug("Request includes more than one ExoGENI AM. Must go through the ExoSM.")
+            if self.opts.devmode and self.opts.noExoSM:
+                self.logger.info("Multiple EG AMs but in dev mode requested no ExoSM, so continuing...")
+            else:
+                if self.opts.noExoSM:
+                    self.logger.warn("Requested resources from more than one ExoGENI AM, which requires use of the ExoSM. But also requested to not use the ExoSM - ignoring that.")
+                for anEGAM in egAMs:
+                    # Make anEGAM the ExoSM
+                    self.logger.debug("Making %s the ExoSM", anEGAM)
+                    anEGAM.alt_url = anEGAM.url
+                    anEGAM.url = defs.EXOSM_URL
+                    anEGAM.isExoSM = True
+                    anEGAM.nick = handler_utils._lookupAggNick(self, anEGAM.url)
+                    exoSMCount += 1
+                    exoSMs.append(anEGAM)
+                    nonExoSMs.remove(anEGAM)
+
+        exoSM = None
+        if exoSMCount > 0:
+            exoSM = exoSMs[0]
+            exoSMURN = handler_utils._lookupAggURNFromURLInNicknames(self.logger, self.config, defs.EXOSM_URL)
+            # Ensure standard ExoSM URN is the URN and old URN is in urn_syns
+            if exoSM.urn not in exoSM.urn_syns:
+                exoSM.urn_syns.append(exoSM.urn)
+            if exoSMURN != exoSM.urn:
+                exoSM.urn = exoSMURN
+            if exoSMURN not in exoSM.urn_syns:
+                exoSM.urn_syns += Aggregate.urn_syns(exoSMURN)
+
+        if exoSMCount < 2:
+            self.logger.debug("Only %d ExoSMs", exoSMCount)
+            return
+
+        for am in exoSMs:
+            if am == exoSM:
+                continue
+            self.logger.debug("Merge AM %s (%s, %s) into %s (%s, %s)", am.urn, am.url, am.alt_url, exoSM, exoSM.url, exoSM.alt_url)
+
+            # Merge urn_syns
+            if exoSM.urn != am.urn and am.urn not in exoSM.urn_syns:
+                exoSM.urn_syns.append(am.urn)
+            for urn in am.urn_syns:
+                if urn not in exoSM.urn_syns:
+                    exoSM.urn_syns.append(urn)
+
+            # Merge _dependsOn
+            if am in exoSM.dependsOn:
+                exoSM._dependsOn.discard(am)
+            if exoSM in am.dependsOn:
+                am._dependsOn.discard(exoSM)
+            exoSM._dependsOn.update(am._dependsOn)
+
+            # merge isDependencyFor
+            if am in exoSM.isDependencyFor:
+                exoSM.isDependencyFor.discard(am)
+            if exoSM in am.isDependencyFor:
+                am.isDependencyFor.discard(exoSM)
+            exoSM.isDependencyFor.update(am.isDependencyFor)
+
+            # merge _paths
+            # Path has hops and aggregates 
+            # Fix the list of aggregates to drop the aggregate being merged away
+            # What happens when a path has same aggregate at 2 discontiguous hops?
+            for path in am.paths:
+                path._aggregates.remove(am)
+                if not exoSM in path.aggregates:
+                    path._aggregates.add(exoSM)
+                if not path in exoSM.paths:
+                    self.logger.debug("Merging in path %s", path)
+                    exoSM._paths.add(path)
+
+            # FIXME: What does it mean for the same path to be on both aggregates? What has to be merged?
+
+            # merge _hops
+            # Hop points back to aggregate. Presumably these pointers must be reset
+            for hop in am.hops:
+                hop._aggregate = exoSM
+                if not hop in exoSM.hops:
+                    self.logger.debug("Merging in hop %s", hop)
+                    exoSM._hops.add(hop)
+
+            # merge userRequested
+            #  - If 1 was user requested and 1 was not, whole thing is user requested
+            if am.userRequested:
+                exoSM.userRequested = True
+
+            # merge alt_url
+            if exoSM.alt_url and handler_utils._extractURL(self.logger, exoSM.alt_url) == handler_utils._extractURL(self.logger, exoSM.url):
+                if handler_utils._extractURL(self.logger, exoSM.alt_url) != handler_utils._extractURL(self.logger, am.url):
+                    exoSM.alt_url = am.alt_url
+
+        # ensure only one in cls.aggs
+        newaggs = dict()
+        for (key, agg) in Aggregate.aggs.items():
+            if not (agg.isExoSM and agg != exoSM):
+                newaggs[key] = agg
+        Aggregate.aggs = newaggs
+
+        nonExoSMs.append(exoSM)
+        self.ams_to_process = nonExoSMs
 
     def add_am_info(self, aggs):
         '''Add extra information about the AMs to the Aggregate objects, like the API version'''
