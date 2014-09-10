@@ -222,23 +222,27 @@ class Aggregate(object):
 
     @classmethod
     def urn_syns_helper(cls, urn, urn_syns):
-        urn_syns.append(urn)
+        if urn not in urn_syns:
+            urn_syns.append(urn)
 
         import re
         urn2 = urn[:-2] + 'cm'
         if urn2 == urn:
             urn2 = urn[:-2] + 'am'
-        urn_syns.append(urn2)
+        if urn2 not in urn_syns:
+            urn_syns.append(urn2)
 
         urn2 = re.sub("vmsite", "Net", urn)
         if urn2 == urn:
             urn2 = re.sub("Net", "vmsite", urn)
-        urn_syns.append(urn2)
+        if urn2 not in urn_syns:
+            urn_syns.append(urn2)
 
         urn3 = urn2[:-2] + 'cm'
         if urn3 == urn2:
             urn3 = urn2[:-2] + 'am'
-        urn_syns.append(urn3)
+        if urn3 not in urn_syns:
+            urn_syns.append(urn3)
         return urn_syns
 
     # Produce a list of URN synonyms for the AM
