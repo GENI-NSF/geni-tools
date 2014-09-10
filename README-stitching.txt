@@ -514,6 +514,9 @@ Cannot find the set of paths for the RequestTopology. '.
  current aggregates, and VLAN translation support is limited. VLAN
  tags available at each aggregate are limited, and may run out.
  - Stitching to ExoGENI is limited:
+  - Reservations at ExoGENI AMs work. If you request resources at
+  multiple ExoGENI AMs, you must use the ExoSM. Stitcher will ensure
+  this.
   - Stitching within ExoGENI, by submitting a request to the ExoSM
   with only ExoGENI resources, works fine.
   - Stitching between ExoGENI and non ExoGENI resources only works at
