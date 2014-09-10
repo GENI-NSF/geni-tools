@@ -1506,6 +1506,10 @@ class Aggregate(object):
                                 self.logger.debug("Fatal error from PG AM")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Malformed request? %s..." % (self, str(ae)[:120])
+                            elif code == 1 and amcode == 1 and ("Malformed arguments: *** verifygenicred" in msg or "Malformed arguments: *** verifygenicred" in val):
+                                self.logger.debug("Fatal error from PG AM - credential problem?")
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s. Credential problem. Try renewing your slice? %s..." % (self, str(ae)[:120])
                         elif self.isEG:
                             # AM said success but manifest said failed
                             # FIXME: Other fatal errors?

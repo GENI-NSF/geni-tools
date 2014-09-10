@@ -36,6 +36,8 @@ gcf 2.7:
     the request to the ExoSM. Force this. (#689)
   * If multiple aggregates claim to be the ExoSM (due to `--useExoSM` or the above
     work), then merge these together so we only call the ExoSM once. (#688)
+  * `Malformed arguments: *** verifygenicred` is fatal at PG AMs.
+    Perhaps the slice needs to be renewed? (#691)
 
  * readyToLogin
    * Handle when omni switches AM API version number (#643)

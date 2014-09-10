@@ -470,6 +470,8 @@ Cannot find the set of paths for the RequestTopology. '.
  - Check your RSpec does not have a typo in the
  `component_manager`. You asked for resources at an unknown aggregate.
 
+`Malformed arguments: *** verifygenicred`
+ - There was a problem with your credentials. Try renewing your slice?
 === Errors in the tool – you may need to report this as a bug ===
 
 ` … has request tag XXX that is already in use by …`
