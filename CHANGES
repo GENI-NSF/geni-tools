@@ -38,6 +38,10 @@ gcf 2.7:
     work), then merge these together so we only call the ExoSM once. (#688)
   * `Malformed arguments: *** verifygenicred` is fatal at PG AMs.
     Perhaps the slice needs to be renewed? (#691)
+  * If a link only includes aggregates whose name contains 'exogeni',
+    then don't mark the RSpec as needing the SCS. We can use ExoGENI stitching.
+    Mixing links between ExoGENI AMs and stitched links involving non-ExoGENI AMs 
+    remains problematic. (#692)
 
  * readyToLogin
    * Handle when omni switches AM API version number (#643)

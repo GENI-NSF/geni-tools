@@ -1285,7 +1285,18 @@ class StitchingHandler(object):
                     # Ensure this link has 2 well formed property elements with explicity capacities
                     self.addCapacityOneLink(link)
                     self.logger.debug("Requested link %s is stitching", link.id)
-                    needSCS = True
+
+                    # Links that are ExoGENI only use ExoGENI stitching, not the SCS
+                    # So only if the link includes anything non-ExoGENI, we use the SCS
+                    for am in link.aggregates:
+                        # I wish I could do am.isEG but we don't get that info until later.
+                        # Hack!
+                        if 'exogeni' not in am.urn:
+                            needSCS = True
+                            break
+
+                    # FIXME: If the link includes the openflow rspec extension marking a desire to make the link
+                    # be OF controlled, then use the SCS and GENI stitching?
 
             # FIXME: Can we be robust to malformed requests, and stop and warn the user?
                 # EG the link has 2+ interface_ref elements that are on 2+ nodes belonging to 2+ AMs?
