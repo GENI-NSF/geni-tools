@@ -379,7 +379,10 @@ class StitchingHandler(object):
                         firstTime = slot[0].sliverExpirations[0]
                         firstCount = len(slot)
                         firstLabel = str(slot[0])
-                        self.logger.debug("First expiration at %s UTC at %s at %d AM(s).", firstTime.isoformat(), firstLabel, firstCount)
+                        if len(sortedAggs) > 1:
+                            self.logger.debug("First expiration is at %s UTC at %s at %d AM(s).", firstTime.isoformat(), firstLabel, firstCount)
+                        else:
+                            self.logger.debug("Resource expiration is at %s UTC at %s at %d AM(s).", firstTime.isoformat(), firstLabel, firstCount)
                         if firstCount == 1:
                             continue
                         elif firstCount == 2:
