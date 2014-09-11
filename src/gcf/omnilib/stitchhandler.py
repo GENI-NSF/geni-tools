@@ -1288,12 +1288,22 @@ class StitchingHandler(object):
 
                     # Links that are ExoGENI only use ExoGENI stitching, not the SCS
                     # So only if the link includes anything non-ExoGENI, we use the SCS
+                    egOnly = True
                     for am in link.aggregates:
                         # I wish I could do am.isEG but we don't get that info until later.
                         # Hack!
                         if 'exogeni' not in am.urn:
                             needSCS = True
+                            egOnly = False
                             break
+
+                    if egOnly:
+                        self.logger.debug("Link %s is only ExoGENI, so can use ExoGENI stitching.", link.id)
+                        if needSCS:
+                            self.logger.debug("But we already decided we need the SCS.")
+                        elif self.opts.noEGStitching and not needSCS:
+                            self.logger.info("Using GENI stitching instead of ExoGENI stitching")
+                            needSCS = True
 
                     # FIXME: If the link includes the openflow rspec extension marking a desire to make the link
                     # be OF controlled, then use the SCS and GENI stitching?

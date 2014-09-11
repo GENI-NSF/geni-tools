@@ -255,6 +255,8 @@ Other options you should not need to use:
  - `--useSCSugg`: Always use the VLAN tag suggested by the
  SCS. Usually stitcher asks the aggregate to pick, despite what the
  SCS suggested.
+ - `--noEGStitching`: Force use of GENI stitching (send the request to
+ the SCS), and not ExoGENI stitching between EG aggregates.
 
 == Tips and Details ==
 

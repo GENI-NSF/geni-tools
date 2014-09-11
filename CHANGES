@@ -40,8 +40,12 @@ gcf 2.7:
     Perhaps the slice needs to be renewed? (#691)
   * If a link only includes aggregates whose name contains 'exogeni',
     then don't mark the RSpec as needing the SCS. We can use ExoGENI stitching.
+    However, if you supply the new option `--noEGStitching` then call the
+    SCS anyhow to try to use GENI stitching (which may cause stitcher to fail
+    if the SCS does not know of a GENI stitching path between the aggregates).
     Mixing links between ExoGENI AMs and stitched links involving non-ExoGENI AMs 
-    remains problematic. (#692)
+    remains problematic therefore, as the SCS will fail if it can't find
+    every path requested. (#692)
 
  * readyToLogin
    * Handle when omni switches AM API version number (#643)
