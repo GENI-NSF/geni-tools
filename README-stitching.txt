@@ -255,6 +255,8 @@ Other options you should not need to use:
  - `--useSCSugg`: Always use the VLAN tag suggested by the
  SCS. Usually stitcher asks the aggregate to pick, despite what the
  SCS suggested.
+ - `--noEGStitching`: Force use of GENI stitching (send the request to
+ the SCS), and not ExoGENI stitching between EG aggregates.
 
 == Tips and Details ==
 
@@ -470,6 +472,8 @@ Cannot find the set of paths for the RequestTopology. '.
  - Check your RSpec does not have a typo in the
  `component_manager`. You asked for resources at an unknown aggregate.
 
+`Malformed arguments: *** verifygenicred`
+ - There was a problem with your credentials. Try renewing your slice?
 === Errors in the tool – you may need to report this as a bug ===
 
 ` … has request tag XXX that is already in use by …`
@@ -514,6 +518,9 @@ Cannot find the set of paths for the RequestTopology. '.
  current aggregates, and VLAN translation support is limited. VLAN
  tags available at each aggregate are limited, and may run out.
  - Stitching to ExoGENI is limited:
+  - Reservations at ExoGENI AMs work. If you request resources at
+  multiple ExoGENI AMs, you must use the ExoSM. Stitcher will ensure
+  this.
   - Stitching within ExoGENI, by submitting a request to the ExoSM
   with only ExoGENI resources, works fine.
   - Stitching between ExoGENI and non ExoGENI resources only works at

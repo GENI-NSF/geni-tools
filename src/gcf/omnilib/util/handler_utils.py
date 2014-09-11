@@ -602,6 +602,8 @@ def _filename_part_from_am_url(url):
         server = server[:(server.index("/openflow/gapi/"))]
     elif server.endswith(":3626/foam/gapi/1"):
         server = server[:(server.index(":3626/foam/gapi/1"))]
+    elif server.endswith(":3626/foam/gapi/2"):
+        server = server[:(server.index(":3626/foam/gapi/2"))]
     elif server.endswith("/gapi"):
         server = server[:(server.index("/gapi"))]
     elif server.endswith(":12346"):

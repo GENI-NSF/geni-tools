@@ -362,7 +362,7 @@ class ManifestRSpecCombiner:
                 self.logger.debug("Pulling hops from a DCN AM: %s", am)
 
             if am.manifestDom == dom_template:
-                self.logger.debug("AM %s's manifest is the dom_template- no need to do combinedHops here.", am)
+                self.logger.debug("AM %s's manifest is the dom_template- no need to do combineHops here.", am)
                 continue
 
             # FIXME: Should this be am._hops or is am.hops OK as is?

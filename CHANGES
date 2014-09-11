@@ -32,6 +32,20 @@ gcf 2.7:
     elements, rather than exit on first. (#680)
   * Be sure to avoid requesting 'any' from AMs that do not support it. 
     Copy the `isOESS` attribute across SCS calls. (#681)
+  * If you have multiple ExoGENI AMs in your request, you must submit
+    the request to the ExoSM. Force this. (#689)
+  * If multiple aggregates claim to be the ExoSM (due to `--useExoSM` or the above
+    work), then merge these together so we only call the ExoSM once. (#688)
+  * `Malformed arguments: *** verifygenicred` is fatal at PG AMs.
+    Perhaps the slice needs to be renewed? (#691)
+  * If a link only includes aggregates whose name contains 'exogeni',
+    then don't mark the RSpec as needing the SCS. We can use ExoGENI stitching.
+    However, if you supply the new option `--noEGStitching` then call the
+    SCS anyhow to try to use GENI stitching (which may cause stitcher to fail
+    if the SCS does not know of a GENI stitching path between the aggregates).
+    Mixing links between ExoGENI AMs and stitched links involving non-ExoGENI AMs 
+    remains problematic therefore, as the SCS will fail if it can't find
+    every path requested. (#692)
 
  * readyToLogin
    * Handle when omni switches AM API version number (#643)
