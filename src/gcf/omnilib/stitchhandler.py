@@ -1536,6 +1536,9 @@ class StitchingHandler(object):
                     egAMs.append(am)
                     egAMCount += 1
 
+        if egAMCount == 0:
+            return
+
         if egAMCount > 1:
             self.logger.debug("Request includes more than one ExoGENI AM. Must go through the ExoSM.")
             if self.opts.devmode and self.opts.noExoSM:
@@ -1553,6 +1556,10 @@ class StitchingHandler(object):
                     exoSMCount += 1
                     exoSMs.append(anEGAM)
                     nonExoSMs.remove(anEGAM)
+
+        if exoSMCount == 0:
+            self.logger.debug("Not using ExoSM")
+            return
 
         exoSM = None
         if exoSMCount > 0:
