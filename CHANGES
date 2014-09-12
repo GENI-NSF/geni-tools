@@ -2,15 +2,15 @@
 
 gcf 2.7:
  * Omni
-  * Fix nickname cache updating when temp and home directories are on 
-    different disks - use `shutil.move`. (#646)
-  * Look for fallback `agg_nick_cache` in correct location (#662)
-  * Honor the `useslicemembers` and `ignoreconfigusers` options in the `omni_config` (#671)
-  * Fix `get_member_email` e.g. from `listprojectmembers` for speaks-for. (#676)
-  * Use relative imports in `speaksfor_util` if possible. (#657)
   * Calls to `status` and `sliverstatus` will also call the CH
     to try to sync up the CH records of slivers with truth
     as reported by the AM. (#634)
+  * Honor the `useslicemembers` and `ignoreconfigusers` options in the `omni_config` (#671)
+  * Fix `get_member_email` e.g. from `listprojectmembers` for speaks-for. (#676)
+  * Fix nickname cache updating when temp and home directories are on 
+    different disks - use `shutil.move`. (#646)
+  * Look for fallback `agg_nick_cache` in correct location (#662)
+  * Use relative imports in `speaksfor_util` if possible. (#657)
   * Fix URL to URN lookups to better handle names that differ by a prefix. (#683)
 
  * Stitcher
@@ -19,25 +19,14 @@ gcf 2.7:
     with stitcher calling `createsliver` on each aggregate. Only bound requests
     can be handled though. (#670)
    * Combined manifest is now named: `<slicename>-manifest-rspec-multiam-combined.xml`
-  * Added new option `useSCSSugg` to always use VLAN tags picked
+  * Added new option `--useSCSSugg` to always use VLAN tags picked
     by the SCS, not letting the AM pick. (#675)
   * Add new option `--includehoponpath <hop> <path>` for requiring
     a particular hop only on a particular path, not all paths. (#654)
-  * Avoid requesting VLAN tag 'any' at OESS and DCN AMs. (#644)
-  * In `devmode`, keep going if request RSpec is of wrong schema. (#673)
-  * Always allow a request RSpec of either PGv2 or GENIv3. (#673)
-  * Use relative imports in `scs` if possible. (#658)
-  * `Insufficient rights` error is fatal at SFA AMs. (#677)
-  * Loop over all links when adding `component_manager` and `property`
-    elements, rather than exit on first. (#680)
-  * Be sure to avoid requesting 'any' from AMs that do not support it. 
-    Copy the `isOESS` attribute across SCS calls. (#681)
   * If you have multiple ExoGENI AMs in your request, you must submit
-    the request to the ExoSM. Force this. (#689)
+    the request to the ExoSM. Automatically do this. (#689)
   * If multiple aggregates claim to be the ExoSM (due to `--useExoSM` or the above
     work), then merge these together so we only call the ExoSM once. (#688)
-  * `Malformed arguments: *** verifygenicred` is fatal at PG AMs.
-    Perhaps the slice needs to be renewed? (#691)
   * If a link only includes aggregates whose name contains 'exogeni',
     then don't mark the RSpec as needing the SCS. We can use ExoGENI stitching.
     However, if you supply the new option `--noEGStitching` then call the
@@ -46,6 +35,28 @@ gcf 2.7:
     Mixing links between ExoGENI AMs and stitched links involving non-ExoGENI AMs 
     remains problematic therefore, as the SCS will fail if it can't find
     every path requested. (#692)
+  * Help experimenters avoid links that unexpectedly expire, and avoid
+    links that continue past the expiration of compute nodes. (#577)
+   * Improved reporting of actual sliver expirations when the run is complete.
+   * Set the desired sliver expiration in the request RSpec based on
+     current (September, 2014) aggregate policies. InstaGENI and ION/MAX
+     aggregates (at least) honor this request. In practice this means
+     that many requests will all expire at the same time. 
+   * Note that some Utah aggregates' policy limits new slivers to 5 days, so
+     many circuits will all expire in 5 days. Renew your reservation if needed.
+   * New aggregate types or new local aggregate policies will require changes
+     to the code.
+  * `Insufficient rights` error is fatal at SFA AMs. (#677)
+  * `Malformed arguments: *** verifygenicred` is fatal at PG AMs.
+    Perhaps the slice needs to be renewed? (#691)
+  * Avoid requesting VLAN tag 'any' at OESS and DCN AMs. (#644)
+  * Be sure to avoid requesting 'any' from AMs that do not support it. 
+    Copy the `isOESS` attribute across SCS calls. (#681)
+  * In `devmode`, keep going if request RSpec is of wrong schema. (#673)
+  * Always allow a request RSpec of either PGv2 or GENIv3. (#673)
+  * Use relative imports in `scs` if possible. (#658)
+  * Loop over all links when adding `component_manager` and `property`
+    elements, rather than exit on first. (#680)
 
  * readyToLogin
    * Handle when omni switches AM API version number (#643)
