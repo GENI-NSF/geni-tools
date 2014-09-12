@@ -571,7 +571,7 @@ class Aggregate(object):
 
         # Get a new expires value for request to try to ensure all AMs expire at the same time.
         # See ticket #577
-        newExpires = self.getExpiresForRequest()
+        newExpires = self.getExpiresForRequest(opts)
 
         # Generate the new request Dom
         self.requestDom = self.getEditedRSpecDom(rspecDom, newExpires)
@@ -679,7 +679,7 @@ class Aggregate(object):
             # mark self complete
             self.completed = True
 
-    def getExpiresForRequest(self):
+    def getExpiresForRequest(self, opts):
         # Set the expires attribute to try to ensure all AMs expire at the same time.
         # See ticket #577
 
@@ -2056,7 +2056,7 @@ class Aggregate(object):
                     else:
                         self.logger.warn("%s is (still) %s at %s. Delete and retry.", opName, status, self)
                     if dcnerror and dcnerror.strip() != '':
-                        if "There are no VLANs available on link" in dcnerror and "VLAN PCE(PCE_CREATE_FAILED)" in dcnerror:
+                        if ("There are no VLANs available on link" in dcnerror and "VLAN PCE(PCE_CREATE_FAILED)" in dcnerror) or "Bandwidth PCE(PCE_CREATE_FAILED)" in dcnerror:
                             # We'll log something better later
                             self.logger.debug("  Status had error message: %s", dcnerror)
                         else:
@@ -2136,6 +2136,39 @@ class Aggregate(object):
                         elif failedHopName:
                             self.logger.info(msg)
                             self.logger.debug(".. at a hop named %s, but could not ID the hop.", failedHopName)
+                    elif "Bandwidth PCE(PCE_CREATE_FAILED)" in dcnerror:
+                        # Insufficient bandwidth. I want to treat this
+                        # as error 25 / fatal
+                        # Ticket #653
+                        # Sample error message:
+                        # Bandwidth PCE(PCE_CREATE_FAILED): 'Unable to find path because the maximum bandwidth of ion.internet2.edu:rtr.salt:ge-10/2/7 has been exceeded. 30.0 Mbps is available and 100 Mbps was requested  on reservation ion.internet2.edu-113041 in Bandwidth PCE'
+                        # Should be able to parse out the ge-10/2/7
+                        # bit and the amount available and report that
+                        # to the user.
+
+                        self.inProcess = False
+
+                        import re
+                        match = re.match("Bandwidth PCE\(PCE_CREATE_FAILED\): 'Unable to find path because the maximum bandwidth of (.+) has been exceeded. (.+) is available and", dcnerror)
+                        failedHop = None
+                        availBW = None
+                        if match:
+                            failedHop = match.group(1).strip()
+                            availBW = match.group(2).strip()
+                            self.logger.debug("Insufficient Bandwidth error: %s has only %s avail", failedHop, availBW)
+                            fatalMsg = "Insufficient bandwidth for request at %s, hop %s. Only %s available. Try specifying --defaultCapacity: %s..." % (self, failedHop, availBW, dcnerror)
+                        else:
+                            self.logger.debug("Insufficient Bandwidth error", failedHop, availBW)
+                            fatalMsg = "Insufficient bandwidth for request at %s. Try specifying --defaultCapacity < 20000: %s..." % (self, dcnerror)
+
+                        if self.userRequested:
+                            raise StitchingError(fatalMsg)
+                        else:
+                            self.logger.debug("%s allocation failed fatally - will try finding a path without it. Got %s", self, fatalMsg)
+                            for hop in self.hops:
+                                hop.excludeFromSCS = True
+
+                        raise StitchingCircuitFailedError(fatalMsg)
 
             if msg is None:
                 msg = "Sliver status was (still): %s (and no circuits listed in status)" % status
