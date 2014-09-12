@@ -380,9 +380,9 @@ class StitchingHandler(object):
                         firstCount = len(slot)
                         firstLabel = str(slot[0])
                         if len(sortedAggs) > 1:
-                            self.logger.debug("First expiration is at %s UTC at %s at %d AM(s).", firstTime.isoformat(), firstLabel, firstCount)
+                            self.logger.debug("First expiration is at %s UTC at %s, at %d total AM(s).", firstTime.isoformat(), firstLabel, firstCount)
                         else:
-                            self.logger.debug("Resource expiration is at %s UTC at %s at %d AM(s).", firstTime.isoformat(), firstLabel, firstCount)
+                            self.logger.debug("Resource expiration is at %s UTC, at %d total AM(s).", firstTime.isoformat(), firstCount)
                         if firstCount == 1:
                             continue
                         elif firstCount == 2:
@@ -394,7 +394,7 @@ class StitchingHandler(object):
                         secondTime = slot[0].sliverExpirations[0]
                         secondCount = len(slot)
                         secondLabel = str(slot[0])
-                        self.logger.debug("Second expiration at %s UTC at %s at %d AM(s)", secondTime.isoformat(), secondLabel, secondCount)
+                        self.logger.debug("Second expiration at %s UTC at %s, at %d total AM(s)", secondTime.isoformat(), secondLabel, secondCount)
                         if secondCount == 1:
                             break
                         elif secondCount == 2:
