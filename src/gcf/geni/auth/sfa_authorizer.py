@@ -70,7 +70,7 @@ class SFA_Authorizer(Base_Authorizer):
     }
         
     # Create a cred verifier for all credentials on all calls
-    def __init__(self, root_cert, opts):
+    def __init__(self, root_cert, opts, argument_guard):
         Base_Authorizer.__init__(self, root_cert, opts)
         self._cred_verifier = CredentialVerifier(root_cert)
 
