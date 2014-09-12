@@ -89,6 +89,9 @@ class _SfaLogger:
     def setLevelDebug(self):
         self.logger.setLevel(logging.DEBUG)
 
+    def debugEnabled (self):
+        return self.logger.getEffectiveLevel() == logging.DEBUG
+
     # define a verbose option with s/t like
     # parser.add_option("-v", "--verbose", action="count", dest="verbose", default=0)
     # and pass the coresponding options.verbose to this method to adjust level
@@ -102,6 +105,8 @@ class _SfaLogger:
     # in case some other code needs a boolean
     def getBoolVerboseFromOpt(self,verbose):
         return verbose>=1
+    def getBoolDebugFromOpt(self,verbose):
+        return verbose>=2
 
     ####################
     def info(self, msg):

@@ -426,6 +426,10 @@ class ReferenceAggregateManager(object):
             # Now calculate the status of the sliver
             res_status = list()
             resources = list()
+            expiration = theSlice.expiration
+            # Add UTC TZ, to have an RFC3339 compliant datetime, per the AM API
+            exp_with_tz = expiration.replace(tzinfo=dateutil.tz.tzutc())
+            exp_string = exp_with_tz.isoformat()
 
             sliceurn = URN(urn=slice_urn)
             sliceauth = sliceurn.getAuthority()
@@ -456,7 +460,8 @@ class ReferenceAggregateManager(object):
             self.logger.info("Calculated and returning slice %s status", slice_urn)
             result = dict(geni_urn=slice_urn,
                           geni_status=theSlice.status(resources),
-                          geni_resources=res_status)
+                          geni_resources=res_status,
+                          geni_expires=exp_string)
             return dict(code=dict(geni_code=0,
                                   am_type="gcf2",
                                   am_code=0),

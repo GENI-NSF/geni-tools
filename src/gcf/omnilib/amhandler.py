@@ -3232,6 +3232,7 @@ class AMCallHandler(object):
                     self._raise_omni_error("\nSliverStatus failed: " + retVal)
                 continue
 
+            rawResult = status
             # Get the dict status out of the result (accounting for API version diffs, ABAC)
             (status, message) = self._retrieve_value(status, message, self.framework)
 
@@ -3245,7 +3246,12 @@ class AMCallHandler(object):
                     else:
                         prettyResult = pprint.pformat(status)
                 else:
-                    prettyResult = json.dumps(status, ensure_ascii=True, indent=2)
+                    try:
+                        prettyResult = json.dumps(status, ensure_ascii=True, indent=2)
+                    except Exception, jde:
+                        self.logger.debug("Failed to parse status as JSON: %s", jde)
+                        prettyResult = pprint.pformat(status)
+
                     if status.has_key('geni_status'):
                         msg = "Slice %s at AM %s has overall SliverStatus: %s"% (name, client.str, status['geni_status'])
                         self.logger.info(msg)
@@ -3269,6 +3275,118 @@ class AMCallHandler(object):
                         self.logger.info(msg)
                         retVal += msg + ".\n "
 
+                    # #634: Get the sliverinfo
+                    # Then sync these up: create an entry if there isn't one, or update it with the correct expiration
+                    if not self.opts.noExtraCHCalls:
+                        try:
+                            # Get the Agg URN for this client
+                            agg_urn = self._getURNForClient(client)
+                            self.logger.debug("Syncing sliver_info records with CH....")
+                            if urn_util.is_valid_urn(agg_urn):
+                                # Extract sliver_urn / expiration pairs from sliverstatus
+                                # But this is messy. An AM might report a sliver in the top level geni_urn.
+                                # Or it might report multiple geni_resources, and the URN in each geni_urn might be the slivers.
+                                # For PG and GRAM and EG, look for geni_urn under geni_resources
+                                # At DCN, the geni_urn under geni_resources is what I want, although the URN type says 'slice'
+                                poss_slivers = []
+                                if status.has_key('geni_resources'):
+                                    for resource in status['geni_resources']:
+                                        if resource and isinstance(resource, dict) and resource.has_key('geni_urn'):
+                                            gurn = resource['geni_urn']
+                                            if urn_util.is_valid_urn(gurn):
+                                                poss_slivers.append(gurn.strip())
+#                                self.logger.debug("AM poss_slivers: %s", str(poss_slivers))
+
+                                # Grab the first expiration. In APIv2 that's the only real one.
+                                if isinstance(exps, list):
+                                    if len(exps) > 0:
+                                        expI = exps[0]
+                                    else:
+                                        expI = None
+                                else:
+                                    expI = exps
+
+                                # I'd like to be able to tell the SA to delete all slivers registered for
+                                # this slice/AM, but the API says sliver_urn is required
+                                slivers_by_am = self.framework.list_sliver_infos_for_slice(urn)
+                                if slivers_by_am is None or not slivers_by_am.has_key(agg_urn):
+                                    # CH has no slivers. So all slivers the AM reported must be sent to the CH
+
+                                    # FIXME: status should be a list of structs which each has a geni_urn or geni_sliver_urn
+                                    # So it could be status['geni_resources']. Mostly I think that works.
+                                    s_es = []
+                                    if status.has_key('geni_resources'):
+                                        s_es = status['geni_resources']
+                                        self.logger.debug("CH listed 0 sliver_info records, so creating them all from status info")
+                                        # Create an entry
+                                        self.framework.create_sliver_info(None, urn, 
+                                                                          client.url,
+                                                                          expI,
+                                                                          s_es, agg_urn)
+                                    else:
+                                        # No struct of slivers to report
+                                        pass
+                                else:
+                                    # Need to reconcile the CH list and the AM list
+                                    ch_slivers = slivers_by_am[agg_urn]
+                                    self.logger.debug("Reconciling %d CH sliver infos against %d AM reported slivers", len(ch_slivers.keys()), len(poss_slivers))
+                                    # For each CH sliver, if not in poss_slivers, then remove it
+                                    # Else if expirations differ, update it
+                                    for sliver in ch_slivers.keys():
+                                        chexpo = None
+                                        if ch_slivers[sliver].has_key('SLIVER_INFO_EXPIRATION'):
+                                            chexp = ch_slivers[sliver]['SLIVER_INFO_EXPIRATION']
+                                            chexpo = naiveUTC(dateutil.parser.parse(chexp, tzinfos=tzd))
+                                        if sliver not in poss_slivers:
+                                            self.logger.debug("CH lists sliver '%s' that is not in AM list; delete", sliver)
+                                            # CH reported a sliver not reported by the AM. Delete it
+                                            self.framework.delete_sliver_info(sliver)
+                                        else:
+                                            if chexpo is None or (expI is not None and abs(chexpo - expI) > datetime.timedelta.resolution):
+                                                self.logger.debug("CH sliver %s expiration %s != AM exp %s; update at CH", sliver, str(chexpo), str(expI))
+                                                # update the recorded expiration time to be accurate
+                                                self.framework.update_sliver_info(agg_urn, urn, sliver,
+                                                                                  expI)
+                                            else:
+                                                # CH has what we have
+#                                                self.logger.debug("CH agrees about expiration of %s: %s", sliver, expI)
+                                                pass
+
+                                    # Then for each AM sliver, if not in ch_slivers, add it
+                                    sliver_statusstruct = []
+                                    for amsliver in poss_slivers:
+                                        if amsliver not in ch_slivers.keys():
+                                            self.logger.debug("AM lists sliver %s not reported by CH", amsliver)
+                                            # AM reported a sliver not reported by the CH
+                                            if status.has_key('geni_resources'):
+                                                s_es = status['geni_resources']
+                                                for resource in status['geni_resources']:
+                                                    if resource and isinstance(resource, dict) and resource.has_key('geni_urn'):
+                                                        gurn = resource['geni_urn']
+                                                        if gurn.strip() == amsliver:
+                                                            sliver_statusstruct.append(resource)
+                                                            break
+                                    if len(sliver_statusstruct) > 0:
+                                        self.logger.debug("Creating %s sliver records at CH", len(sliver_statusstruct))
+                                        # Create an entry for each sliver that was missing
+                                        self.framework.create_sliver_info(None, urn, 
+                                                                          client.url,
+                                                                          expI,
+                                                                          sliver_statusstruct, agg_urn)
+                                # End of else block to reconcile CH vs AM sliver lists
+                            else:
+                                self.logger.debug("Not syncing slivers with CH - no valid AM URN known")
+                        except NotImplementedError, nie:
+                            self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
+                        except Exception, e:
+                            # FIXME: info only?
+                            self.logger.warn('Error syncing slivers with SA database')
+                            self.logger.debug(e)
+                    else:
+                        self.logger.debug("Per commandline option, not syncing slivers with clearinghouse")
+                    # End of block to sync sliver_info with CH
+                # End of block to handle status is a dict
+
                 # Save/print out result
                 header="Sliver status for Slice %s at AM %s" % (urn, client.str)
                 filename = None
@@ -3282,6 +3400,42 @@ class AMCallHandler(object):
                 retItem[ client.url ] = status
                 successCnt+=1
             else:
+                # #634:
+                # delete any sliver_infos for this am/slice
+                # However, not all errors mean there are no slivers here.
+                # Based on testing 8/2014, all AMs return code 2 or code 12 if there are no slivers here
+                # so that it's safe to delete any sliver_info records. 
+                # Use code 15 too as that seems reasonable.
+                # SEARCHFAILED (12), EXPIRED (15)
+                # EG uses ERROR (2), but that's too general so avoid that one
+                doDelete = False
+                code = -1
+                if rawResult is not None and isinstance(rawResult, dict) and rawResult.has_key('code') and isinstance(rawResult['code'], dict) and 'geni_code' in rawResult['code']:
+                    code = rawResult['code']['geni_code']
+                if code==12 or code==15:
+                    doDelete=True
+                if doDelete and not self.opts.noExtraCHCalls:
+                    self.logger.debug("SliverStatus failed with an error that suggests no slice at this AM - delete all sliverinfo records: %s", message)
+                    # delete sliver info from SA database
+                    try:
+                        # Get the Agg URN for this client
+                        agg_urn = self._getURNForClient(client)
+                        if urn_util.is_valid_urn(agg_urn):
+                            # I'd like to be able to tell the SA to delete all slivers registered for
+                            # this slice/AM, but the API says sliver_urn is required
+                            sliver_urns = self.framework.list_sliverinfo_urns(urn, agg_urn)
+                            for sliver_urn in sliver_urns:
+                                self.framework.delete_sliver_info(sliver_urn)
+                        else:
+                            self.logger.debug("Not ensuring with CH that AM %s slice %s has no slivers - no valid AM URN known")
+                    except NotImplementedError, nie:
+                        self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
+                    except Exception, e:
+                        self.logger.info('Error ensuring slice has no slivers recorded in SA database at this AM')
+                        self.logger.debug(e)
+                else:
+                    self.logger.debug("Per commandline option, not ensuring clearinghouse lists no slivers for this slice.")
+
                 # FIXME: Put the message error in retVal?
                 # FIXME: getVersion uses None as the value in this case. Be consistent
                 retItem[ client.url ] = False
@@ -3413,6 +3567,58 @@ class AMCallHandler(object):
             # Get the dict status out of the result (accounting for API version diffs, ABAC)
             (status, message) = self._retrieve_value(status, message, self.framework)
             if not status:
+                # #634:
+                # delete any sliver_infos for this am/slice
+                # However, not all errors mean there are no slivers here.
+                # Based on testing 8/2014, all AMs return code 2 or code 12 if there are no slivers here
+                # so that it's safe to delete any sliver_info records. 
+                # Use code 15 too as that seems reasonable.
+                # Use SEARCHFAILED (12), EXPIRED (15)
+                # EG uses ERROR (2), but that will show up in other places. So avoid that one.
+                # Also note that if not geni_best_effort
+                # that a failure may mean only part failed
+                doDelete = False
+                raw = retItem[client.url]
+                code = -1
+                if raw is not None and isinstance(raw, dict) and raw.has_key('code') and isinstance(raw['code'], dict) and 'geni_code' in raw['code']:
+                    code = raw['code']['geni_code']
+                # Technically if geni_best_effort and got this failure, then all slivers are bad
+                # But that's only true if the AM honors geni_best_effort, which it may not
+                # So only assume they're all bad if we didn't request any specific slivers.
+                if len(slivers) == 0:
+                    if code==12 or code==15:
+                        doDelete=True
+                if not self.opts.noExtraCHCalls:
+                    if doDelete:
+                        self.logger.debug("Status failed with an error that suggests no slice at this AM or requested slivers not at this AM - delete all/requested sliverinfo records: %s", message)
+                        # delete sliver info from SA database
+                        try:
+                            if len(slivers) > 0:
+                                self.logger.debug("Status failed - assuming all %d sliver URNs asked about are invalid and not at this AM - delete from CH", len(slivers))
+                                for sliver in slivers:
+                                    self.framework.delete_sliver_info(sliver)
+                            else:
+                                self.logger.debug("Status failed: assuming this slice has 0 slivers at this AM. Ensure CH lists none.")
+                                # Get the Agg URN for this client
+                                agg_urn = self._getURNForClient(client)
+                                if urn_util.is_valid_urn(agg_urn):
+                                    # I'd like to be able to tell the SA to delete all slivers registered for
+                                    # this slice/AM, but the API says sliver_urn is required
+                                    sliver_urns = self.framework.list_sliverinfo_urns(urn, agg_urn)
+                                    for sliver_urn in sliver_urns:
+                                        self.framework.delete_sliver_info(sliver_urn)
+                                else:
+                                    self.logger.debug("Not ensuring with CH that AM %s slice %s has no slivers - no valid AM URN known")
+                        except NotImplementedError, nie:
+                            self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
+                        except Exception, e:
+                            self.logger.info('Error ensuring slice has no slivers recorded in SA database at this AM')
+                            self.logger.debug(e)
+                    else:
+                        self.logger.debug("Given AM return code (%d) and # requested slivers (%d), not telling CH to not list these slivers.", code, len(slivers))
+                else:
+                    self.logger.debug("Per commandline option, not ensuring clearinghouse lists no slivers for this slice.")
+
                 # FIXME: Put the message error in retVal?
                 # FIXME: getVersion uses None as the value in this case. Be consistent
                 fmt = "\nFailed to get Status on %s at AM %s: %s\n"
@@ -3420,6 +3626,7 @@ class AMCallHandler(object):
                     message = "(no reason given)"
                 retVal += fmt % (descripMsg, client.str, message)
                 continue
+            # End of block to handle got no good status (got an error)
 
             missingSlivers = self._findMissingSlivers(status, slivers)
             if len(missingSlivers) > 0:
@@ -3521,6 +3728,151 @@ class AMCallHandler(object):
             retVal += statusMsg
             if len(missingSlivers) == 0 and len(sliverFails.keys()) == 0:
                 successCnt+=1
+
+            # Now sync up slivers with CH
+            if not self.opts.noExtraCHCalls:
+                # ensure have agg_urn
+                agg_urn = self._getURNForClient(client)
+                if urn_util.is_valid_urn(agg_urn):
+                    slivers_by_am = None # Slivers in this slice by AM CH reports
+                    try:
+                        slivers_by_am = self.framework.list_sliver_infos_for_slice(urn)
+
+                        # Gather info on what the AM reported
+                        resultValue = self._getSliverResultList(status)
+                        status_structs = {} # dict by URN of sliver status structs
+                        expirations = {} # dict by URN of sliver expiration string
+                        if len(resultValue) == 0:
+                            self.logger.debug("Result value not a list or empty")
+                        else:
+                            for sliver in resultValue:
+                                if not isinstance(sliver, dict):
+                                    self.logger.debug("entry in result list was not a dict")
+                                    continue
+                                if not sliver.has_key('geni_sliver_urn') or str(sliver['geni_sliver_urn']).strip() == "":
+                                    self.logger.debug("entry in result had no 'geni_sliver'urn'")
+                                else:
+                                    slivurn = sliver['geni_sliver_urn']
+                                    status_structs[slivurn] = sliver
+                                    if not sliver.has_key('geni_expires'):
+                                        self.logger.debug("Sliver %s missing 'geni_expires'", slivurn)
+                                        expirations[slivurn] = slice_exp # Assume sliver expires at slice expiration if not specified
+                                        continue
+                                    expirations[slivurn] = sliver['geni_expires']
+                        # Finished building status_structs and expirations
+
+                        statuses = self._getSliverAllocStates(status) # Dict by URN of sliver alloc state
+                        resultSlivers = statuses.keys()
+
+                        if slivers_by_am is None or not slivers_by_am.has_key(agg_urn):
+                            # CH has no slivers. So all
+                            # slivers the AM reported must be sent
+                            # to the CH
+                            if len(resultSlivers) > 0:
+                                self.logger.debug("CH missing %d slivers at AM - report those that are provisioned", len(resultSlivers))
+                            for sliver in resultSlivers:
+                                if not statuses.has_key(sliver):
+                                    self.logger.debug("No %s key in statuses? %s", sliver, statuses)
+                                elif statuses[sliver] == 'geni_provisioned':
+                                    if not expirations.has_key(sliver):
+                                        self.logger.debug("No %s key in expirations? %s", sliver, expirations)
+                                        expO = None
+                                    else:
+                                        expO = self._datetimeFromString(expirations[sliver])[1]
+                                    if not status_structs.has_key(sliver):
+                                        self.logger.debug("status_structs missing %s: %s", sliver, status_structs)
+                                    # self.logger.debug("Will create sliver. slice: %s, AMURL: %s, expiration: %s, status_struct: %s, AMURN: %s", urn, client.url, expO, status_structs[sliver], agg_urn)
+                                    self.framework.create_sliver_info(None, urn, 
+                                                                      client.url,
+                                                                      expO,
+                                                                      [status_structs[sliver]], agg_urn)
+                                # else this sliver should not (yet) be recorded at the CH
+                        else:
+                            # Need to reconcile the CH list and the AM list
+                            ch_slivers = slivers_by_am[agg_urn]
+
+                            # missingSlivers: delete CH record for each
+                            # FIXME: If self.opts.geni_best_effort could an AM not return an entry for a sliver
+                            # you don't have permission to see or something? I don't think I'll
+                            # worry about this now.
+                            if len(missingSlivers) > 0:
+                                self.logger.debug("Ensure %d missing slivers not reported by CH", len(missingSlivers))
+                            for missing in missingSlivers:
+                                if missing in ch_slivers.keys():
+                                    self.framework.delete_sliver_info(missing)
+                                # Else AM didn't list it and neither did CH
+
+                            # sliverFails: If the failed sliver says it is provisioned, it should be at the CH
+                            # If the failed sliver is not provisioned, then it should not be at the CH (yet)
+                            for fail in sliverFails:
+                                if statuses[fail] == 'geni_provisioned' and fail not in ch_slivers.keys():
+                                    expO = self._datetimeFromString(expirations[fail])[1]
+                                    self.logger.debug("Recording failed but provisioned sliver %s at CH (error: %s)", fail, sliverFails[fail])
+                                    self.framework.create_sliver_info(None, urn, 
+                                                                      client.url,
+                                                                      expO,
+                                                                      [status_structs[fail]], agg_urn)
+                                elif statuses[fail] != 'geni_provisioned' and fail in ch_slivers.keys():
+                                    # The AM says the sliver is gone or not yet provisioned: Delete
+                                    self.logger.debug("Deleting CH record of failed and not provisioned sliver %s (error: %s, expiration: %s)", fail, sliverFails[fail], expirations[fail])
+                                    self.framework.delete_sliver_info(fail)
+                                else:
+                                    # Do nothing with this failed sliver - just note it
+                                    if fail in ch_slivers.keys():
+                                        self.logger.debug("Not changing existing CH record of sliver %s that failed: %s", fail, sliverFails[fail])
+                                    else:
+                                        self.logger.debug("Not adding new CH record of sliver %s that failed: %s", fail, sliverFails[fail])
+                            # End of block to handle failed slivers (had a geni_error)
+
+                            # Any in CH not in result (and if we asked for slivers, also in list
+                            # we asked for) - Delete
+                            # Plus any in CH and result that are not geni_provisioned, delete
+                            for ch_sliver in ch_slivers.keys():
+                                if ch_sliver not in resultSlivers:
+                                    if len(slivers) == 0 or ch_sliver in slivers:
+                                        self.logger.debug("Deleting CH record of sliver not at AM: %s", ch_sliver)
+                                        self.framework.delete_sliver_info(ch_sliver)
+                                elif statuses[ch_sliver] != 'geni_provisioned':
+                                    self.logger.debug("Deleting CH record of not provisioned sliver %s (expiration: %s)", ch_sliver, expirations[ch_sliver])
+                                    self.framework.delete_sliver_info(ch_sliver)
+
+                            # All other slivers in result (not in sliverFails):
+                            for sliver in resultSlivers:
+                                if statuses[sliver] == 'geni_provisioned' and sliver not in sliverFails.keys():
+                                    if sliver not in ch_slivers.keys():
+                                        expO = self._datetimeFromString(expirations[sliver])[1]
+                                        self.logger.debug("Recording AM reported sliver %s at CH", sliver)
+                                        self.framework.create_sliver_info(None, urn, 
+                                                                          client.url,
+                                                                          expO,
+                                                                          [status_structs[sliver]], agg_urn)
+                                    else:
+                                        # Now dealing with slivers listed by AM and CH, and provisioned at AM, and not failed
+                                        chexpo = None
+                                        if ch_slivers[sliver].has_key('SLIVER_INFO_EXPIRATION'):
+                                            chexp = ch_slivers[sliver]['SLIVER_INFO_EXPIRATION']
+                                            chexpo = naiveUTC(dateutil.parser.parse(chexp, tzinfos=tzd))
+
+                                        expO, expT, _ = self._datetimeFromString(expirations[sliver])
+                                        if chexpo is None or (expO is not None and abs(chexpo - expO) > datetime.timedelta.resolution):
+                                            self.logger.debug("CH sliver %s expiration %s != AM exp %s; update at CH", sliver, str(chexpo), str(expO))
+                                            # update the recorded expiration time to be accurate
+                                            self.framework.update_sliver_info(agg_urn, urn, sliver,
+                                                                              expT)
+                                        # else CH/AM agree on the time. Nothing to do
+                                # Else the sliver is not yet provisioned or failed. Should already have been handled
+                            # End of loop over slivers in result
+                        # End of block where CH lists slivers in the slice for this AM
+                    except NotImplementedError, nie:
+                        self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
+                    except Exception, e:
+                        self.logger.info('Error ensuring CH lists same slivers as at this AM')
+                        self.logger.debug(e)
+                else:
+                    self.logger.debug("Not syncing slivers with CH - no valid AM URN known")
+            else:
+                self.logger.debug("Per commandline option, not syncing slivers with clearinghouse.")
+
         # End of loop over clients
 
         # FIXME: Return the status if there was only 1 client?

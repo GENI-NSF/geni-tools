@@ -222,23 +222,27 @@ class Aggregate(object):
 
     @classmethod
     def urn_syns_helper(cls, urn, urn_syns):
-        urn_syns.append(urn)
+        if urn not in urn_syns:
+            urn_syns.append(urn)
 
         import re
         urn2 = urn[:-2] + 'cm'
         if urn2 == urn:
             urn2 = urn[:-2] + 'am'
-        urn_syns.append(urn2)
+        if urn2 not in urn_syns:
+            urn_syns.append(urn2)
 
         urn2 = re.sub("vmsite", "Net", urn)
         if urn2 == urn:
             urn2 = re.sub("Net", "vmsite", urn)
-        urn_syns.append(urn2)
+        if urn2 not in urn_syns:
+            urn_syns.append(urn2)
 
         urn3 = urn2[:-2] + 'cm'
         if urn3 == urn2:
             urn3 = urn2[:-2] + 'am'
-        urn_syns.append(urn3)
+        if urn3 not in urn_syns:
+            urn_syns.append(urn3)
         return urn_syns
 
     # Produce a list of URN synonyms for the AM
@@ -261,6 +265,103 @@ class Aggregate(object):
         urn_syns = cls.urn_syns_helper(urn, urn_syns)
 
         return urn_syns
+
+    @classmethod
+    def getExpComparator(cls, delta=0):
+        def expComparator(agg1, agg2):
+            # Return 0 if they're same
+            # If agg1 is smaller, return negative
+            # FIXME: Which goes later if 1 is None?
+            # for now, None < not None
+            agg1exp0 = agg1.sliverExpirations
+            agg2exp0 = agg2.sliverExpirations
+            if (agg1exp0 is None or len(agg1exp0) == 0) and (agg2exp0 is not None and len(agg2exp0) > 0):
+                return -1
+            elif (agg1exp0 is not None and len(agg1exp0) > 0) and (agg2exp0 is None or len(agg2exp0) == 0):
+                return 1
+            elif (agg1exp0 is None or len(agg1exp0) == 0) and (agg2exp0 is None or len(agg2exp0) == 0):
+                return 0
+            agg1exp0 = agg1exp0[0]
+            agg2exp0 = agg2exp0[0]
+            if delta > 0:
+                if abs(agg1exp0 - agg2exp0) < datetime.timedelta(minutes=delta):
+                    return 0
+                # else they're more than delta apart
+            else:
+                if abs(agg1exp0 - agg2exp0) < datetime.timedelta.resolution:
+                    return 0
+                # else they're more than resolution apart
+            if agg1exp0 < agg2exp0:
+                return -1
+            # elif agg1exp0 > agg2exp0:
+            return 1
+        return expComparator
+
+    @classmethod
+    def sortAggsByExpirations(cls, delta=0):
+        # Make a list of lists
+        # Each entry in list is a collection of aggs with the same expiration
+        # Where same means within delta minutes
+        # Note that the return could be an empty list (no aggs), and that the first slot
+        # Could contain aggs with no sliver expirations
+
+        # FIXME: if AM has multiple sliver expiration times, do I look at first or last?
+        # for now first
+        aggs = cls.aggs
+        if aggs is None or len(aggs) == 0 or len(aggs.values()) == 0:
+            return []
+
+        aggs = aggs.values()
+
+        # If there's just one agg, return it in a list
+        if len(aggs) == 1:
+            return [aggs]
+
+        expComparator = Aggregate.getExpComparator(delta)
+        aggs.sort(expComparator)
+
+        # Now I have them sorted in ascending expiration order.
+        # Now bucket them
+
+        # If they all expire at the same time, return a list of length 1 containing the list of aggs
+        if expComparator(aggs[0], aggs[-1]) == 0:
+            return [aggs]
+
+        aggs2 = []
+        prev = None
+        slotInd = -1
+        for agg in aggs:
+
+            # init vars for first agg
+            if not prev:
+                aggs2.append([agg])
+                prev = agg
+                slotInd = 0
+                continue
+
+            # compare this agg to the first agg in the previous time slot
+            prev = aggs2[slotInd][0]
+            comp = expComparator(prev, agg)
+            if comp == 0:
+                # Same time, so put it in this bucket
+                aggs2[slotInd].append(agg)
+                # Sort aggs within the bucket, so first is earliest
+                if delta > 0:
+                    aggs2[slotInd].sort(Aggregate.getExpComparator())
+                continue
+            # comp should never be > 0 cause we're looping over sorted aggs
+            elif comp > 0:
+                pass
+                #logger = logging.getLogger('stitcher')
+                #logger.warn("comp > 0?!")
+            else:
+                # This agg goes later (by delta), so put it in a new bucket
+                aggs2.append([agg])
+                slotInd += 1
+                continue
+        # End of loop over aggs
+
+        return aggs2
 
     def __init__(self, urn, url=None):
         self.urn = urn
@@ -301,7 +402,7 @@ class Aggregate(object):
         self.pgLogUrl = None # For PG AMs, any log url returned by Omni that we could capture
 
         # Will be a single or list of naive UTC datetime objects
-        self.sliverExpirations = None
+        self.sliverExpirations = []
 
         # Have we tried an allocation at this AM in this latest round?
         # Used by stitchhandler to decide which AMs were tried the last time through, 
@@ -365,6 +466,14 @@ class Aggregate(object):
     def add_agg_that_dependsOnThis(self, agg):
         self.isDependencyFor.add(agg)
 
+    def setSliverExpirations(self, expirations):
+        if expirations is None or expirations == [] or expirations == [None]:
+            return
+        if not isinstance(expirations, list):
+            expirations = [expirations]
+        expirations.sort()
+        self.sliverExpirations = expirations
+
     @property
     def dependencies_complete(self):
         """Dependencies are complete if there are no dependencies
@@ -422,6 +531,8 @@ class Aggregate(object):
         for hop in self.hops:
             if not (hop._hop_link.vlan_suggested_request == VLANRange.fromString("any") or hop._hop_link.vlan_suggested_request <= hop._hop_link.vlan_range_request):
                 raise StitchingError("%s hop %s suggested %s not in avail %s" % (self, hop, hop._hop_link.vlan_suggested_request, hop._hop_link.vlan_range_request))
+            if hop._hop_link.vlan_suggested_request == VLANRange.fromString("any") and (self.isEG or self.isGRAM or self.isOESS or self.dcn):
+                raise StitchingError("%s hop %s suggested is 'any' which is not supported at this AM type" % (self, hop))
 
         # Check that if a hop has the same URN as another on this AM, that it has a different VLAN tag
         tagByURN = dict()
@@ -458,8 +569,12 @@ class Aggregate(object):
         # Mark AM is busy
         self.inProcess = True
 
+        # Get a new expires value for request to try to ensure all AMs expire at the same time.
+        # See ticket #577
+        newExpires = self.getExpiresForRequest(opts)
+
         # Generate the new request Dom
-        self.requestDom = self.getEditedRSpecDom(rspecDom)
+        self.requestDom = self.getEditedRSpecDom(rspecDom, newExpires)
 
         # Get the manifest for this AM
         # result is a manifest RSpec string. Errors wouuld be raised
@@ -468,9 +583,7 @@ class Aggregate(object):
         manifestString = self.doReservation(opts, slicename, scsCallCount)
 
         # Look for and save any sliver expiration
-        sliverExpirations = expires_from_rspec(manifestString, self.logger)
-        if sliverExpirations is not None and sliverExpirations != []:
-            self.sliverExpirations = sliverExpirations
+        self.setSliverExpirations(expires_from_rspec(manifestString, self.logger))
 
         # Save manifest on the Agg
         try:
@@ -566,6 +679,81 @@ class Aggregate(object):
             # mark self complete
             self.completed = True
 
+    def getExpiresForRequest(self, opts):
+        # Set the expires attribute to try to ensure all AMs expire at the same time.
+        # See ticket #577
+
+        # DCN and PG AMs honor this. GRAM does not, and I doubt AL2S or EG does. But set it everywhere for now anyhow.
+
+        # Note that this code includes an ugly HACK - it uses constants for expected initial sliver expiration at various AM types.
+        # Adding new AM types or if policies change will cause this to work, well, differently.
+        # The goal here is to ensure transit networks expire at or before endpoints, and the overall link has
+        # a minimal number of different expirations.
+        # Additionally, minimize additional AM API call (like auto renewing the circuit after the reservation)
+
+        # First, compute desired expires value
+        # If not reserving resources after, set expires to the minimum we expect from other AMs on the path
+        # min(slice expiration, expiration of other AMs on paths for this AM, default sliver expirations by AM type for other AMs on these paths where no reservation yet)
+        # (Note algorithm changes if we are doing renewals after)
+
+        now = datetime.datetime.utcnow()
+
+        # MinDays = slice Expiration
+
+        # Anonymous inner class that acts like the handler object the method expects
+        class MyHandler(object):
+            def __init__(self, logger, opts):
+                self.logger = logger
+                self.opts = opts
+
+        sliceCred = _load_cred(MyHandler(self.logger, opts), opts.slicecredfile)
+        sliceexp = get_cred_exp(self.logger, sliceCred)
+        sliceExpFromNow = naiveUTC(sliceexp) - now
+        minDays = sliceExpFromNow.days
+        newExpires = naiveUTC(sliceexp)
+        self.logger.debug("Starting newExpires at slice expiration %s, so init minDays to %d", sliceexp, minDays)
+
+        for path in self.paths:
+            for am in path.aggregates:
+                if am.sliverExpirations and len(am.sliverExpirations) > 0 and am.sliverExpirations[0] is not None:
+                    newExpires = min(newExpires, am.sliverExpirations[0])
+                    self.logger.debug("%s sliver expires at %s. newExpires now %s", am, am.sliverExpirations[0], newExpires)
+                    continue
+                else:
+                    amExpDays = None
+                    # This part is ugly. We hardcode some knowledge of what current AM policies are.
+                    # AL2S policy is missing, PG Utah and iMinds policies are missing, as are any new AM types
+                    # This would be better from GetVersion or some cache file we periodically download. FIXME!
+                    # HACK!
+                    if am.isPG:
+                        # If this is Utah PG or DDC, set to their shorter expiration
+                        if am.urn in [defs.PGU_URN, defs.IGUDDC_URN]:
+                            amExpDays = defs.DEF_SLIVER_EXPIRATION_UTAH
+                            self.logger.debug("AM's path includes %s which is Utah PG or DDC - %d day sliver expiration", am, defs.DEF_SLIVER_EXPIRATION_UTAH)
+                        else:
+                            amExpDays = defs.DEF_SLIVER_EXPIRATION_IG
+                    elif am.isEG:
+                        amExpDays = defs.DEF_SLIVER_EXPIRATION_EG
+                    elif am.isGRAM:
+                        amExpDays = defs.DEF_SLIVER_EXPIRATION_GRAM
+
+                    if amExpDays is not None:
+                        self.logger.debug("%s policy says expDays=%d", am, amExpDays)
+                        newminDays = min(minDays, amExpDays)
+                        if newminDays != minDays:
+                            minDays = newminDays
+                            # New desired expiration is now plus that # of days, less a little to make sure
+                            # We don't violate local AM policy
+                            newExpires = min(now + datetime.timedelta(days=minDays) - datetime.timedelta(minutes=10), newExpires)
+#                        self.logger.debug("%s policy says expDays=%d so minDays=%d, newExpires=%s", am, amExpDays, minDays, newExpires)
+                    self.logger.debug("After %s, minDays=%d, newExpires=%s", am, minDays, newExpires)
+            # End loop over AMs on path
+        # End loop over paths
+
+        self.logger.debug("Will request newExpires=%s", newExpires)
+
+        return newExpires
+
     def copyVLANsAndDetectRedo(self):
         '''Copy VLANs to this AMs hops from previous manifests. Check if we already had manifests.
         If so, but the inputs are incompatible, then mark this to be deleted. If so, but the
@@ -601,6 +789,13 @@ class Aggregate(object):
                 # FIXME: use handleVlanUnavailable? Is that right?
                 self.handleVlanUnavailable("reserve", "Calculated new_suggested for %s of %s is in set of VLANs we know won't work" % (hop, new_suggested))
 #                raise StitchingError("%s picked new_suggested %s that is in the set of VLANs that we know won't work: %s" % (hop, new_suggested, hop.vlans_unavailable))
+
+            if new_suggested == VLANRange.fromString("any"):
+                if self.isEG or self.isGRAM or self.isOESS or self.dcn:
+                    # copy of tags trying to use 'any' at an AM that doesn't support it
+                    # This should never happen cause we should only be looking at hops that import tags
+                    # where the hop we import from has a manifest, which would not be 'any'
+                    raise StitchingError("%s picked new suggested 'any' which is not supported at this AM" % hop)
 
             int1 = VLANRange.fromString("any")
             int2 = VLANRange.fromString("any")
@@ -787,7 +982,9 @@ class Aggregate(object):
 #            self.logger.debug("No stitching schema in this attribute value: %s='%s'", attr.name, attr.value)
             return attr, 0
 
-    def getEditedRSpecDom(self, originalRSpec):
+    def getEditedRSpecDom(self, originalRSpec, newExpires=None):
+        # newExpires is a datetime value for the expires attribute in the request
+
         # For each path on this AM, get that Path to write whatever it thinks necessary into a
         # deep clone of the incoming RSpec Dom
         requestRSpecDom = originalRSpec.cloneNode(True)
@@ -822,6 +1019,12 @@ class Aggregate(object):
 #                    self.logger.warn("Slivers at PG Utah may not be requested initially for > 5 days. PG Utah slivers " +
 #                                     "will expire earlier than at other aggregates - requested expiration being reset from %s to %s", expires, newExpires)
 #                    rspecs[0].setAttribute(defs.EXPIRES_ATTRIBUTE, newExpires)
+
+        if newExpires is not None:
+            newExpires = naiveUTC(newExpires).strftime('%Y-%m-%dT%H:%M:%SZ')
+            rspecs = requestRSpecDom.getElementsByTagName(defs.RSPEC_TAG)
+            if rspecs and len(rspecs) > 0:
+                rspecs[0].setAttribute(defs.EXPIRES_ATTRIBUTE, newExpires)
 
         changing1To2 = False # FIXME: Use this later to determine how to write attributes?
         changing2To1 = False
@@ -1493,6 +1696,14 @@ class Aggregate(object):
                                 self.logger.debug("Fatal error from PG AM")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Malformed request? %s..." % (self, str(ae)[:120])
+                            elif code == 1 and amcode == 1 and ("Malformed arguments: *** verifygenicred" in msg or "Malformed arguments: *** verifygenicred" in val):
+                                self.logger.debug("Fatal error from PG AM - credential problem?")
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s. Credential problem. Try renewing your slice? %s..." % (self, str(ae)[:120])
+                            elif code == 1 and amcode == 1 and ("Malformed rspec" in msg or "Malformed rspec" in val):
+                                self.logger.debug("Fatal error from PG AM - rspec problem")
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s. Request RSpec typo? %s..." % (self, str(ae)[:120])
                         elif self.isEG:
                             # AM said success but manifest said failed
                             # FIXME: Other fatal errors?
@@ -1550,6 +1761,10 @@ class Aggregate(object):
                                 self.logger.debug("Fatal error from GRAM AM")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. You already have a reservation here in this slice using the specified node client_id. Consider calling deletesliver at this AM: %s..." % (self, str(ae)[:120])
+                        elif amtype == 'sfa' and ("Insufficient rights" in msg or "Access denied" in msg):
+                            isFatal = True
+                            self.logger.debug("AuthZ error from SFA AM")
+                            fatalMsg = "Reservation impossible at %s. This aggregate does not trust your certificate or credential.: %s..." % (self, str(ae)[:120])
                     except Exception, e:
                         if isinstance(e, StitchingError):
                             raise e
@@ -1708,7 +1923,7 @@ class Aggregate(object):
                 if self.api_version == 2:
 
                     # Save off the sliver expiration if found
-                    self.sliverExpirations = expires_from_status(result[self.url], self.logger)
+                    self.setSliverExpirations(expires_from_status(result[self.url], self.logger))
 
                     if result[self.url].has_key("geni_status"):
                         status = result[self.url]["geni_status"]
@@ -1759,16 +1974,16 @@ class Aggregate(object):
 #                        (orderedDates, sliverExps) = handler_utils._getSliverExpirations(result[self.url]["value"], None)
 #                        self.sliverExpirations = orderedDates
                         # For now, reproduce the stuff I care about here
-                        self.sliverExpirations = []
+                        expirations = []
                         for sliver in result[self.url]["value"]["geni_slivers"]:
                             if isinstance(sliver, dict) and sliver.has_key("geni_expires"):
                                 sliver_expires = sliver['geni_expires']
                                 if isinstance(sliver_expires, str):
                                     # parse it
                                     expObj = _naiveUTCFromString(sliver_expires)
-                                    if expObj and expObj not in self.sliverExpirations:
-                                        self.sliverExpirations.append(expObj)
-                        self.sliverExpirations = self.sliverExpirations.sort()
+                                    if expObj and expObj not in expirations:
+                                        expirations.append(expObj)
+                        self.setSliverExpirations(expirations)
 
                         for sliver in result[self.url]["value"]["geni_slivers"]:
                             if isinstance(sliver, dict) and sliver.has_key("geni_allocation_status"):
@@ -1841,7 +2056,7 @@ class Aggregate(object):
                     else:
                         self.logger.warn("%s is (still) %s at %s. Delete and retry.", opName, status, self)
                     if dcnerror and dcnerror.strip() != '':
-                        if "There are no VLANs available on link" in dcnerror and "VLAN PCE(PCE_CREATE_FAILED)" in dcnerror:
+                        if ("There are no VLANs available on link" in dcnerror and "VLAN PCE(PCE_CREATE_FAILED)" in dcnerror) or "Bandwidth PCE(PCE_CREATE_FAILED)" in dcnerror:
                             # We'll log something better later
                             self.logger.debug("  Status had error message: %s", dcnerror)
                         else:
@@ -1921,6 +2136,39 @@ class Aggregate(object):
                         elif failedHopName:
                             self.logger.info(msg)
                             self.logger.debug(".. at a hop named %s, but could not ID the hop.", failedHopName)
+                    elif "Bandwidth PCE(PCE_CREATE_FAILED)" in dcnerror:
+                        # Insufficient bandwidth. I want to treat this
+                        # as error 25 / fatal
+                        # Ticket #653
+                        # Sample error message:
+                        # Bandwidth PCE(PCE_CREATE_FAILED): 'Unable to find path because the maximum bandwidth of ion.internet2.edu:rtr.salt:ge-10/2/7 has been exceeded. 30.0 Mbps is available and 100 Mbps was requested  on reservation ion.internet2.edu-113041 in Bandwidth PCE'
+                        # Should be able to parse out the ge-10/2/7
+                        # bit and the amount available and report that
+                        # to the user.
+
+                        self.inProcess = False
+
+                        import re
+                        match = re.match("Bandwidth PCE\(PCE_CREATE_FAILED\): 'Unable to find path because the maximum bandwidth of (.+) has been exceeded. (.+) is available and", dcnerror)
+                        failedHop = None
+                        availBW = None
+                        if match:
+                            failedHop = match.group(1).strip()
+                            availBW = match.group(2).strip()
+                            self.logger.debug("Insufficient Bandwidth error: %s has only %s avail", failedHop, availBW)
+                            fatalMsg = "Insufficient bandwidth for request at %s, hop %s. Only %s available. Try specifying --defaultCapacity: %s..." % (self, failedHop, availBW, dcnerror)
+                        else:
+                            self.logger.debug("Insufficient Bandwidth error", failedHop, availBW)
+                            fatalMsg = "Insufficient bandwidth for request at %s. Try specifying --defaultCapacity < 20000: %s..." % (self, dcnerror)
+
+                        if self.userRequested:
+                            raise StitchingError(fatalMsg)
+                        else:
+                            self.logger.debug("%s allocation failed fatally - will try finding a path without it. Got %s", self, fatalMsg)
+                            for hop in self.hops:
+                                hop.excludeFromSCS = True
+
+                        raise StitchingCircuitFailedError(fatalMsg)
 
             if msg is None:
                 msg = "Sliver status was (still): %s (and no circuits listed in status)" % status
@@ -1981,7 +2229,7 @@ class Aggregate(object):
             # In practice this means any circuit reserved within 24 hours of expiration
             # will have this problem for something < 24 hours.
             # check for that, log the issue, renew to the slice expiration if necessary.
-            if len(self.sliverExpirations) > 0:
+            if self.sliverExpirations is not None and len(self.sliverExpirations) > 0:
                 thisExp = self.sliverExpirations[-1]
                 thisExp = naiveUTC(thisExp)
 
@@ -2155,12 +2403,18 @@ class Aggregate(object):
                             or "Could not reserve a vlan tag for " in msg) and (code == 24 or code==2 or code == 1) and \
                             (amcode==2 or amcode==24 or amcode == 1) and amtype=='protogeni':
                         import re
-                        if "Error reserving vlan tag for" in msg:
+                        if "Error reserving vlan tag for '" in msg:
                             match = re.match("^Error reserving vlan tag for '(.+)'", msg)
-                        elif "Could not find a free vlan tag for" in msg:
+                        elif "Error reserving vlan tag for " in msg:
+                            match = re.match("^Error reserving vlan tag for (.+)", msg)
+                        elif "Could not find a free vlan tag for '" in msg:
                             match = re.match("^Could not find a free vlan tag for '(.+)'", msg)
-                        elif "Could not reserve a vlan tag for" in msg:
+                        elif "Could not find a free vlan tag for " in msg:
+                            match = re.match("^Could not find a free vlan tag for (.+)", msg)
+                        elif "Could not reserve a vlan tag for '" in msg:
                             match = re.match("^Could not reserve a vlan tag for '(.+)'", msg)
+                        elif "Could not reserve a vlan tag for" in msg:
+                            match = re.match("^Could not reserve a vlan tag for (.+)", msg)
                         if match:
                             failedPath = match.group(1).strip()
                             failedHopsnoXlate = []
@@ -2176,7 +2430,7 @@ class Aggregate(object):
                             else:
                                 self.logger.debug("Cannot set failedHop from parsed error message: %s: Got %d failed hops that don't do translation", msg, len(failedHopsnoXlate))
                         else:
-                            self.logger.debug("Failed to parse failed from PG message: %s", msg)
+                            self.logger.debug("Failed to parse failed path from PG message: %s", msg)
                     elif 'vlan tag ' in msg and ' not available' in msg and (code==1 or code==24 or code==2) and (amcode==1 or amcode==24) and amtype=="protogeni":
                         #self.logger.debug("This was a PG error message that names the failed link/tag")
                         # Parse out the tag and link name
@@ -2619,8 +2873,9 @@ class Aggregate(object):
                     self.logger.debug("%s re-using already picked tag %s", hop, pick)
                 else:
                     # Pick a new tag if we can
-                    if hop._hop_link.vlan_producer:
-                        self.logger.debug("%s is a vlan producer, so after all that let it pick any tag", hop)
+                    if (hop._hop_link.vlan_producer or not hop._import_vlans) and not (self.isEG or self.isGRAM or self.isOESS or self.dcn):
+                        # If this hop picks the VLAN tag, and this AM accepts 'any', then we leave pick as 'any'
+                        self.logger.debug("%s is a vlan producer or doesn't import vlans and handles suggested of 'any', so after all that let it pick any tag.", hop)
                     elif len(nextRequestRangeByHop[hop]) == 0:
                         self.inProcess = False
                         self.logger.debug("%s nextRequestRange was empty but vlan_range_request was %s", hop, hop._hop_link.vlan_range_request)

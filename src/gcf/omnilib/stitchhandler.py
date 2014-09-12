@@ -191,11 +191,29 @@ class StitchingHandler(object):
 
         self.isStitching = self.mustCallSCS(self.parsedUserRequest)
         self.isGRE = self.hasGRELink(self.parsedUserRequest)
+        self.isMultiAM = False
+        # If any node is unbound, then all AMs will try to allocate it. So bail
+        unboundNode = self.getUnboundNode()
 
-        # If this is not a real stitching thing, just let Omni handle this.
-        # This will also ensure each stitched link has an explicit capacity on 2 properties
-        if not self.isStitching and not self.isGRE:
-            self.logger.info("Not a stitching or GRE request - let Omni handle this.")
+        self.isBound = (unboundNode is None)
+        if self.isBound:
+            self.logger.debug("Request appears to be fully bound")
+        if (self.isGRE or self.isStitching) and not self.isMultiAM:
+            self.logger.debug("Nodes seemed to list <2 AMs, but rspec appears GRE or stitching, so it is multi AM")
+            self.isMultiAM = True
+
+        # FIXME:
+        # If it is bound, make sure all the implied AMs are known (have a URL)
+
+        # FIXME:
+        # If any node is unbound: Check that there is exactly 1 -a AM that is not one of the AMs a node is bound to, and then 
+        # edit the request to bind the nodes to that AM.
+
+        # If this is not a bound multi AM RSpec, just let Omni handle this.
+        if not self.isBound or not self.isMultiAM:
+            self.logger.info("Not a bound multi-aggregate request - let Omni handle this.")
+            if unboundNode is not None:
+                self.logger.info("Node '%s' is unbound in request - all nodes must be bound for stitcher, as all aggregates get the same request RSpec" % unboundNode)
 
             if self.opts.noReservation:
                 self.logger.info("Not reserving resources")
@@ -309,7 +327,7 @@ class StitchingHandler(object):
                         handler.setLevel(logging.WARN)
                         break
 
-            retVal, filename = handler_utils._writeRSpec(self.opts, self.logger, combinedManifest, self.slicename, 'stitching-combined', '', None)
+            retVal, filename = handler_utils._writeRSpec(self.opts, self.logger, combinedManifest, self.slicename, 'multiam-combined', '', None)
             if not self.opts.debug:
                 handlers = self.logger.handlers
                 if len(handlers) == 0:
@@ -321,146 +339,76 @@ class StitchingHandler(object):
             self.opts.output = ot
 
             # Print something about sliver expiration times
-            soonest = None
+
+            # FIXME: 15min? 30min?
+            # FIXME: Old code printed per agg exp at debug level
+
+            sortedAggs = Aggregate.sortAggsByExpirations(15) # 15min apart counts as same
+            firstTime = None
+            firstCount = 0
+            firstLabel = ""
             secondTime = None
+            secondCount = 0
+            secondLabel = ""
+            noPrint = False
+            msgAdd = ''
             msg = None
-            for am in self.ams_to_process:
-                exps = am.sliverExpirations
-                if exps:
-                    if isinstance(exps, list):
-                        if len(exps) > 1:
-                            # More than 1 distinct sliver expiration found
-                            # Sort and take first
-                            exps = exps.sort()
-                            nextTime = exps[0]
-                            if soonest is None:
-                                soonest = (nextTime, str(am), 1)
-                            elif nextTime < soonest[0]:
-                                # Only increment soonest[2] if the difference is more than a few minutes
-                                # - that is, more than the stitcher runtime
-                                count = soonest[2]
-                                if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
-                                    count = count + 1
-                                    secondTime = soonest[0]
-                                    soonest = (nextTime, str(am), count)
-                                else:
-                                    label = soonest[1] + " and %s" % str(am)
-                                    soonest = (soonest[0], label, soonest[2])
-                            elif nextTime > soonest[0]:
-                                # Only increment soonest[2] if the difference is more than a few minutes
-                                # - that is, more than the stitcher runtime
-                                count = soonest[2]
-                                if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
-                                    count = count + 1
-                                    soonest = (soonest[0], soonest[1], count)
-                                else:
-                                    label = soonest[1] + " and %s" % str(am)
-                                    soonest = (soonest[0], label, soonest[2])
-                            elif abs(nextTime - soonest[0]) < datetime.timedelta(seconds=1):
-                                label = soonest[1] + " and %s" % str(am)
-                                soonest = (soonest[0], label, soonest[2])
-
-                            # If this isn't the next expiration, is it the 2nd?
-                            if nextTime > soonest[0] and abs(nextTime - soonest[0]) > datetime.timedelta(minutes=30):
-                                if secondTime is None:
-                                    secondTime = nextTime
-                                elif nextTime < secondTime:
-                                    secondTime = nextTime
-
-                            outputstr = nextTime.isoformat()
-                            msg = "Resources in slice %s at %s expire at %d different times. First expiration is %s UTC. " % (self.slicename, am, len(exps), outputstr)
-                        elif len(exps) == 0:
-                            msg = "Failed to get sliver expiration from %s - try print_sliver_expirations. " % am
-                        else:
-                            outputstr = exps[0].isoformat()
-                            msg = "Resources in slice %s at %s expire at %s UTC. " % (self.slicename, am, outputstr)
-                            if soonest is None:
-                                soonest = (exps[0], str(am), 1)
-                            elif exps[0] < soonest[0]:
-                                # Only increment soonest[2] if the difference is more than a few minutes
-                                # - that is, more than the stitcher runtime
-                                count = soonest[2]
-                                if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
-                                    count = count + 1
-                                    secondTime = soonest[0]
-                                    soonest = (exps[0], str(am), count)
-                                else:
-                                    label = soonest[1] + " and %s" % str(am)
-                                    soonest = (soonest[0], label, soonest[2])
-                            elif exps[0] > soonest[0]:
-                                # Only increment soonest[2] if the difference is more than a few minutes
-                                # - that is, more than the stitcher runtime
-                                count = soonest[2]
-                                if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
-                                    count = count + 1
-                                    soonest = (soonest[0], soonest[1], count)
-                                else:
-                                    label = soonest[1] + " and %s" % str(am)
-                                    soonest = (soonest[0], label, soonest[2])
-                            elif abs(exps[0] - soonest[0]) < datetime.timedelta(seconds=1):
-                                label = soonest[1] + " and %s" % str(am)
-                                soonest = (soonest[0], label, soonest[2])
-
-                            # If this isn't the next expiration, is it the 2nd?
-                            if exps[0] > soonest[0] and abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
-                                if secondTime is None:
-                                    secondTime = exps[0]
-                                elif exps[0] < secondTime:
-                                    secondTime = exps[0]
+            if len(sortedAggs) == 0:
+                msg = "No aggregates"
+                self.logger.debug("Got no aggregates?")
+                noPrint = True
+            else:
+                self.logger.debug("AMs expire at %d time(s).", len(sortedAggs))
+                firstSlotTimes = sortedAggs[0][0].sliverExpirations
+                skipFirst = False
+                if firstSlotTimes is None or len(firstSlotTimes) == 0:
+                    skipFirst = True
+                    if len(sortedAggs) == 1:
+                        msg = "Aggregates did not report sliver expiration"
+                        self.logger.debug("Only expiration timeslot has an agg with no expirations")
+                        noPrint = True
                     else:
-                        outputstr = exps.isoformat()
-                        msg = "Resources in slice %s at %s expire at %s UTC. " % (self.slicename, am, outputstr)
-
-                        if soonest is None:
-                            soonest = (exps, str(am), 1)
-                        elif exps < soonest[0]:
-                            # Only increment soonest[2] if the difference is more than a few minutes
-                            # - that is, more than the stitcher runtime
-                            count = soonest[2]
-                            if abs(exps - soonest[0]) > datetime.timedelta(minutes=30):
-                                count = count + 1
-                                secondTime = soonest[0]
-                                soonest = (exps, str(am), count)
-                            else:
-                                label = soonest[1] + " and %s" % str(am)
-                                soonest = (soonest[0], label, soonest[2])
-                        elif exps > soonest[0]:
-                            # Only increment soonest[2] if the difference is more than a few minutes
-                            # - that is, more than the stitcher runtime
-                            count = soonest[2]
-                            if abs(exps - soonest[0]) > datetime.timedelta(minutes=30):
-                                count = count + 1
-                                soonest = (soonest[0], soonest[1], count)
-                            else:
-                                label = soonest[1] + " and %s" % str(am)
-                                soonest = (soonest[0], label, soonest[2])
-                        elif abs(exps - soonest[0]) < datetime.timedelta(seconds=1):
-                            label = soonest[1] + " and %s" % str(am)
-                            soonest = (soonest[0], label, soonest[2])
-
-                        # If this isn't the next expiration, is it the 2nd?
-                        if exps > soonest[0] and abs(exps - soonest[0]) > datetime.timedelta(minutes=30):
-                            if secondTime is None:
-                                secondTime = exps
-                            elif exps < secondTime:
-                                secondTime = exps
+                        msgAdd = "Resource expiration unknown at %d aggregate(s)" % len(sortedAggs[0])
+                        self.logger.debug("First slot had no times, but there are other slots")
+                ind = -1
+                for slot in sortedAggs:
+                    ind += 1
+                    if skipFirst and ind == 0:
+                        continue
+                    if firstTime is None:
+                        firstTime = slot[0].sliverExpirations[0]
+                        firstCount = len(slot)
+                        firstLabel = str(slot[0])
+                        if len(sortedAggs) > 1:
+                            self.logger.debug("First expiration is at %s UTC at %s, at %d total AM(s).", firstTime.isoformat(), firstLabel, firstCount)
+                        else:
+                            self.logger.debug("Resource expiration is at %s UTC, at %d total AM(s).", firstTime.isoformat(), firstCount)
+                        if firstCount == 1:
+                            continue
+                        elif firstCount == 2:
+                            firstLabel += " and " + str(slot[1])
+                        else:
+                            firstLabel += " and %d other AM(s)" % (firstCount - 1)
+                        continue
+                    elif secondTime is None:
+                        secondTime = slot[0].sliverExpirations[0]
+                        secondCount = len(slot)
+                        secondLabel = str(slot[0])
+                        self.logger.debug("Second expiration at %s UTC at %s, at %d total AM(s)", secondTime.isoformat(), secondLabel, secondCount)
+                        if secondCount == 1:
+                            break
+                        elif secondCount == 2:
+                            secondLabel += " and " + str(slot[1])
+                        else:
+                            secondLabel += " and %d other AM(s)" % (secondCount - 1)
+                        break
+                # Done looping over agg exp times in sortedAggs
+            # Done handling sortedAggs
+            if not noPrint:
+                if len(sortedAggs) == 1:
+                    msg = "Your resources expire at %s (UTC). %s" % (firstTime.isoformat(), msgAdd)
                 else:
-                    # else got no sliver expiration for this AM
-                    # Like at EG or GRAM AMs. See ticket #318
-                    msg = "Resource expiration at %s unknown - try print_sliver_expirations. " % am
-
-                self.logger.debug(msg)
-                #retVal += msg + "\n"
-            # End of loop over AMs
-
-            msg = None
-            if soonest is not None and soonest[2] > 1:
-                # Diff parts of the slice expire at different times
-                msg = "Your resources expire at %d different times at different AMs. The first expiration is %s UTC at %s. " % (soonest[2], soonest[0], soonest[1])
-                if secondTime:
-                    msg += "Second expiration is %s UTC. " % secondTime.isoformat()
-            elif soonest:
-                msg = "Your resources expire at %s (UTC). " % (soonest[0])
+                    msg = "Your resources expire at %d different times. The first resources expire at %s (UTC) at %s. The second expiration time is %s (UTC) at %s. %s" % (len(sortedAggs), firstTime.isoformat(), firstLabel, secondTime.isoformat(), secondLabel, msgAdd)
 
             if msg:
                 self.logger.info(msg)
@@ -714,16 +662,14 @@ class StitchingHandler(object):
                 am = Aggregate.find(amURN)
                 addedAMs.append(am)
                 if not am.url:
-                    # Try to pull from agg nicknames in the omni_config
-                    for (amURNNick, amURLNick) in self.config['aggregate_nicknames'].values():
-                        if amURNNick and amURNNick.strip() in am.urn_syns and amURLNick.strip() != '':
-                            # Avoid apparent v1 URLs
-                            if amURLNick.strip().endswith('/1') or amURLNick.strip().endswith('/1.0'):
-                                self.logger.debug("Skipping apparent v1 URL %s for URN %s", amURLNick, amURN)
-                            else:
-                                am.url = amURLNick
-                                self.logger.debug("Found AM %s URL from omni_config AM nicknames: %s", amURN, amURLNick)
-                                break
+                    # FIXME: Avoid apparent v1 URLs
+                    for urn in am.urn_syns:
+                        (nick, url) = handler_utils._lookupAggNickURLFromURNInNicknames(self.logger, self.config, urn)
+                        if url and url.strip() != '':
+                            self.logger.debug("Found AM %s URL using URN %s from omni_config AM nicknames: %s", amURN, urn, nick)
+                            am.url = url
+                            am.nick = nick
+                            break
 
                 if not am.url:
                     # Try asking our CH for AMs to get the URL for the
@@ -751,6 +697,9 @@ class StitchingHandler(object):
 
         # FIXME: check each AM reachable, and we know the URL/API version to use
 
+        # If requesting from >1 ExoGENI AM, then use ExoSM. And use ExoSM only once.
+        self.ensureOneExoSM()
+
         self.dump_objects(self.parsedSCSRSpec, self.ams_to_process)
 
         self.logger.info("Multi-AM reservation will include resources from these aggregates:")
@@ -774,11 +723,20 @@ class StitchingHandler(object):
 
         # While doing this, make sure the tells for whether we can tell the hop to pick the tag are consistent.
         for am in self.ams_to_process:
+            if self.opts.useSCSSugg:
+                self.logger.info("Per option, requesting SCS suggested VLAN tags")
+                continue
+            if am.isEG or am.isGRAM or am.isOESS or am.dcn:
+                self.logger.debug("%s doesn't support requesting 'any' VLAN tag - move on", am)
+                continue
             # Could a complex topology have some hops producing VLANs and some accepting VLANs at the same AM?
 #            if len(am.dependsOn) == 0:
 #                self.logger.debug("%s says it depends on no other AMs", am)
             for hop in am.hops:
-                requestAny = True
+                # Init requestAny so we never request 'any' when option says not or it is one of the non-supported AMs
+                requestAny = not (self.opts.useSCSSugg or am.isEG or am.isGRAM or am.isOESS or am.dcn)
+                if not requestAny:
+                    continue
                 isConsumer = False
                 isProducer = False
                 imports = False
@@ -834,7 +792,9 @@ class StitchingHandler(object):
                         # assume it is willing to produce a VLAN tag
                         self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. Assuming 'any' is OK.", hop)
                         requestAny = True
-                if requestAny:
+                if self.opts.useSCSSugg and requestAny:
+                    self.logger.info("Would request 'any', but user requested to stick to SCS suggestions.")
+                elif requestAny:
                     if len(am.dependsOn) != 0:
                         self.logger.debug("%s appears OK to request tag 'any', but the AM says it depends on other AMs?", hop)
                     if hop._hop_link.vlan_suggested_request != VLANRange.fromString("any"):
@@ -842,12 +802,14 @@ class StitchingHandler(object):
                         hop._hop_link.vlan_suggested_request = VLANRange.fromString("any")
 #                    else:
 #                        self.logger.debug("%s suggested request was already 'any'.", hop)
+            # End of loop over hops in AM
+        # End of loop over AMs to process
 
         if self.opts.noReservation:
             self.logger.info("Not reserving resources")
             # Write the request rspec to a string that we save to a file
             requestString = self.parsedSCSRSpec.dom.toxml(encoding="utf-8")
-            header = "<!-- Expanded Resource request for stitching for:\n\tSlice: %s -->" % (self.slicename)
+            header = "<!-- Expanded Resource request for:\n\tSlice: %s -->" % (self.slicename)
             content = stripBlankLines(string.replace(requestString, "\\n", '\n'))
             filename = None
 
@@ -959,9 +921,13 @@ class StitchingHandler(object):
             raise OmniError("Empty %s rspec" % typeStr)
         if not is_rspec_string(requestString, None, None, logger=self.logger):
             raise OmniError("%s RSpec file did not contain an RSpec" % typeStr)
-        if not is_rspec_of_type(requestString, rspecType):
+#        if not is_rspec_of_type(requestString, rspecType):
 #        if not is_rspec_of_type(requestString, rspecType, "GENI 3", False, logger=self.logger):
-            raise OmniError("%s RSpec file did not contain a %s RSpec (wrong type or schema)" % (typeStr, typeStr))
+        if not (is_rspec_of_type(requestString, rspecType, "GENI 3", False) or is_rspec_of_type(requestString, rspecType, "ProtoGENI 2", False)):
+            if self.opts.devmode:
+                self.logger.info("RSpec of wrong type or schema, but continuing...")
+            else:
+                raise OmniError("%s RSpec file did not contain a %s RSpec (wrong type or schema)" % (typeStr, typeStr))
 
         # Run rspeclint
         if doRSpecLint:
@@ -970,7 +936,7 @@ class StitchingHandler(object):
             except:
                 self.logger.debug("No rspeclint found")
                 return
-            # FIXME: Make this support GENIv4+?
+            # FIXME: Make this support GENIv4+? PGv2?
             schema = rspec_schema.GENI_3_REQ_SCHEMA
             if rspecType == rspec_schema.MANIFEST:
                 schema = rspec_schema.GENI_3_MAN_SCHEMA
@@ -1185,11 +1151,16 @@ class StitchingHandler(object):
                 link.aggregates.append(am)
 
     def hasGRELink(self, requestRSpecObject):
+        isGRE = False
+
+        # Make sure links explicitly lists all its aggregates, so this test is valid
+        if requestRSpecObject:
+            for link in requestRSpecObject.links:
+                self.ensureLinkListsAMs(link, requestRSpecObject)
+
         # has a link that has 2 interface_refs and has a link type of *gre_tunnel and endpoint nodes are PG
         if requestRSpecObject:
             for link in requestRSpecObject.links:
-                # Make sure this link explicitly lists all its aggregates, so this test is valid
-                self.ensureLinkListsAMs(link, requestRSpecObject)
                 if not (link.typeName == link.GRE_LINK_TYPE or link.typeName == link.EGRE_LINK_TYPE):
                     # Not GRE
 #                    self.logger.debug("Link %s not GRE but %s", link.id, link.typeName)
@@ -1222,33 +1193,57 @@ class StitchingHandler(object):
                         self.logger.warn("GRE link %s has unknown interface_ref %s - assuming it is OK", link.id, ifc.client_id)
                 if isGRE:
                     self.logger.debug("Link %s is GRE", link.id)
-                    self.isGRE = True
-                    return True
 
         # Extra: ensure endpoints are xen for link type egre, openvz or rawpc for gre
 
-        return False
+        return isGRE
 
     def mustCallSCS(self, requestRSpecObject):
         '''Does this request actually require stitching?
         Check: >=1 link in main body with >= 2 diff component_manager
         names and no shared_vlan extension and no non-VLAN link_type
         '''
+        needSCS = False
+        # Make sure links explicitly lists all its aggregates, so this test is valid
         if requestRSpecObject:
             for link in requestRSpecObject.links:
-                # Make sure this link explicitly lists all its aggregates, so this test is valid
                 self.ensureLinkListsAMs(link, requestRSpecObject)
+
+        if requestRSpecObject:
+            for link in requestRSpecObject.links:
                 if len(link.aggregates) > 1 and not link.hasSharedVlan and link.typeName == link.VLAN_LINK_TYPE:
                     # Ensure this link has 2 well formed property elements with explicity capacities
                     self.addCapacityOneLink(link)
-                    return True
+                    self.logger.debug("Requested link %s is stitching", link.id)
+
+                    # Links that are ExoGENI only use ExoGENI stitching, not the SCS
+                    # So only if the link includes anything non-ExoGENI, we use the SCS
+                    egOnly = True
+                    for am in link.aggregates:
+                        # I wish I could do am.isEG but we don't get that info until later.
+                        # Hack!
+                        if 'exogeni' not in am.urn:
+                            needSCS = True
+                            egOnly = False
+                            break
+
+                    if egOnly:
+                        self.logger.debug("Link %s is only ExoGENI, so can use ExoGENI stitching.", link.id)
+                        if needSCS:
+                            self.logger.debug("But we already decided we need the SCS.")
+                        elif self.opts.noEGStitching and not needSCS:
+                            self.logger.info("Using GENI stitching instead of ExoGENI stitching")
+                            needSCS = True
+
+                    # FIXME: If the link includes the openflow rspec extension marking a desire to make the link
+                    # be OF controlled, then use the SCS and GENI stitching?
 
             # FIXME: Can we be robust to malformed requests, and stop and warn the user?
                 # EG the link has 2+ interface_ref elements that are on 2+ nodes belonging to 2+ AMs?
                 # Currently the parser only saves the IRefs on Links - no attempt to link to Nodes
                 # And for Nodes, we don't even look at the Interface sub-elements
 
-        return False
+        return needSCS
 
     def callSCS(self, sliceurn, requestDOM, existingAggs):
         '''Construct SCS args, call the SCS service'''
@@ -1354,14 +1349,17 @@ class StitchingHandler(object):
 
         # Exclude any hops given as an option from _all_ hops
         links = None
-        if (self.opts.excludehop and len(self.opts.excludehop) > 0) or (self.opts.includehop and len(self.opts.includehop) > 0):
+        if (self.opts.excludehop and len(self.opts.excludehop) > 0) or (self.opts.includehop and len(self.opts.includehop) > 0) or \
+                (self.opts.includehoponpath and len(self.opts.includehoponpath) > 0):
             links = requestDOM.getElementsByTagName(defs.LINK_TAG)
         if links and len(links) > 0:
             if not self.opts.excludehop:
                 self.opts.excludehop = []
             if not self.opts.includehop:
                 self.opts.includehop = []
-            self.logger.debug("Got links and option to exclude hops: %s, include hops: %s", self.opts.excludehop, self.opts.includehop)
+            if not self.opts.includehoponpath:
+                self.opts.includehoponpath= []
+            self.logger.debug("Got links and option to exclude hops: %s, include hops: %s, include hops on paths: %s", self.opts.excludehop, self.opts.includehop, self.opts.includehoponpath)
             for exclude in self.opts.excludehop:
                 # For each path
                 for link in links:
@@ -1403,6 +1401,31 @@ class StitchingHandler(object):
 
                     includes.append(include)
                     self.logger.debug("Including %s on path %s", include, path)
+
+                    # Put the new objects in the struct
+                    pathStruct[scs.HOP_INCLUSION_TAG] = includes
+                    profile[path] = pathStruct
+
+            for (includehop, includepath) in self.opts.includehoponpath:
+                # For each path
+                for link in links:
+                    path = link.getAttribute(Link.CLIENT_ID_TAG)
+                    path = str(path).strip()
+                    if not path.lower() == includepath.lower():
+                        continue
+                    if profile.has_key(path):
+                        pathStruct = profile[path]
+                    else:
+                        pathStruct = {}
+
+                    # Get hop_inclusion_list
+                    if pathStruct.has_key(scs.HOP_INCLUSION_TAG):
+                        includes = pathStruct[scs.HOP_INCLUSION_TAG]
+                    else:
+                        includes = []
+
+                    includes.append(includehop)
+                    self.logger.debug("Including %s on path %s", includehop, path)
 
                     # Put the new objects in the struct
                     pathStruct[scs.HOP_INCLUSION_TAG] = includes
@@ -1494,6 +1517,136 @@ class StitchingHandler(object):
           # All AMs must be listed in workflow data at least once per path they are in
 
         return parsed_rspec, workflow_parser
+
+    def ensureOneExoSM(self):
+        '''If 2 AMs in ams_to_process are ExoGENI, ensure we use the ExoSM. If 2 AMs use the ExoSM URL, combine them into a single AM.'''
+        if len(self.ams_to_process) < 2:
+            return
+        exoSMCount = 0
+        exoSMs = []
+        nonExoSMs = []
+        egAMCount = 0
+        egAMs = []
+        for am in self.ams_to_process:
+            if am.isExoSM:
+                egAMCount += 1
+                exoSMCount += 1
+                exoSMs.append(am)
+                self.logger.debug("%s is ExoSM", am)
+            else:
+                nonExoSMs.append(am)
+                if am.isEG:
+                    egAMs.append(am)
+                    egAMCount += 1
+
+        if egAMCount == 0:
+            return
+
+        if egAMCount > 1:
+            self.logger.debug("Request includes more than one ExoGENI AM. Must go through the ExoSM.")
+            if self.opts.devmode and self.opts.noExoSM:
+                self.logger.info("Multiple EG AMs but in dev mode requested no ExoSM, so continuing...")
+            else:
+                if self.opts.noExoSM:
+                    self.logger.warn("Requested resources from more than one ExoGENI AM, which requires use of the ExoSM. But also requested to not use the ExoSM - ignoring that.")
+                for anEGAM in egAMs:
+                    # Make anEGAM the ExoSM
+                    self.logger.debug("Making %s the ExoSM", anEGAM)
+                    anEGAM.alt_url = anEGAM.url
+                    anEGAM.url = defs.EXOSM_URL
+                    anEGAM.isExoSM = True
+                    anEGAM.nick = handler_utils._lookupAggNick(self, anEGAM.url)
+                    exoSMCount += 1
+                    exoSMs.append(anEGAM)
+                    nonExoSMs.remove(anEGAM)
+
+        if exoSMCount == 0:
+            self.logger.debug("Not using ExoSM")
+            return
+
+        exoSM = None
+        if exoSMCount > 0:
+            exoSM = exoSMs[0]
+            exoSMURN = handler_utils._lookupAggURNFromURLInNicknames(self.logger, self.config, defs.EXOSM_URL)
+            # Ensure standard ExoSM URN is the URN and old URN is in urn_syns
+            if exoSM.urn not in exoSM.urn_syns:
+                exoSM.urn_syns.append(exoSM.urn)
+            if exoSMURN != exoSM.urn:
+                exoSM.urn = exoSMURN
+            if exoSMURN not in exoSM.urn_syns:
+                exoSM.urn_syns += Aggregate.urn_syns(exoSMURN)
+
+        if exoSMCount < 2:
+            self.logger.debug("Only %d ExoSMs", exoSMCount)
+            return
+
+        for am in exoSMs:
+            if am == exoSM:
+                continue
+            self.logger.debug("Merge AM %s (%s, %s) into %s (%s, %s)", am.urn, am.url, am.alt_url, exoSM, exoSM.url, exoSM.alt_url)
+
+            # Merge urn_syns
+            if exoSM.urn != am.urn and am.urn not in exoSM.urn_syns:
+                exoSM.urn_syns.append(am.urn)
+            for urn in am.urn_syns:
+                if urn not in exoSM.urn_syns:
+                    exoSM.urn_syns.append(urn)
+
+            # Merge _dependsOn
+            if am in exoSM.dependsOn:
+                exoSM._dependsOn.discard(am)
+            if exoSM in am.dependsOn:
+                am._dependsOn.discard(exoSM)
+            exoSM._dependsOn.update(am._dependsOn)
+
+            # merge isDependencyFor
+            if am in exoSM.isDependencyFor:
+                exoSM.isDependencyFor.discard(am)
+            if exoSM in am.isDependencyFor:
+                am.isDependencyFor.discard(exoSM)
+            exoSM.isDependencyFor.update(am.isDependencyFor)
+
+            # merge _paths
+            # Path has hops and aggregates 
+            # Fix the list of aggregates to drop the aggregate being merged away
+            # What happens when a path has same aggregate at 2 discontiguous hops?
+            for path in am.paths:
+                path._aggregates.remove(am)
+                if not exoSM in path.aggregates:
+                    path._aggregates.add(exoSM)
+                if not path in exoSM.paths:
+                    self.logger.debug("Merging in path %s", path)
+                    exoSM._paths.add(path)
+
+            # FIXME: What does it mean for the same path to be on both aggregates? What has to be merged?
+
+            # merge _hops
+            # Hop points back to aggregate. Presumably these pointers must be reset
+            for hop in am.hops:
+                hop._aggregate = exoSM
+                if not hop in exoSM.hops:
+                    self.logger.debug("Merging in hop %s", hop)
+                    exoSM._hops.add(hop)
+
+            # merge userRequested
+            #  - If 1 was user requested and 1 was not, whole thing is user requested
+            if am.userRequested:
+                exoSM.userRequested = True
+
+            # merge alt_url
+            if exoSM.alt_url and handler_utils._extractURL(self.logger, exoSM.alt_url) == handler_utils._extractURL(self.logger, exoSM.url):
+                if handler_utils._extractURL(self.logger, exoSM.alt_url) != handler_utils._extractURL(self.logger, am.url):
+                    exoSM.alt_url = am.alt_url
+
+        # ensure only one in cls.aggs
+        newaggs = dict()
+        for (key, agg) in Aggregate.aggs.items():
+            if not (agg.isExoSM and agg != exoSM):
+                newaggs[key] = agg
+        Aggregate.aggs = newaggs
+
+        nonExoSMs.append(exoSM)
+        self.ams_to_process = nonExoSMs
 
     def add_am_info(self, aggs):
         '''Add extra information about the AMs to the Aggregate objects, like the API version'''
@@ -1783,19 +1936,15 @@ class StitchingHandler(object):
                     self.logger.debug("   Supports Stitch Schema V2")
                 if agg.pgLogUrl:
                     self.logger.debug("   PG Log URL %s", agg.pgLogUrl)
-                if agg.sliverExpirations:
-                    if isinstance(agg.sliverExpirations, list):
-                        if len(agg.sliverExpirations) > 1:
-                            # More than 1 distinct sliver expiration found
-                            # Sort and take first
-                            agg.sliverExpirations = agg.sliverExpirations.sort()
-                            outputstr = agg.sliverExpirations[0].isoformat()
-                            self.logger.debug("   Resources here expire at %d different times. First expiration is %s UTC" % (len(agg.sliverExpirations), outputstr))
-                        elif len(agg.sliverExpirations) == 1:
-                            outputstr = agg.sliverExpirations[0].isoformat()
-                            self.logger.debug("   Resources here expire at %s UTC" % (outputstr))
-                    else:
-                        self.logger.debug("   Resources here expire at %s UTC", agg.sliverExpirations)
+                if agg.sliverExpirations is not None:
+                    if len(agg.sliverExpirations) > 1:
+                        # More than 1 distinct sliver expiration found
+                        # Sort and take first
+                        outputstr = agg.sliverExpirations[0].isoformat()
+                        self.logger.debug("   Resources here expire at %d different times. First expiration is %s UTC" % (len(agg.sliverExpirations), outputstr))
+                    elif len(agg.sliverExpirations) == 1:
+                        outputstr = agg.sliverExpirations[0].isoformat()
+                        self.logger.debug("   Resources here expire at %s UTC" % (outputstr))
                 for h in agg.hops:
                     self.logger.debug( "  Hop %s" % (h))
                 for ad in agg.dependsOn:
@@ -1820,7 +1969,7 @@ class StitchingHandler(object):
         # Top level link element is effectively arbitrary, but with comments on what other AMs said
         lastDom = None
         if lastAM is None:
-            self.logger.debug("Combined manifest will start from SCS expanded request RSpec")
+            self.logger.debug("Combined manifest will start from expanded request RSpec")
             lastDom = self.parsedSCSRSpec.dom
             # Change that dom to be a manifest RSpec
             # for each attribute on the dom root node, change "request" to "manifest"
@@ -1998,11 +2147,10 @@ class StitchingHandler(object):
         rspecs[0].setAttribute(defs.EXPIRES_ATTRIBUTE, sliceexp.strftime('%Y-%m-%dT%H:%M:%SZ'))
         self.logger.debug("Added expires %s", rspecs[0].getAttribute(defs.EXPIRES_ATTRIBUTE))
  
-    def confirmSafeRequest(self):
-        '''Confirm this request is not asking for a loop. Bad things should
-        not be allowed, dangerous things should get a warning.'''
-
+    def getUnboundNode(self):
         # If any node is unbound, then all AMs will try to allocate it.
+        amURNs = []
+        unboundNode = None
         for node in self.parsedUserRequest.nodes:
             if node.amURN is None:
                 if self.opts.devmode:
@@ -2010,9 +2158,20 @@ class StitchingHandler(object):
                     # code 65535: std::exception
                     self.logger.warn("Node %s is unbound in request", node.id)
                 else:
-                    raise OmniError("Node %s is unbound in request - all nodes must be bound as all aggregates get the same request RSpec" % node.id)
-#            else:
+                    self.logger.debug("Node %s is unbound in request", node.id)
+                    unboundNode = node.id
+            else:
 #                self.logger.debug("Node %s is on AM %s", node.id, node.amURN)
+                if node.amURN not in amURNs:
+                    amURNs.append(node.amURN)
+        self.logger.debug("Request RSpec binds nodes to %d AMs", len(amURNs))
+        if len(amURNs) > 1:
+            self.isMultiAM = True
+        return unboundNode
+
+    def confirmSafeRequest(self):
+        '''Confirm this request is not asking for a loop. Bad things should
+        not be allowed, dangerous things should get a warning.'''
 
         # FIXME FIXME - what other checks go here?
 
@@ -2072,6 +2231,7 @@ class StitchingHandler(object):
 
                     # FIXME: agg.allocateTries?
                     agg.dcn = oldAgg.dcn
+                    agg.isOESS = oldAgg.isOESS
                     agg.isPG = oldAgg.isPG
                     agg.isEG = oldAgg.isEG
                     agg.isExoSM = oldAgg.isExoSM

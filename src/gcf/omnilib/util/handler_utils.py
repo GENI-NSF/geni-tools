@@ -99,6 +99,8 @@ def _extractURL(logger, url):
 def _isBetterNick(retNick, nick, logger=None):
     if not nick:
         return False
+    if retNick and retNick == nick:
+        return False
     if not retNick or len(nick) < len(retNick) or \
             (retNick.startswith('ig-') and nick.endswith('-ig')) or \
             (retNick.startswith('pg-') and nick.endswith('-pg')) or \
@@ -152,13 +154,72 @@ def _lookupAggNick(handler, aggregate_urn_or_url):
 
 def _lookupAggURNFromURLInNicknames(logger, config, agg_url):
     urn = ""
+    retNick = None
+    # Take exact match else take row where agg_url startswith url in cache else
+    # take row where extractURL exact match extractURL in cache
     nagg_url = _extractURL(logger, agg_url)
-    if nagg_url:
-        for (amURN, amURL) in config['aggregate_nicknames'].values():
+    if agg_url:
+        for nick, (amURN, amURL) in config['aggregate_nicknames'].items():
+            if agg_url.strip() == amURL.strip() and amURN.strip() != '':
+                if _isBetterNick(retNick, nick, logger):
+                    urn = amURN.strip()
+#                    logger.debug("Supplied AM URL %s is URN %s according to configured aggregate nicknames (matches URL %s, nick %s T1)", agg_url, urn, amURL, nick)
+                    retNick = nick
+        if retNick is not None:
+            logger.debug("Supplied AM URL %s is URN %s according to configured aggregate nicknames (nick %s T1)", agg_url, urn, retNick)
+            return urn
+
+        for nick, (amURN, amURL) in config['aggregate_nicknames'].items():
+            if agg_url.strip().startswith(amURL.strip()) and amURN.strip() != '':
+                if _isBetterNick(retNick, nick, logger):
+                    urn = amURN.strip()
+#                    logger.debug("Supplied AM URL %s is URN %s according to configured aggregate nicknames (matches %s T2)", agg_url, urn, amURL)
+                    retNick = nick
+        if retNick is not None:
+            logger.debug("Supplied AM URL %s is URN %s according to configured aggregate nicknames (nick %s T2)", agg_url, urn, retNick)
+            return urn
+
+        for nick, (amURN, amURL) in config['aggregate_nicknames'].items():
+            if nagg_url == amURL.strip() and amURN.strip() != '':
+                if _isBetterNick(retNick, nick, logger):
+                    urn = amURN.strip()
+#                    logger.debug("Supplied AM URL %s is URN %s according to configured aggregate nicknames (matches %s T3)", agg_url, urn, amURL)
+                    retNick = nick
+        if retNick is not None:
+            logger.debug("Supplied AM URL %s is URN %s according to configured aggregate nicknames (nick %s T3)", agg_url, urn, retNick)
+            return urn
+
+        for nick, (amURN, amURL) in config['aggregate_nicknames'].items():
+            extr_nick_url = _extractURL(logger, amURL)
+            if nagg_url == extr_nick_url and amURN.strip() != '':
+                if _isBetterNick(retNick, nick, logger):
+                    urn = amURN.strip()
+#                    logger.debug("Supplied AM URL %s is URN %s according to configured aggregate nicknames (matches %s T4)", agg_url, urn, amURL)
+                    retNick = nick
+        if retNick is not None:
+            logger.debug("Supplied AM URL %s is URN %s according to configured aggregate nicknames (nick %s T4)", agg_url, urn, retNick)
+            return urn
+
+        for nick, (amURN, amURL) in config['aggregate_nicknames'].items():
+            extr_nick_url = _extractURL(logger, amURL)
+            if extr_nick_url.startswith(nagg_url) and amURN.strip() != '':
+                if _isBetterNick(retNick, nick, logger):
+                    urn = amURN.strip()
+#                    logger.debug("Supplied AM URL %s is URN %s according to configured aggregate nicknames (matches %s T5)", agg_url, urn, amURL)
+                    retNick = nick
+        if retNick is not None:
+            logger.debug("Supplied AM URL %s is URN %s according to configured aggregate nicknames (nick %s T5)", agg_url, urn, retNick)
+            return urn
+
+        for nick, (amURN, amURL) in config['aggregate_nicknames'].items():
             if nagg_url in amURL and amURN.strip() != '':
-                urn = amURN.strip()
-                logger.debug("Supplied AM URL %s is URN %s according to configured aggregate nicknames (matches %s)", agg_url, urn, amURL)
-                break
+                if _isBetterNick(retNick, nick, logger):
+                    urn = amURN.strip()
+#                    logger.debug("Supplied AM URL %s is URN %s according to configured aggregate nicknames (matches %s T6)", agg_url, urn, amURL)
+                    retNick = nick
+        if retNick is not None:
+            logger.debug("Supplied AM URL %s is URN %s according to configured aggregate nicknames (nick %s T6)", agg_url, urn, retNick)
+            return urn
     return urn
 
 def _lookupAggNickURLFromURNInNicknames(logger, config, agg_urn):
@@ -541,6 +602,8 @@ def _filename_part_from_am_url(url):
         server = server[:(server.index("/openflow/gapi/"))]
     elif server.endswith(":3626/foam/gapi/1"):
         server = server[:(server.index(":3626/foam/gapi/1"))]
+    elif server.endswith(":3626/foam/gapi/2"):
+        server = server[:(server.index(":3626/foam/gapi/2"))]
     elif server.endswith("/gapi"):
         server = server[:(server.index("/gapi"))]
     elif server.endswith(":12346"):
@@ -938,7 +1001,7 @@ def expires_from_rspec(result, logger=None):
     If that fails, try to parse the ExoGENI sliver info extension.
     If those fail, return None.'''
     # SFA and PG use the expires attribute. MAX too. ION soon, but for now it is wrong.
-    # FOAM and EG and GRAM do not. EG however has a sliver_info extension.
+    # FOAM (and AL2S) and EG and GRAM do not. EG however has a sliver_info extension.
     if result is None or str(result).strip() == "":
         return None
     rspec = str(result)
@@ -1018,7 +1081,7 @@ def expires_from_status(status, logger):
     # PG: top-level pg_expires
     # DCN: top-level geni_expires
     # GRAM: per resource geni_expires
-    # FOAM: top level foam_expires
+    # FOAM (and AL2S): top level foam_expires
     # EG: per resource orca_expires
     # SFA: pl_expires (also check sfa_expires to be safe)
 

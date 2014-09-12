@@ -67,3 +67,10 @@ def datetime_to_utc(input):
 
 def datetime_to_epoch(input):
     return int(time.mktime(input.timetuple()))
+
+def adjust_datetime(input, days=0, hours=0, minutes=0, seconds=0):
+    """
+    Adjust the input date by the specified delta (in seconds).
+    """
+    dt = utcparse(input)
+    return dt + datetime.timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
