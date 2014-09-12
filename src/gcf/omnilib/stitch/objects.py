@@ -569,8 +569,12 @@ class Aggregate(object):
         # Mark AM is busy
         self.inProcess = True
 
+        # Get a new expires value for request to try to ensure all AMs expire at the same time.
+        # See ticket #577
+        newExpires = self.getExpiresForRequest()
+
         # Generate the new request Dom
-        self.requestDom = self.getEditedRSpecDom(rspecDom)
+        self.requestDom = self.getEditedRSpecDom(rspecDom, newExpires)
 
         # Get the manifest for this AM
         # result is a manifest RSpec string. Errors wouuld be raised
@@ -674,6 +678,81 @@ class Aggregate(object):
         if not hadSuggestedNotRequest:
             # mark self complete
             self.completed = True
+
+    def getExpiresForRequest(self):
+        # Set the expires attribute to try to ensure all AMs expire at the same time.
+        # See ticket #577
+
+        # DCN and PG AMs honor this. GRAM does not, and I doubt AL2S or EG does. But set it everywhere for now anyhow.
+
+        # Note that this code includes an ugly HACK - it uses constants for expected initial sliver expiration at various AM types.
+        # Adding new AM types or if policies change will cause this to work, well, differently.
+        # The goal here is to ensure transit networks expire at or before endpoints, and the overall link has
+        # a minimal number of different expirations.
+        # Additionally, minimize additional AM API call (like auto renewing the circuit after the reservation)
+
+        # First, compute desired expires value
+        # If not reserving resources after, set expires to the minimum we expect from other AMs on the path
+        # min(slice expiration, expiration of other AMs on paths for this AM, default sliver expirations by AM type for other AMs on these paths where no reservation yet)
+        # (Note algorithm changes if we are doing renewals after)
+
+        now = datetime.datetime.utcnow()
+
+        # MinDays = slice Expiration
+
+        # Anonymous inner class that acts like the handler object the method expects
+        class MyHandler(object):
+            def __init__(self, logger, opts):
+                self.logger = logger
+                self.opts = opts
+
+        sliceCred = _load_cred(MyHandler(self.logger, opts), opts.slicecredfile)
+        sliceexp = get_cred_exp(self.logger, sliceCred)
+        sliceExpFromNow = naiveUTC(sliceexp) - now
+        minDays = sliceExpFromNow.days
+        newExpires = naiveUTC(sliceexp)
+        self.logger.debug("Starting newExpires at slice expiration %s, so init minDays to %d", sliceexp, minDays)
+
+        for path in self.paths:
+            for am in path.aggregates:
+                if am.sliverExpirations and len(am.sliverExpirations) > 0 and am.sliverExpirations[0] is not None:
+                    newExpires = min(newExpires, am.sliverExpirations[0])
+                    self.logger.debug("%s sliver expires at %s. newExpires now %s", am, am.sliverExpirations[0], newExpires)
+                    continue
+                else:
+                    amExpDays = None
+                    # This part is ugly. We hardcode some knowledge of what current AM policies are.
+                    # AL2S policy is missing, PG Utah and iMinds policies are missing, as are any new AM types
+                    # This would be better from GetVersion or some cache file we periodically download. FIXME!
+                    # HACK!
+                    if am.isPG:
+                        # If this is Utah PG or DDC, set to their shorter expiration
+                        if am.urn in [defs.PGU_URN, defs.IGUDDC_URN]:
+                            amExpDays = defs.DEF_SLIVER_EXPIRATION_UTAH
+                            self.logger.debug("AM's path includes %s which is Utah PG or DDC - %d day sliver expiration", am, defs.DEF_SLIVER_EXPIRATION_UTAH)
+                        else:
+                            amExpDays = defs.DEF_SLIVER_EXPIRATION_IG
+                    elif am.isEG:
+                        amExpDays = defs.DEF_SLIVER_EXPIRATION_EG
+                    elif am.isGRAM:
+                        amExpDays = defs.DEF_SLIVER_EXPIRATION_GRAM
+
+                    if amExpDays is not None:
+                        self.logger.debug("%s policy says expDays=%d", am, amExpDays)
+                        newminDays = min(minDays, amExpDays)
+                        if newminDays != minDays:
+                            minDays = newminDays
+                            # New desired expiration is now plus that # of days, less a little to make sure
+                            # We don't violate local AM policy
+                            newExpires = min(now + datetime.timedelta(days=minDays) - datetime.timedelta(minutes=10), newExpires)
+#                        self.logger.debug("%s policy says expDays=%d so minDays=%d, newExpires=%s", am, amExpDays, minDays, newExpires)
+                    self.logger.debug("After %s, minDays=%d, newExpires=%s", am, minDays, newExpires)
+            # End loop over AMs on path
+        # End loop over paths
+
+        self.logger.debug("Will request newExpires=%s", newExpires)
+
+        return newExpires
 
     def copyVLANsAndDetectRedo(self):
         '''Copy VLANs to this AMs hops from previous manifests. Check if we already had manifests.
@@ -903,7 +982,9 @@ class Aggregate(object):
 #            self.logger.debug("No stitching schema in this attribute value: %s='%s'", attr.name, attr.value)
             return attr, 0
 
-    def getEditedRSpecDom(self, originalRSpec):
+    def getEditedRSpecDom(self, originalRSpec, newExpires=None):
+        # newExpires is a datetime value for the expires attribute in the request
+
         # For each path on this AM, get that Path to write whatever it thinks necessary into a
         # deep clone of the incoming RSpec Dom
         requestRSpecDom = originalRSpec.cloneNode(True)
@@ -938,6 +1019,12 @@ class Aggregate(object):
 #                    self.logger.warn("Slivers at PG Utah may not be requested initially for > 5 days. PG Utah slivers " +
 #                                     "will expire earlier than at other aggregates - requested expiration being reset from %s to %s", expires, newExpires)
 #                    rspecs[0].setAttribute(defs.EXPIRES_ATTRIBUTE, newExpires)
+
+        if newExpires is not None:
+            newExpires = naiveUTC(newExpires).strftime('%Y-%m-%dT%H:%M:%SZ')
+            rspecs = requestRSpecDom.getElementsByTagName(defs.RSPEC_TAG)
+            if rspecs and len(rspecs) > 0:
+                rspecs[0].setAttribute(defs.EXPIRES_ATTRIBUTE, newExpires)
 
         changing1To2 = False # FIXME: Use this later to determine how to write attributes?
         changing2To1 = False
@@ -2279,12 +2366,18 @@ class Aggregate(object):
                             or "Could not reserve a vlan tag for " in msg) and (code == 24 or code==2 or code == 1) and \
                             (amcode==2 or amcode==24 or amcode == 1) and amtype=='protogeni':
                         import re
-                        if "Error reserving vlan tag for" in msg:
+                        if "Error reserving vlan tag for '" in msg:
                             match = re.match("^Error reserving vlan tag for '(.+)'", msg)
-                        elif "Could not find a free vlan tag for" in msg:
+                        elif "Error reserving vlan tag for " in msg:
+                            match = re.match("^Error reserving vlan tag for (.+)", msg)
+                        elif "Could not find a free vlan tag for '" in msg:
                             match = re.match("^Could not find a free vlan tag for '(.+)'", msg)
-                        elif "Could not reserve a vlan tag for" in msg:
+                        elif "Could not find a free vlan tag for " in msg:
+                            match = re.match("^Could not find a free vlan tag for (.+)", msg)
+                        elif "Could not reserve a vlan tag for '" in msg:
                             match = re.match("^Could not reserve a vlan tag for '(.+)'", msg)
+                        elif "Could not reserve a vlan tag for" in msg:
+                            match = re.match("^Could not reserve a vlan tag for (.+)", msg)
                         if match:
                             failedPath = match.group(1).strip()
                             failedHopsnoXlate = []
@@ -2300,7 +2393,7 @@ class Aggregate(object):
                             else:
                                 self.logger.debug("Cannot set failedHop from parsed error message: %s: Got %d failed hops that don't do translation", msg, len(failedHopsnoXlate))
                         else:
-                            self.logger.debug("Failed to parse failed from PG message: %s", msg)
+                            self.logger.debug("Failed to parse failed path from PG message: %s", msg)
                     elif 'vlan tag ' in msg and ' not available' in msg and (code==1 or code==24 or code==2) and (amcode==1 or amcode==24) and amtype=="protogeni":
                         #self.logger.debug("This was a PG error message that names the failed link/tag")
                         # Parse out the tag and link name
