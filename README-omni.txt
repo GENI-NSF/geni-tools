@@ -25,12 +25,12 @@ for details on installing Omni.
 See README-omniconfigure.txt or 
 http://trac.gpolab.bbn.com/gcf/wiki/OmniConfigure/Automatic for details about how to configure Omni.
 
-For 'stitching' support (experimenter defined custom topologies), see
-README-stitching.txt.
+For 'stitching' (experimenter defined custom topologies) or
+multi-aggregate topologies, see README-stitching.txt.
 
 The currently supported CFs (clearinghouses) are the GENI Portal,
 ProtoGENI,  SFA (!PlanetLab), and GCF. Omni works with any GENI AM API compliant AM.
-These include InstaGENI and ExoGENI racks, ProtoGENI, !OpenFlow, SFA and GCF.
+These include InstaGENI and ExoGENI racks, ProtoGENI, !OpenFlow, SFA, FOAM and GCF.
 
 Omni performs the following functions:
  * Talks to each CF in its native API
@@ -42,15 +42,15 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 == Release Notes ==
 
 New in v2.7:
- * Fix nickname cache updating when temp and home directories are on 
-   different disks - use `shutil.move`. (#646)
- * Look for fallback `agg_nick_cache` in correct location (#662)
- * Honor the `useslicemembers` and `ignoreconfigusers` options in the `omni_config` (#671)
- * Fix `get_member_email` e.g. from `listprojectmembers` for speaks-for. (#676)
- * Use relative imports in `speaksfor_util` if possible. (#657)
  * Calls to `status` and `sliverstatus` will also call the CH
    to try to sync up the CH records of slivers with truth
    as reported by the AM. (#634)
+ * Honor the `useslicemembers` and `ignoreconfigusers` options in the `omni_config` (#671)
+ * Fix `get_member_email` e.g. from `listprojectmembers` for speaks-for. (#676)
+ * Fix nickname cache updating when temp and home directories are on 
+   different disks - use `shutil.move`. (#646)
+ * Look for fallback `agg_nick_cache` in correct location (#662)
+ * Use relative imports in `speaksfor_util` if possible. (#657)
  * Fix URL to URN lookups to better handle names that differ by a prefix. (#683)
 
 New in v2.6:
@@ -614,7 +614,7 @@ Omni scripting allows a script to:
  * Parse the returns from Omni commands and use those values in subsequent Omni calls
  * Control or suppress the logging in Omni
 
-See `examples/expirationofmyslices.py` and `examples/myscript.py` in the gcf distribution.
+For examples, see `src/stitcher.py` or `examples/expirationofmyslices.py` and `examples/myscript.py` in the gcf distribution.
 Or [http://trac.gpolab.bbn.com/gcf/wiki/OmniScriptingExpiration Omni Scripting Expiration] 
 and
 [http://trac.gpolab.bbn.com/gcf/wiki/OmniScriptingWithOptions Omni Scripting with Options] 
@@ -629,7 +629,8 @@ own option names internally. Be sure not to pick the same option names. See `gcf
 Extending Omni to support additional frameworks with their own
 clearinghouse APIs requires adding a new Framework extension
 class. Adding other experiment management or utility functions can be
-done using Omni scripting, or by adding functions to `src/gcf/omnilib/amhandler.py`.
+done using Omni scripting, or by adding functions to
+`src/gcf/omnilib/amhandler.py`. 
 
 == Omni workflow ==
 For a fully worked simple example of using Omni, see 
@@ -637,7 +638,7 @@ http://groups.geni.net/geni/wiki/HowToUseOmni
 
  1. Get your user certificate and keys: Pick a Clearinghouse you want to
     use (that is the control framework you will use). Get a user
-    certificate and key pair.
+    certificate and key pair. 
  2. Configure Omni: Be sure the appropriate section of omni_config for
     your framework (sfa/gcf/pg/chapi/pgch) has appropriate settings for
     contacting that CF, and user credentials that are valid for that
