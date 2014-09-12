@@ -501,6 +501,9 @@ Cannot find the set of paths for the RequestTopology. '.
 `Malformed arguments: *** verifygenicred`
  - There was a problem with your credentials. Try renewing your slice?
 
+`Malformed rspec`
+ - There was a problem with your request RSpec. Do you have a typo?
+
 === Errors in the tool – you may need to report this as a bug ===
 
 ` … has request tag XXX that is already in use by …`

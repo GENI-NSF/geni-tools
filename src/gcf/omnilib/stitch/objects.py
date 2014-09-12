@@ -1700,6 +1700,10 @@ class Aggregate(object):
                                 self.logger.debug("Fatal error from PG AM - credential problem?")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Credential problem. Try renewing your slice? %s..." % (self, str(ae)[:120])
+                            elif code == 1 and amcode == 1 and ("Malformed rspec" in msg or "Malformed rspec" in val):
+                                self.logger.debug("Fatal error from PG AM - rspec problem")
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s. Request RSpec typo? %s..." % (self, str(ae)[:120])
                         elif self.isEG:
                             # AM said success but manifest said failed
                             # FIXME: Other fatal errors?

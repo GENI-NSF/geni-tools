@@ -49,6 +49,7 @@ gcf 2.7:
   * `Insufficient rights` error is fatal at SFA AMs. (#677)
   * `Malformed arguments: *** verifygenicred` is fatal at PG AMs.
     Perhaps the slice needs to be renewed? (#691)
+  * `Malformed rspec` error is fatal at SFA AMs. (#693)
   * Avoid requesting VLAN tag 'any' at OESS and DCN AMs. (#644)
   * Be sure to avoid requesting 'any' from AMs that do not support it. 
     Copy the `isOESS` attribute across SCS calls. (#681)
