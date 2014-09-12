@@ -891,6 +891,9 @@ Options:
     --end-time=GENI_END_TIME
                         Requested end time for any newly allocated or
                         provisioned slivers - may be ignored by the AM
+    --start-time=GENI_START_TIME
+                        Requested start time for any allocated slivers
+                        - NOW if not provided, could be for future reservations
     --optionsfile=JSON_OPTIONS_FILENAME
                         Send all options defined in named JSON format file to
                         methods that take options
