@@ -1001,7 +1001,7 @@ def expires_from_rspec(result, logger=None):
     If that fails, try to parse the ExoGENI sliver info extension.
     If those fail, return None.'''
     # SFA and PG use the expires attribute. MAX too. ION soon, but for now it is wrong.
-    # FOAM and EG and GRAM do not. EG however has a sliver_info extension.
+    # FOAM (and AL2S) and EG and GRAM do not. EG however has a sliver_info extension.
     if result is None or str(result).strip() == "":
         return None
     rspec = str(result)
@@ -1081,7 +1081,7 @@ def expires_from_status(status, logger):
     # PG: top-level pg_expires
     # DCN: top-level geni_expires
     # GRAM: per resource geni_expires
-    # FOAM: top level foam_expires
+    # FOAM (and AL2S): top level foam_expires
     # EG: per resource orca_expires
     # SFA: pl_expires (also check sfa_expires to be safe)
 
