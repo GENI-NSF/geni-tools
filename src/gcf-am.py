@@ -137,7 +137,7 @@ def main(argv=None):
     else:
         authorizer_classname = "gcf.geni.auth.sfa_authorizer.SFA_Authorizer"
     authorizer = getInstanceFromClassname(authorizer_classname, 
-                                          opts.rootcadir, opts, argument_guard)
+                                          getAbsPath(opts.rootcadir), opts, argument_guard)
 
     # Use XMLRPC authorizer if opt.remote_authorizer is set
     if hasattr(opts, 'remote_authorizer'):
