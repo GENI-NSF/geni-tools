@@ -571,7 +571,7 @@ class Aggregate(object):
 
         # Get a new expires value for request to try to ensure all AMs expire at the same time.
         # See ticket #577
-        newExpires = self.getExpiresForRequest()
+        newExpires = self.getExpiresForRequest(opts)
 
         # Generate the new request Dom
         self.requestDom = self.getEditedRSpecDom(rspecDom, newExpires)
@@ -679,7 +679,7 @@ class Aggregate(object):
             # mark self complete
             self.completed = True
 
-    def getExpiresForRequest(self):
+    def getExpiresForRequest(self, opts):
         # Set the expires attribute to try to ensure all AMs expire at the same time.
         # See ticket #577
 
@@ -2056,7 +2056,7 @@ class Aggregate(object):
                     else:
                         self.logger.warn("%s is (still) %s at %s. Delete and retry.", opName, status, self)
                     if dcnerror and dcnerror.strip() != '':
-                        if "There are no VLANs available on link" in dcnerror and "VLAN PCE(PCE_CREATE_FAILED)" in dcnerror:
+                        if ("There are no VLANs available on link" in dcnerror and "VLAN PCE(PCE_CREATE_FAILED)" in dcnerror) or "Bandwidth PCE(PCE_CREATE_FAILED)" in dcnerror:
                             # We'll log something better later
                             self.logger.debug("  Status had error message: %s", dcnerror)
                         else:
@@ -2149,7 +2149,7 @@ class Aggregate(object):
                         self.inProcess = False
 
                         import re
-                        match = re.match("Bandwidth PCE(PCE_CREATE_FAILED): 'Unable to find path because the maximum bandwidth of (.+) has been exceeded. (.+) is available and", dcnerror)
+                        match = re.match("Bandwidth PCE\(PCE_CREATE_FAILED\): 'Unable to find path because the maximum bandwidth of (.+) has been exceeded. (.+) is available and", dcnerror)
                         failedHop = None
                         availBW = None
                         if match:
