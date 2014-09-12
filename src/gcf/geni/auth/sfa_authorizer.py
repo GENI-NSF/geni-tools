@@ -108,7 +108,7 @@ class SFA_Authorizer(Base_Authorizer):
                                                         slice_urn, privileges, 
                                                         opts)
         except Exception, e:
-            raise Exception("Insuffient privileges: %s" % str(e))
+            raise Exception("Insufficient privileges: %s" % str(e))
 
         
 
