@@ -988,7 +988,7 @@ def getParser():
     v3group.add_option("--end-time", dest='geni_end_time',
                       help="Requested end time for any newly allocated or provisioned slivers - may be ignored by the AM")
     v3group.add_option("--start-time", dest='geni_start_time',
-                      help="Requested start  time for any allocated slivers - NOW if not provided, could be for future reservations")
+                      help="Requested start time for any allocated slivers - NOW if not provided, could be for future reservations")
 # Sample options file content:
 #{
 # "option_name_1": "value",

@@ -5491,7 +5491,7 @@ class AMCallHandler(object):
 
     # slicename included just to pass on to datetimeFromString
     def _build_options(self, op, slicename, options):
-        '''Add geni_best_effort and geni_end_time and geni_start_Time to options if supplied, applicable'''
+        '''Add geni_best_effort and geni_end_time and geni_start_time to options if supplied, applicable'''
         if self.opts.api_version == 1 and op != 'ListResources':
             return None
         if not options or options is None:
@@ -5515,7 +5515,7 @@ class AMCallHandler(object):
         if self.opts.api_version >= 3 and self.opts.geni_start_time:
             if op in ('Allocate') or self.opts.devmode:
                 if self.opts.devmode and not op in ('Allocate'):
-                    self.logger.warn("Got geni_end_time for method %s but using anyhow", op)
+                    self.logger.warn("Got geni_start_time for method %s but using anyhow", op)
                 time = datetime.datetime.min
                 try:
                     (time, time_with_tz, time_string) = self._datetimeFromString(self.opts.geni_start_time, name=slicename)
@@ -5526,7 +5526,6 @@ class AMCallHandler(object):
                     if self.opts.devmode:
                         self.logger.info(" ... passing raw geni_start_time")
                         options["geni_start_time"] = self.opts.geni_start_time
-
 
         if self.opts.api_version >= 3 and self.opts.geni_best_effort:
             # FIXME: What about Describe? Status?
