@@ -58,6 +58,7 @@ gcf 2.7:
   * Use relative imports in `scs` if possible. (#658)
   * Loop over all links when adding `component_manager` and `property`
     elements, rather than exit on first. (#680)
+  * If a DCN AM reports insufficent bandwidth in sliverstatus, fail. (#653)
 
  * readyToLogin
    * Handle when omni switches AM API version number (#643)
