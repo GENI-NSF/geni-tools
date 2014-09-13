@@ -46,6 +46,14 @@ class AM_Methods:
     RENEW_V3 = "Renew_V3"
     SHUTDOWN_V3 = "Shutdown_V3"
 
+V2_Methods = [AM_Methods.LIST_RESOURCES_V2, 
+              AM_Methods.LIST_RESOURCES_FOR_SLICE_V2,
+              AM_Methods.CREATE_SLIVER_V2, 
+              AM_Methods.DELETE_SLIVER_V2, 
+              AM_Methods.RENEW_SLIVER_V2,
+              AM_Methods.SLIVER_STATUS_V2, 
+              AM_Methods.SHUTDOWN_V2];
+
 # Base class for all AM authorizers
 # Should call its base method to get proper logging
 class Base_Authorizer(object):

@@ -104,6 +104,12 @@ class Slice(object):
         else:
             return Resource.STATUS_UNKNOWN
 
+# Simple class to hold a sliver urn to be compatible with V3 calls
+class Sliver(object):
+    def __init__(self, urn):
+        self._urn = urn
+
+    def urn(self): return self._urn
 
 class ReferenceAggregateManager(object):
     '''A reference Aggregate Manager that manages fake resources.'''
@@ -547,6 +553,17 @@ class ReferenceAggregateManager(object):
             self.logger.info("Shutdown: No such slice: %s.", slice_urn)
             return self._no_such_slice(slice_urn)
 
+    # Return a slice and list slivers
+    def decode_urns(self, urns):
+        slice_urn = urns[0]
+        if slice_urn not in self._slices:
+            raise ApiErrorException(AM_API.SEARCH_FAILED, 
+                                    'Unknown slice "%s%' % (slice_urn))
+        slice_obj = self._slices[slice_urn]
+        slivers = [Sliver(sliver_urn) \
+                       for sliver_urn in slice_obj.resources.values()]
+        return slice_obj, slivers
+
     def successResult(self, value, output=""):
         code_dict = dict(geni_code=0,
                          am_type="gcf2",
@@ -782,12 +799,12 @@ class AggregateManager(object):
         expiration time. Return False on error."""
         args = {'slice_urn' : slice_urn, 'expiration_time' : expiration_time}
         with AMMethodContext(self, AM_Methods.RENEW_SLIVER_V2,
-                             self.logger, self.authorizer, credentials,
-                             self.resource_manager,
+                             self.logger, self.authorizer, 
+                             self.resource_manager, credentials,
                              args, options, resource_bindings=True) as amc:
             if not amc._error:
                 slice_urn = amc._args['slice_urn']
-                expiration_time = anc._args['expiration_time']
+                expiration_time = amc._args['expiration_time']
                 amc._result = \
                     self._delegate.RenewSliver(slice_urn, credentials, 
                                                expiration_time, amc._options)
@@ -798,8 +815,9 @@ class AggregateManager(object):
         behaving sliver, without deleting it to allow for forensics.'''
         args = {'slice_urn' : slice_urn}
         with AMMethodContext(self, AM_Methods.SHUTDOWN_V2,
-                             self.logger, self.authorizer, credentials,
+                             self.logger, self.authorizer, 
                              self.resource_manager,
+                             credentials,
                              args, options) as amc:
             if not amc._error:
                 slice_urn = amc._args['slice_urn']

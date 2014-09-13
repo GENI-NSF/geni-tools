@@ -28,7 +28,7 @@ import gcf.sfa.trust.credential as credential
 import types
 from ..util.tz_util import tzd
 import xml.dom.minidom
-from .base_authorizer import AM_Methods
+from .base_authorizer import AM_Methods, V2_Methods;
 
 # Class to provide requested resource states
 # so that the authorizer can enforce resource quota policies
@@ -73,9 +73,11 @@ class GCFAM_Resource_Manager(Base_Resource_Manager):
             # these must be distinct
             curr_allocations = \
                 self.get_current_allocations(aggregate_manager, arguments, 
+                                             method_name, 
                                              options, creds)
             req_allocations = \
                 self.get_requested_allocations(aggregate_manager, arguments, 
+                                               method_name,
                                                options, creds)
 
             return curr_allocations + req_allocations
@@ -88,6 +90,7 @@ class GCFAM_Resource_Manager(Base_Resource_Manager):
             # Grab current allocations
             curr_allocations = \
                 self.get_current_allocations(aggregate_manager, arguments, 
+                                             method_name, 
                                              options, creds)
             # get slice credential expiration time
             expiration = amd.min_expire(creds, max_duration=amd.max_lease)
@@ -104,7 +107,12 @@ class GCFAM_Resource_Manager(Base_Resource_Manager):
             # go over all slivers in curr_allocations and change end time
             # of those we're trying to change 
             # (slivers of slice or specific slivers)
-            urns = arguments['urns']
+            if 'urns' in arguments:
+                # Handle V3 case
+                urns = arguments['urns']
+            else:
+                # Handle V2 case
+                urns = [arguments['slice_urn']]
             the_slice, slivers = amd.decode_urns(urns)
             sliver_urns = [the_sliver.urn() for the_sliver in slivers]
             for sliver_info in curr_allocations:
@@ -119,13 +127,33 @@ class GCFAM_Resource_Manager(Base_Resource_Manager):
 
     # Get all current slivers and return them in proper format
     def get_current_allocations(self, aggregate_manager,
-                                arguments, options, creds):
+                                arguments, method_name, options, creds):
 
         sliver_info = []
         slices = aggregate_manager._delegate._slices
         user_urn = gid.GID(string=options['geni_true_caller_cert']).get_urn()
 
         for slice_urn, slice_obj in slices.items():
+            self.add_sliver_info_for_slice(slice_obj, sliver_info, 
+                                           method_name,
+                                           slice_urn, user_urn)
+
+        return sliver_info
+
+    # Add entry for each sliver of slice
+    # Account for difference between GCF AM V2 and V3 representations
+    def add_sliver_info_for_slice(self, slice_obj, sliver_info, method_name,
+                                  slice_urn, user_urn):
+        if method_name in V2_Methods:
+            for sliver_name, sliver_urn in slice_obj.resources.items():
+                entry = {'sliver_urn' : sliver_urn,
+                         'slice_urn' : slice_urn,
+                         'user_urn' : user_urn,
+                         'start_time' : str(datetime.datetime.utcnow()),
+                         'end_time' : str(slice_obj.expiration),
+                         'measurements' : {'NODE' : 1}}
+                sliver_info.append(entry)
+        else:
             for sliver in slice_obj.slivers():
                 entry = {'sliver_urn' : sliver.urn(),
                          'slice_urn' : slice_urn,
@@ -134,14 +162,13 @@ class GCFAM_Resource_Manager(Base_Resource_Manager):
                          'end_time' : str(sliver.endTime()),
                          'measurements' : {'NODE' : 1}}
                 sliver_info.append(entry)
-
-        return sliver_info
+            
 
     # Take the given rspec (if provided) and determine how
     # many nodes are being requested over what time ranges
     # and compute the sliver info accordingly
     def get_requested_allocations(self, aggregate_manager, 
-                                  arguments, options, creds):
+                                  arguments, method_name, options, creds):
         if 'rspec' not in arguments: return []
         if 'slice_urn' not in arguments: return []
 

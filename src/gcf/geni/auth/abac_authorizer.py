@@ -330,6 +330,8 @@ class ABAC_Authorizer(Base_Authorizer):
         if self._argument_guard:
             return self._argument_guard.validate_arguments(method_name, 
                                                            arguments, options)
+        else:
+            return arguments, options
 
 # Class to hold the rules to be invoked for members of a given authority
 # We have per-authority rule sets and a default rule set
