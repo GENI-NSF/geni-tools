@@ -11,11 +11,13 @@ This script will:
   * Use an omni_config file by default, it uses the same logic as omni.py 
     to locate a default omni_config file
   * Ask the user whether to remove the passphrase from the certificate and/or
-  the SSH private key 
+    the SSH private key 
   * Check if the cert/key are already unenecrypted (in which case the
-  script does nothing)
+    script does nothing)
   * Create a backup of the current certificate file and SSH private key
   * Replace the existing certificate/key file with the unencrypted one
+
+Note: For some uses, a full installation of OpenSSL is required.
 
 = Usage =
 
