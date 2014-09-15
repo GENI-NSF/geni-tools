@@ -421,7 +421,8 @@ class Aggregate(object):
                 if handler.level == logging.DEBUG:
                     self.inDebug = True
                     break
-
+        # Cache the slice cred to only query it once per AM
+        self.slicecred = None
 
     def __str__(self):
         if self.nick:
@@ -706,8 +707,9 @@ class Aggregate(object):
                 self.logger = logger
                 self.opts = opts
 
-        sliceCred = _load_cred(MyHandler(self.logger, opts), opts.slicecredfile)
-        sliceexp = get_cred_exp(self.logger, sliceCred)
+        if self.slicecred is None:
+            self.slicecred = _load_cred(MyHandler(self.logger, opts), opts.slicecredfile)
+        sliceexp = get_cred_exp(self.logger, self.slicecred)
         sliceExpFromNow = naiveUTC(sliceexp) - now
         minDays = sliceExpFromNow.days
         newExpires = naiveUTC(sliceexp)
@@ -2239,8 +2241,9 @@ class Aggregate(object):
                         self.logger = logger
                         self.opts = opts
 
-                sliceCred = _load_cred(MyHandler(self.logger, opts), opts.slicecredfile)
-                sliceexp = get_cred_exp(self.logger, sliceCred)
+                if self.slicecred is None:
+                    self.slicecred = _load_cred(MyHandler(self.logger, opts), opts.slicecredfile)
+                sliceexp = get_cred_exp(self.logger, self.slicecred)
                 sliceexp = naiveUTC(sliceexp)
                 if thisExp > sliceexp:
                     # An ION bug!

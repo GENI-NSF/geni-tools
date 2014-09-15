@@ -851,6 +851,9 @@ class StitchingHandler(object):
 
             raise StitchingError("Requested no reservation")
 
+        # Hand each AM the slice credential, so we only read it once
+        for am in self.ams_to_process:
+            am.slicecred = self.slicecred
 
         # The launcher handles calling the aggregates to do their allocation
         launcher = stitch.Launcher(self.opts, self.slicename, self.ams_to_process)
@@ -975,7 +978,10 @@ class StitchingHandler(object):
             #     pass
             raise StitchingError("Could not get a slice credential for slice %s: %s" % (sliceurn, message))
 
+        self.slicecred = slicecred
+
         self.savedSliceCred = False
+
         # Force the slice cred to be from a saved file if not already set
         if not self.opts.slicecredfile:
             self.opts.slicecredfile = os.path.join(os.getenv("TMPDIR", os.getenv("TMP", "/tmp")), SLICECRED_FILENAME)
