@@ -21,14 +21,16 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
+from __future__ import absolute_import
+
 # Base class and specific class for binding variables to support
 # parameterized ABAC authorization
 
 # These return bindings, which are a dictionary of {name : value}
 
 import time
-import gcf.sfa.trust.gid as gid
-from gcf.geni.util.cred_util import CredentialVerifier
+from ...sfa.trust import gid
+from ..util.cred_util import CredentialVerifier
 from .sfa_authorizer import SFA_Authorizer
 import xml.dom.minidom
 from .base_authorizer import AM_Methods

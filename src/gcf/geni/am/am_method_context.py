@@ -21,13 +21,15 @@
 # IN THE WORK.                                                                 
 #----------------------------------------------------------------------       
 
+from __future__ import absolute_import
+
 import os
-import gcf.sfa.trust.gid as gid
-from gcf.sfa.trust.credential import Credential
-from gcf.sfa.trust.certificate import Certificate
-from gcf.sfa.trust.abac_credential import ABACCredential
-from gcf.geni.util.speaksfor_util import determine_speaks_for
-from gcf.geni.SecureThreadedXMLRPCServer import SecureThreadedXMLRPCRequestHandler
+from  ...sfa.trust.gid import GID
+from ...sfa.trust.credential import Credential
+from ...sfa.trust.certificate import Certificate
+from ...sfa.trust.abac_credential import ABACCredential
+from ..util.speaksfor_util import determine_speaks_for
+from ..SecureThreadedXMLRPCServer import SecureThreadedXMLRPCRequestHandler
 
 
 # A class to support wrapping AM API calls from AggregateManager
@@ -55,7 +57,7 @@ class AMMethodContext:
         self._options = options
 #        self._caller_cert = self._aggregate_manager._delegate._server.pem_cert
         self._caller_cert = aggregate_manager._delegate._server.get_pem_cert()
-        self._caller_urn = gid.GID(string=self._caller_cert).get_urn()
+        self._caller_urn = GID(string=self._caller_cert).get_urn()
         self._is_v3 = is_v3
         self._resource_bindings = resource_bindings
         self._result = None
@@ -80,7 +82,7 @@ class AMMethodContext:
 #                                      (self._args, self._options))
 
             # Change client cert if valid speaks-for invocation
-            caller_gid = gid.GID(string=self._caller_cert)
+            caller_gid = GID(string=self._caller_cert)
             new_caller_gid = determine_speaks_for(self._logger,
                                                    credentials,
                                                    caller_gid,

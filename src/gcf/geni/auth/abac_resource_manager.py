@@ -21,10 +21,12 @@
 # IN THE WORK.                                                                
 #----------------------------------------------------------------------       
 
+from __future__ import absolute_import
+
 import datetime
 import dateutil.parser
-import gcf.sfa.trust.gid as gid
-import gcf.sfa.trust.credential as credential
+from  ...sfa.trust import gid
+from ...sfa.trust import credential
 import types
 from ..util.tz_util import tzd
 import xml.dom.minidom

@@ -24,21 +24,21 @@
 
 from base_authorizer import Base_Authorizer, AM_Methods
 
-from gcf.geni.am.am2 import CREATESLIVERPRIV as CREATESLIVERPRIV_V2
-from gcf.geni.am.am2 import RENEWSLIVERPRIV as RENEWSLIVERPRIV_V2
-from gcf.geni.am.am2 import DELETESLIVERPRIV as DELETESLIVERPRIV_V2
-from gcf.geni.am.am2 import SLIVERSTATUSPRIV as SLIVERSTATUSPRIV_V2
-from gcf.geni.am.am2 import SHUTDOWNSLIVERPRIV as SHUTDOWNSLIVERPRIV_V2
+from ..am.am2 import CREATESLIVERPRIV as CREATESLIVERPRIV_V2
+from ..am.am2 import RENEWSLIVERPRIV as RENEWSLIVERPRIV_V2
+from ..am.am2 import DELETESLIVERPRIV as DELETESLIVERPRIV_V2
+from ..am.am2 import SLIVERSTATUSPRIV as SLIVERSTATUSPRIV_V2
+from ..am.am2 import SHUTDOWNSLIVERPRIV as SHUTDOWNSLIVERPRIV_V2
 
-from gcf.geni.am.am3 import RENEWSLIVERPRIV as RENEWSLIVERPRIV_V3
-from gcf.geni.am.am3 import ALLOCATE_PRIV as ALLOCATE_PRIV_V3
-from gcf.geni.am.am3 import PROVISION_PRIV as PROVISION_PRIV_V3
-from gcf.geni.am.am3 import PERFORM_ACTION_PRIV as PERFORM_ACTION_PRIV_V3
-from gcf.geni.am.am3 import DELETESLIVERPRIV as DELETESLIVERPRIV_V3
-from gcf.geni.am.am3 import SLIVERSTATUSPRIV as SLIVERSTATUSPRIV_V3
-from gcf.geni.am.am3 import SHUTDOWNSLIVERPRIV as SHUTDOWNSLIVERPRIV_V3
+from ..am.am3 import RENEWSLIVERPRIV as RENEWSLIVERPRIV_V3
+from ..am.am3 import ALLOCATE_PRIV as ALLOCATE_PRIV_V3
+from ..am.am3 import PROVISION_PRIV as PROVISION_PRIV_V3
+from ..am.am3 import PERFORM_ACTION_PRIV as PERFORM_ACTION_PRIV_V3
+from ..am.am3 import DELETESLIVERPRIV as DELETESLIVERPRIV_V3
+from ..am.am3 import SLIVERSTATUSPRIV as SLIVERSTATUSPRIV_V3
+from ..am.am3 import SHUTDOWNSLIVERPRIV as SHUTDOWNSLIVERPRIV_V3
 
-from gcf.geni.util.cred_util import CredentialVerifier
+from ..util.cred_util import CredentialVerifier
 
 class SFA_Authorizer(Base_Authorizer):
 

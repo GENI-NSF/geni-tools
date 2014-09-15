@@ -21,11 +21,13 @@
 # IN THE WORK.                                                                
 #----------------------------------------------------------------------       
 
+from __future__ import absolute_import
+
 import optparse
 import sys
 import SocketServer
 import SimpleXMLRPCServer
-from gcf.geni.auth.util import getInstanceFromClassname
+from util import getInstanceFromClassname
 
 class AsyncXMLRPCServer(SocketServer.ThreadingMixIn,
                         SimpleXMLRPCServer.SimpleXMLRPCServer):

@@ -21,15 +21,17 @@
 # IN THE WORK.                                                                
 #----------------------------------------------------------------------       
 
+from __future__ import absolute_import
+
 import gcf
 import json
 import logging
 from .base_authorizer import *
-from gcf.sfa.trust.credential_factory import CredentialFactory
-from gcf.sfa.trust.credential import Credential
-from gcf.sfa.trust.certificate import Certificate
-from gcf.sfa.trust.abac_credential import ABACCredential
-from gcf.geni.util.speaksfor_util import get_cert_keyid
+from ...sfa.trust.credential_factory import CredentialFactory
+from ...sfa.trust.credential import Credential
+from ...sfa.trust.certificate import Certificate
+from ...sfa.trust.abac_credential import ABACCredential
+from ..util.speaksfor_util import get_cert_keyid
 from .util import *
 
 # AM authorizer class that uses policies to generate ABAC proofs 

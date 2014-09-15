@@ -21,9 +21,11 @@
 # IN THE WORK.                                                                
 #----------------------------------------------------------------------       
 
+from __future__ import absolute_import
+
 from .util import *
-from binders import Base_Binder
-import gcf.sfa.trust.gid as gid
+from .binders import Base_Binder
+from ...sfa.trust import gid
 import dateutil.parser
 
 # A class to compute resource bindings from a set of 
