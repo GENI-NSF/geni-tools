@@ -17,8 +17,6 @@ This script will:
   * Create a backup of the current certificate file and SSH private key
   * Replace the existing certificate/key file with the unencrypted one
 
-Note: For some uses, a full installation of OpenSSL is required.
-
 = Usage =
 
 Usage: clear-passphrases.py [options]

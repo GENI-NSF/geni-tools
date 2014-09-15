@@ -70,8 +70,8 @@ gcf 2.7:
   * Allow `--host` to be specified multiple times (#668)
 
  * clear-passphrases
-  * Better error handling and cleaner log messages. Explicitly
-    warn if openssl is not found (it is required). 
+  * Use SFA libraries to remove passphrases, removing reliance on OpenSSL binary.
+    Better error handling and cleaner log messages. 
     Use `oscript` for config file loading. (#664)
 
  * gcf

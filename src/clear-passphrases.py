@@ -26,7 +26,6 @@
 """ The clear-passphrases.py script.
     This script is meant to help users to remove the passphrase from their 
     the private key of SSL certs or of SSH keys.
-    Note that the openssl executable must be on your path.
 """
 
 import string, re
@@ -150,78 +149,43 @@ def clearCert(prcertkeyFile):
         logger.info("Private key for SSL certificate does not have a passphrase. Skip.")
         return 
 
-    # Check that we can find openssl
-    logger.debug("Checking for openssl....")
-    command = ['openssl', 'version']
-    logger.debug("Run command: %s", command)
+    k = None
     try:
-        p = Popen(command, stdout=PIPE)
-        p.communicate()[0]
-        logger.debug("... openssl is OK")
+        k = loadKeyFromFile(prcertkeyFile)
     except Exception, e:
-        logger.error("Failed to call openssl - be sure it is on your Path: Error: %s", e)
+        logger.error("Failed to read key from '%s': %s", prcertkeyFile, e)
         sys.exit(-1)
+    if not k:
+        logger.warning("Failed to load key from file. Unable to remove passphrase. Exit!")
+        sys.exit(-1)
+
+    logger.debug("Loaded key from %s" % prcertkeyFile)
 
     # Copy key file to a new location
     question = "Do you want to make a backup of your encrypted cert (%s)" % prcertkeyFile
     if getYNAns(question):
       backupEncFile(prcertkeyFile)
 
-    tmpprcertkeyfile = "%s.tmp" % prcertkeyFile
-    logger.debug("Using tmpprcertkeyfile: %s", tmpprcertkeyfile)
+    kpem = k.as_pem()
 
-    logger.info("Removing passphrase from private key of SSL cert...")
-    command = ['openssl', 'rsa']
-    command.append('-in')
-    command.append(prcertkeyFile)
-    command.append("-out")
-    command.append(tmpprcertkeyfile)
-    logger.debug("Run command: %s", command)
+    cert = None
     try:
-        p = Popen(command, stdout=PIPE)
-        p.communicate()[0]
-        if p.returncode != 0:
-            if os.path.exists(tmpprcertkeyfile):
-                os.remove(tmpprcertkeyfile)
-            logger.critical("\n\nError removing passphrase from private key! \nMake sure you are using the right passphrase.\n")
-            sys.exit(-1)
+        cert = Certificate(filename=prcertkeyFile)
     except Exception, e:
-        logger.error("Failed to call openssl to remove passphrase: Command: %s. Error: %s", " ".join(command), e)
+        logger.warning("Failed to load cert from '%s': %s", prcertkeyFile, e)
         sys.exit(-1)
 
-    command = ['openssl', 'x509']
-    command.append('-in')
-    command.append(prcertkeyFile)
-    logger.debug("Run command: %s", command)
-    try:
-        p = Popen(command, stdout=PIPE)
-        tmpprcertkey = p.communicate()[0]
-        if p.returncode != 0:
-            if os.path.exists(tmpprcertkeyfile):
-                os.remove(tmpprcertkeyfile)
-            raise Exception("Error removing passphrase from prcertkeyificate")
-    except Exception, e:
-        logger.error("Failed to call openssl to read private key. Command: %s. Error: %s", " ".join(command), e)
-        sys.exit(-1)
+    logger.debug("Read certificate: %s", cert.dump_string())
+
+    cpem = cert.save_to_string()
 
     try:
-        with open(tmpprcertkeyfile,'a') as f:
-            f.write("%s" % tmpprcertkey)
+        with open(prcertkeyFile, 'w') as cfile:
+            cfile.write(kpem)
+            cfile.write('\n')
+            cfile.write(cpem)
     except Exception, e:
-        logger.error("Error writing key to '%s': %s", tmpprcertkeyfile, e)
-        sys.exit(-1)
-
-    logger.debug("Move tmpfile to certfile")
-    try:
-        shutil.move(tmpprcertkeyfile, prcertkeyFile)
-    except Exception, e:
-        logger.error("Error moving '%s' to '%s': %s", tmpprcertkeyfile, prcertkeyFile, e)
-        sys.exit(-1)
-    try:
-        logger.debug("Change permissions of %s to 0600", prcertkeyFile)
-        os.chmod(prcertkeyFile, 0600)
-    except Exception, e:
-        logger.error("Error changing permissions of '%s': %s", prcertkeyFile, e)
+        logger.error("Failed to write decrypted cert/key to '%s': %s", prcertkeyFile, e)
         sys.exit(-1)
 
     logger.info("... Cleared password from SSL cert/key '%s'", prcertkeyFile)
@@ -296,7 +260,13 @@ def removeSSHPassphrase(key):
     if not os.path.exists(key):
         raise Exception("SSH Key file '%s' does not exist" % key)
     logger.info("\n\tTHIS SCRIPT WILL REMOVE THE PASSPHRASE FROM YOUR SSH KEY.")
-    clearSSHKey(key)
+
+    # Check if this is a cert file
+    if fileIsSSLCert(key) :
+      logger.debug("File appears to be a cert and key despite what user said")
+      clearCert2(key)
+    else :
+     clearSSHKey(key)
 
 
 def removeSSLPassphrase(prcertkey):
@@ -307,7 +277,7 @@ def removeSSLPassphrase(prcertkey):
     logger.info("\n\tTHIS SCRIPT WILL REPLACE '%s' WITH AN UNENCRYPTED CERT KEY. A BACKUP OF THE ORIGINAL CERT WILL BE CREATED.\n" % prcertkey)
     # Check if this is a cert file
     if fileIsSSLCert(prcertkey) :
-      clearCert(prcertkey)
+      clearCert2(prcertkey)
     else :
       clearSSHKey(prcertkey)
        
