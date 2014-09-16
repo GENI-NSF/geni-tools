@@ -12,6 +12,7 @@ gcf 2.7:
   * Look for fallback `agg_nick_cache` in correct location (#662)
   * Use relative imports in `speaksfor_util` if possible. (#657)
   * Fix URL to URN lookups to better handle names that differ by a prefix. (#683)
+  * Increase the sleep between busy SSL call retries from 15 to 20 seconds. (#697)
 
  * Stitcher
   * Stitcher can now process any multi aggregate bound request. Any request
@@ -59,6 +60,11 @@ gcf 2.7:
   * Loop over all links when adding `component_manager` and `property`
     elements, rather than exit on first. (#680)
   * If a DCN AM reports insufficent bandwidth in sliverstatus, fail. (#653)
+  * Handle an OESS VLAN unavailable error. (#696)
+  * Check the `-a` arguments for RSpecs bound to a single AM (as
+    above, determined by `component_manager_id` on nodes). (#687)
+   * Fill it in if missing.
+   * Warn if it is more than one AM or differs from what the RSpec specifies.
 
  * readyToLogin
   * Handle when omni switches AM API version number (#643)
