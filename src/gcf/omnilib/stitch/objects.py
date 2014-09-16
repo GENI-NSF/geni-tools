@@ -1767,6 +1767,11 @@ class Aggregate(object):
                             isFatal = True
                             self.logger.debug("AuthZ error from SFA AM")
                             fatalMsg = "Reservation impossible at %s. This aggregate does not trust your certificate or credential.: %s..." % (self, str(ae)[:120])
+                        elif self.isOESS:
+                            # Ticket #696
+                            if "requested VLAN not available on this endpoint" in msg or "requested VLAN not available on this endpoint" in val:
+                                self.logger.debug("Assuming this OESS message means this particular VLAN tag is not available")
+                                isVlanAvailableIssue = True
                     except Exception, e:
                         if isinstance(e, StitchingError):
                             raise e
