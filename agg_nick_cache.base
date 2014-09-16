@@ -9,27 +9,27 @@
 [aggregate_nicknames]
 
 # ProtoGENI AMs
+pg-utah=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0
 pg-utah1=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/1.0
 pg-utah2=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0
 pg-utah3=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/3.0
-pg-utah=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0
+utah-pg=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0
 utah1-pg=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/1.0
 utah2-pg=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0
 utah3-pg=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/3.0
-utah-pg=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0
 
+pg-ky=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/2.0
 pg-ky1=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/1.0
 pg-ky2=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/2.0
 pg-ky3=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/3.0
-pg-ky=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/2.0
+pg-uky=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/2.0
 pg-uky1=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/1.0
 pg-uky2=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/2.0
 pg-uky3=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/3.0
-pg-uky=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/2.0
+uky-pg=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/2.0
 uky1-pg=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/1.0
 uky2-pg=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/2.0
 uky3-pg=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/3.0
-uky-pg=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/2.0
 
 # Public PlanetLab AM
 plc=urn:publicid:IDN+plc+authority+cm,https://www.planet-lab.org:12346/
@@ -66,8 +66,8 @@ of-uen=urn:publicid:IDN+openflow:foam:foamyflow.chpc.utah.edu+authority+am,https
 # ExoGENI AMs, including OpenFlow ExoGENI AMs
 # On URNs, note that each EG rack has xxxvmsite and xxxNet
 # And the same component_managers are available through the ExoSM
-eg-gpo=urn:publicid:IDN+exogeni.net:bbnvmsite+authority+am,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
 gpo-eg=urn:publicid:IDN+exogeni.net:bbnvmsite+authority+am,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
+eg-gpo=urn:publicid:IDN+exogeni.net:bbnvmsite+authority+am,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
 gpo-eg-of=urn:publicid:IDN+openflow:foam:bbn-hn.exogeni.gpolab.bbn.com+authority+am,https://bbn-hn.exogeni.net:3626/foam/gapi/2
 gpo-eg-of1=urn:publicid:IDN+openflow:foam:bbn-hn.exogeni.gpolab.bbn.com+authority+am,https://bbn-hn.exogeni.net:3626/foam/gapi/1
 gpo-eg-of2=urn:publicid:IDN+openflow:foam:bbn-hn.exogeni.gpolab.bbn.com+authority+am,https://bbn-hn.exogeni.net:3626/foam/gapi/2
@@ -75,62 +75,62 @@ eg-bbn=urn:publicid:IDN+exogeni.net:bbnvmsite+authority+am,https://bbn-hn.exogen
 eg-of-gpo=urn:publicid:IDN+openflow:foam:bbn-hn.exogeni.gpolab.bbn.com+authority+am,https://bbn-hn.exogeni.net:3626/foam/gapi/2
 eg-of-bbn=urn:publicid:IDN+openflow:foam:bbn-hn.exogeni.gpolab.bbn.com+authority+am,https://bbn-hn.exogeni.net:3626/foam/gapi/2
 
-eg-renci=urn:publicid:IDN+exogeni.net:rcivmsite+authority+am,https://rci-hn.exogeni.net:11443/orca/xmlrpc
 renci-eg=urn:publicid:IDN+exogeni.net:rcivmsite+authority+am,https://rci-hn.exogeni.net:11443/orca/xmlrpc
-eg-of-renci=urn:publicid:IDN+openflow:foam:rci-hn.exogeni.gpolab.bbn.com+authority+am,https://rci-hn.exogeni.net:3626/foam/gapi/2
-renci-eg-of=urn:publicid:IDN+openflow:foam:rci-hn.exogeni.gpolab.bbn.com+authority+am,https://rci-hn.exogeni.net:3626/foam/gapi/2
-renci-eg-of1=urn:publicid:IDN+openflow:foam:rci-hn.exogeni.gpolab.bbn.com+authority+am,https://rci-hn.exogeni.net:3626/foam/gapi/1
-renci-eg-of2=urn:publicid:IDN+openflow:foam:rci-hn.exogeni.gpolab.bbn.com+authority+am,https://rci-hn.exogeni.net:3626/foam/gapi/2
+eg-renci=urn:publicid:IDN+exogeni.net:rcivmsite+authority+am,https://rci-hn.exogeni.net:11443/orca/xmlrpc
+eg-of-renci=urn:publicid:IDN+openflow:foam:rci-hn.exogeni.net+authority+am,https://rci-hn.exogeni.net:3626/foam/gapi/2
+renci-eg-of=urn:publicid:IDN+openflow:foam:rci-hn.exogeni.net+authority+am,https://rci-hn.exogeni.net:3626/foam/gapi/2
+renci-eg-of1=urn:publicid:IDN+openflow:foam:rci-hn.exogeni.net+authority+am,https://rci-hn.exogeni.net:3626/foam/gapi/1
+renci-eg-of2=urn:publicid:IDN+openflow:foam:rci-hn.exogeni.net+authority+am,https://rci-hn.exogeni.net:3626/foam/gapi/2
 
 # ExoSM
 eg-sm=urn:publicid:IDN+exogeni.net+authority+am,https://geni.renci.org:11443/orca/xmlrpc
 
 # InstaGENI AMs, including OpenFlow InstaGENI AMs
+ig-utah=urn:publicid:IDN+utah.geniracks.net+authority+cm,https://boss.utah.geniracks.net:12369/protogeni/xmlrpc/am/2.0
 ig-utah1=urn:publicid:IDN+utah.geniracks.net+authority+cm,https://boss.utah.geniracks.net:12369/protogeni/xmlrpc/am/1.0
 ig-utah2=urn:publicid:IDN+utah.geniracks.net+authority+cm,https://boss.utah.geniracks.net:12369/protogeni/xmlrpc/am/2.0
 ig-utah3=urn:publicid:IDN+utah.geniracks.net+authority+cm,https://boss.utah.geniracks.net:12369/protogeni/xmlrpc/am/3.0
-ig-utah=urn:publicid:IDN+utah.geniracks.net+authority+cm,https://boss.utah.geniracks.net:12369/protogeni/xmlrpc/am/2.0
+utah-ig=urn:publicid:IDN+utah.geniracks.net+authority+cm,https://boss.utah.geniracks.net:12369/protogeni/xmlrpc/am/2.0
 utah1-ig=urn:publicid:IDN+utah.geniracks.net+authority+cm,https://boss.utah.geniracks.net:12369/protogeni/xmlrpc/am/1.0
 utah2-ig=urn:publicid:IDN+utah.geniracks.net+authority+cm,https://boss.utah.geniracks.net:12369/protogeni/xmlrpc/am/2.0
 utah3-ig=urn:publicid:IDN+utah.geniracks.net+authority+cm,https://boss.utah.geniracks.net:12369/protogeni/xmlrpc/am/3.0
-utah-ig=urn:publicid:IDN+utah.geniracks.net+authority+cm,https://boss.utah.geniracks.net:12369/protogeni/xmlrpc/am/2.0
 ig-of-utah=urn:publicid:IDN+openflow:foam:ig-utah+authority+am,https://foam.utah.geniracks.net:3626/foam/gapi/2
 utah-ig-of=urn:publicid:IDN+openflow:foam:ig-utah+authority+am,https://foam.utah.geniracks.net:3626/foam/gapi/2
 utah-ig-of1=urn:publicid:IDN+openflow:foam:ig-utah+authority+am,https://foam.utah.geniracks.net:3626/foam/gapi/1
 utah-ig-of2=urn:publicid:IDN+openflow:foam:ig-utah+authority+am,https://foam.utah.geniracks.net:3626/foam/gapi/2
 
+gpo-ig=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
 gpo1-ig=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/1.0
 gpo2-ig=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
 gpo3-ig=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/3.0
-gpo-ig=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
 gpo-ig-of=urn:publicid:IDN+openflow:foam:foam.instageni.gpolab.bbn.com+authority+am,https://foam.instageni.gpolab.bbn.com:3626/foam/gapi/2
 gpo-ig-of1=urn:publicid:IDN+openflow:foam:foam.instageni.gpolab.bbn.com+authority+am,https://foam.instageni.gpolab.bbn.com:3626/foam/gapi/1
 gpo-ig-of2=urn:publicid:IDN+openflow:foam:foam.instageni.gpolab.bbn.com+authority+am,https://foam.instageni.gpolab.bbn.com:3626/foam/gapi/2
+ig-gpo=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
 ig-gpo1=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/1.0
 ig-gpo2=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
 ig-gpo3=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/3.0
-ig-gpo=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
 ig-of-gpo=urn:publicid:IDN+openflow:foam:foam.instageni.gpolab.bbn.com+authority+am,https://foam.instageni.gpolab.bbn.com:3626/foam/gapi/2
+ig-bbn=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
 ig-bbn1=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/1.0
 ig-bbn2=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
 ig-bbn3=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/3.0
-ig-bbn=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
 ig-of-bbn=urn:publicid:IDN+openflow:foam:foam.instageni.gpolab.bbn.com+authority+am,https://foam.instageni.gpolab.bbn.com:3626/foam/gapi/2
 
+ig-ky=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
 ig-ky1=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/1.0
 ig-ky2=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
 ig-ky3=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/3.0
-ig-ky=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
 ig-of-ky=urn:publicid:IDN+openflow:foam:foam.lan.sdn.uky.edu+authority+am,https://foam.lan.sdn.uky.edu:3626/foam/gapi/2
 
+ig-uky=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
 ig-uky1=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/1.0
 ig-uky2=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
 ig-uky3=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/3.0
-ig-uky=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
+uky-ig=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
 uky1-ig=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/1.0
 uky2-ig=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
 uky3-ig=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/3.0
-uky-ig=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
 ig-of-uky=urn:publicid:IDN+openflow:foam:foam.lan.sdn.uky.edu+authority+am,https://foam.lan.sdn.uky.edu:3626/foam/gapi/2
 uky-ig-of=urn:publicid:IDN+openflow:foam:foam.lan.sdn.uky.edu+authority+am,https://foam.lan.sdn.uky.edu:3626/foam/gapi/2
 uky-ig-of1=urn:publicid:IDN+openflow:foam:foam.lan.sdn.uky.edu+authority+am,https://foam.lan.sdn.uky.edu:3626/foam/gapi/1
@@ -355,3 +355,149 @@ fiu-eg2=urn:publicid:IDN+exogeni.net:fiuvmsite+authority+am,https://fiu-hn.exoge
 # ============================================
 max=urn:publicid:IDN+dragon.maxgigapop.net+authority+am,http://max-myplc.dragon.maxgigapop.net:12346
 max2=urn:publicid:IDN+dragon.maxgigapop.net+authority+am,http://max-myplc.dragon.maxgigapop.net:12346
+
+
+# =======
+# New Aggregates September, 2014
+# IG: CENIC, OMETRODC, Princeton, Rutgers, UKy #2, UCLA
+# EG: OSF, Starlight, UC Davis
+# OG: Clemson, GPO
+# =======
+
+# ======
+# CENIC
+# ======
+cenic-ig=urn:publicid:IDN+instageni.cenic.net+authority+cm,https://instageni.cenic.net:12369/protogeni/xmlrpc/am/2.0
+cenic-ig1=urn:publicid:IDN+instageni.cenic.net+authority+cm,https://instageni.cenic.net:12369/protogeni/xmlrpc/am/1.0
+cenic-ig2=urn:publicid:IDN+instageni.cenic.net+authority+cm,https://instageni.cenic.net:12369/protogeni/xmlrpc/am/2.0
+cenic-ig3=urn:publicid:IDN+instageni.cenic.net+authority+cm,https://instageni.cenic.net:12369/protogeni/xmlrpc/am/3.0
+cenic-ig-of=urn:publicid:IDN+openflow:foam:foam.instageni.cenic.net+authority+am,https://foam.instageni.cenic.net:3626/foam/gapi/2
+cenic-ig-of1=urn:publicid:IDN+openflow:foam:foam.instageni.cenic.net+authority+am,https://foam.instageni.cenic.net:3626/foam/gapi/1
+cenic-ig-of2=urn:publicid:IDN+openflow:foam:foam.instageni.cenic.net+authority+am,https://foam.instageni.cenic.net:3626/foam/gapi/2
+
+# ======
+# Ohio Metro Data Center InstaGENI
+# ======
+ohmetrodc-ig=urn:publicid:IDN+instageni.metrodatacenter.com+authority+cm,https://instageni.metrodatacenter.com:12369/protogeni/xmlrpc/am/2.0
+ohmetrodc-ig1=urn:publicid:IDN+instageni.metrodatacenter.com+authority+cm,https://instageni.metrodatacenter.com:12369/protogeni/xmlrpc/am/1.0
+ohmetrodc-ig2=urn:publicid:IDN+instageni.metrodatacenter.com+authority+cm,https://instageni.metrodatacenter.com:12369/protogeni/xmlrpc/am/2.0
+ohmetrodc-ig3=urn:publicid:IDN+instageni.metrodatacenter.com+authority+cm,https://instageni.metrodatacenter.com:12369/protogeni/xmlrpc/am/3.0
+ohmetrodc-ig-of=urn:publicid:IDN+openflow:foam:foam.instageni.metrodatacenter.com+authority+am,https://foam.instageni.metrodatacenter.com:3626/foam/gapi/2
+ohmetrodc-ig-of1=urn:publicid:IDN+openflow:foam:foam.instageni.metrodatacenter.com+authority+am,https://foam.instageni.metrodatacenter.com:3626/foam/gapi/1
+ohmetrodc-ig-of2=urn:publicid:IDN+openflow:foam:foam.instageni.metrodatacenter.com+authority+am,https://foam.instageni.metrodatacenter.com:3626/foam/gapi/2
+
+# ======
+# Naval Postgraduate School InstaGENI
+# ======
+nps-ig=urn:publicid:IDN+instageni.nps.edu+authority+cm,https://instageni.nps.edu:12369/protogeni/xmlrpc/am/2.0
+nps-ig1=urn:publicid:IDN+instageni.nps.edu+authority+cm,https://instageni.nps.edu:12369/protogeni/xmlrpc/am/1.0
+nps-ig2=urn:publicid:IDN+instageni.nps.edu+authority+cm,https://instageni.nps.edu:12369/protogeni/xmlrpc/am/2.0
+nps-ig3=urn:publicid:IDN+instageni.nps.edu+authority+cm,https://instageni.nps.edu:12369/protogeni/xmlrpc/am/3.0
+nps-ig-of=urn:publicid:IDN+openflow:foam:foam.instageni.nps.edu+authority+am,https://foam.instageni.nps.edu:3626/foam/gapi/2
+nps-ig-of1=urn:publicid:IDN+openflow:foam:foam.instageni.nps.edu+authority+am,https://foam.instageni.nps.edu:3626/foam/gapi/1
+nps-ig-of2=urn:publicid:IDN+openflow:foam:foam.instageni.nps.edu+authority+am,https://foam.instageni.nps.edu:3626/foam/gapi/2
+
+# ======
+# Midwest OpenFlow Crossroads Initiative (MOXI) InstaGENI
+# ======
+moxi-ig=urn:publicid:IDN+instageni.iu.edu+authority+cm,https://instageni.iu.edu:12369/protogeni/xmlrpc/am/2.0
+moxi-ig1=urn:publicid:IDN+instageni.iu.edu+authority+cm,https://instageni.iu.edu:12369/protogeni/xmlrpc/am/1.0
+moxi-ig2=urn:publicid:IDN+instageni.iu.edu+authority+cm,https://instageni.iu.edu:12369/protogeni/xmlrpc/am/2.0
+moxi-ig3=urn:publicid:IDN+instageni.iu.edu+authority+cm,https://instageni.iu.edu:12369/protogeni/xmlrpc/am/3.0
+moxi-ig-of=urn:publicid:IDN+openflow:foam:foam.instageni.iu.edu+authority+am,https://foam.instageni.iu.edu:3626/foam/gapi/2
+moxi-ig-of1=urn:publicid:IDN+openflow:foam:foam.instageni.iu.edu+authority+am,https://foam.instageni.iu.edu:3626/foam/gapi/1
+moxi-ig-of2=urn:publicid:IDN+openflow:foam:foam.instageni.iu.edu+authority+am,https://foam.instageni.iu.edu:3626/foam/gapi/2
+
+# ======
+# Princeton InstaGENI
+# ======
+princeton-ig=urn:publicid:IDN+instageni.cs.princeton.edu+authority+cm,https://instageni.cs.princeton.edu:12369/protogeni/xmlrpc/am/2.0
+princeton-ig1=urn:publicid:IDN+instageni.cs.princeton.edu+authority+cm,https://instageni.cs.princeton.edu:12369/protogeni/xmlrpc/am/1.0
+princeton-ig2=urn:publicid:IDN+instageni.cs.princeton.edu+authority+cm,https://instageni.cs.princeton.edu:12369/protogeni/xmlrpc/am/2.0
+princeton-ig3=urn:publicid:IDN+instageni.cs.princeton.edu+authority+cm,https://instageni.cs.princeton.edu:12369/protogeni/xmlrpc/am/3.0
+princeton-ig-of=urn:publicid:IDN+openflow:foam:foam.instageni.cs.princeton.edu+authority+am,https://foam.instageni.cs.princeton.edu:3626/foam/gapi/2
+princeton-ig-of1=urn:publicid:IDN+openflow:foam:foam.instageni.cs.princeton.edu+authority+am,https://foam.instageni.cs.princeton.edu:3626/foam/gapi/1
+princeton-ig-of2=urn:publicid:IDN+openflow:foam:foam.instageni.cs.princeton.edu+authority+am,https://foam.instageni.cs.princeton.edu:3626/foam/gapi/2
+
+# ======
+# Rutgers InstaGENI
+# ======
+rutgers-ig=urn:publicid:IDN+instageni.rutgers.edu+authority+cm,https://instageni.rutgers.edu:12369/protogeni/xmlrpc/am/2.0
+rutgers-ig1=urn:publicid:IDN+instageni.rutgers.edu+authority+cm,https://instageni.rutgers.edu:12369/protogeni/xmlrpc/am/1.0
+rutgers-ig2=urn:publicid:IDN+instageni.rutgers.edu+authority+cm,https://instageni.rutgers.edu:12369/protogeni/xmlrpc/am/2.0
+rutgers-ig3=urn:publicid:IDN+instageni.rutgers.edu+authority+cm,https://instageni.rutgers.edu:12369/protogeni/xmlrpc/am/3.0
+rutgers-ig-of=urn:publicid:IDN+openflow:foam:foam.instageni.rutgers.edu+authority+am,https://foam.instageni.rutgers.edu:3626/foam/gapi/2
+rutgers-ig-of1=urn:publicid:IDN+openflow:foam:foam.instageni.rutgers.edu+authority+am,https://foam.instageni.rutgers.edu:3626/foam/gapi/1
+rutgers-ig-of2=urn:publicid:IDN+openflow:foam:foam.instageni.rutgers.edu+authority+am,https://foam.instageni.rutgers.edu:3626/foam/gapi/2
+
+# ======
+# U Kentucky Parking Structure (PKS2) InstaGENI
+# ======
+ukypks2-ig=urn:publicid:IDN+pks2.sdn.uky.edu+authority+cm,https://pks2.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
+ukypks2-ig1=urn:publicid:IDN+pks2.sdn.uky.edu+authority+cm,https://pks2.sdn.uky.edu:12369/protogeni/xmlrpc/am/1.0
+ukypks2-ig2=urn:publicid:IDN+pks2.sdn.uky.edu+authority+cm,https://pks2.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
+ukypks2-ig3=urn:publicid:IDN+pks2.sdn.uky.edu+authority+cm,https://pks2.sdn.uky.edu:12369/protogeni/xmlrpc/am/3.0
+ukypks2-ig-of=urn:publicid:IDN+openflow:foam:foam.pks2.sdn.uky.edu+authority+am,https://foam.pks2.sdn.uky.edu:3626/foam/gapi/2
+ukypks2-ig-of1=urn:publicid:IDN+openflow:foam:foam.pks2.sdn.uky.edu+authority+am,https://foam.pks2.sdn.uky.edu:3626/foam/gapi/1
+ukypks2-ig-of2=urn:publicid:IDN+openflow:foam:foam.pks2.sdn.uky.edu+authority+am,https://foam.pks2.sdn.uky.edu:3626/foam/gapi/2
+
+# ======
+# UCLA InstaGENI
+# ======
+ucla-ig=urn:publicid:IDN+instageni.idre.ucla.edu+authority+cm,https://instageni.idre.ucla.edu:12369/protogeni/xmlrpc/am/2.0
+ucla-ig1=urn:publicid:IDN+instageni.idre.ucla.edu+authority+cm,https://instageni.idre.ucla.edu:12369/protogeni/xmlrpc/am/1.0
+ucla-ig2=urn:publicid:IDN+instageni.idre.ucla.edu+authority+cm,https://instageni.idre.ucla.edu:12369/protogeni/xmlrpc/am/2.0
+ucla-ig3=urn:publicid:IDN+instageni.idre.ucla.edu+authority+cm,https://instageni.idre.ucla.edu:12369/protogeni/xmlrpc/am/3.0
+ucla-ig-of=urn:publicid:IDN+openflow:foam:foam.instageni.idre.ucla.edu+authority+am,https://foam.instageni.idre.ucla.edu:3626/foam/gapi/2
+ucla-ig-of1=urn:publicid:IDN+openflow:foam:foam.instageni.idre.ucla.edu+authority+am,https://foam.instageni.idre.ucla.edu:3626/foam/gapi/1
+ucla-ig-of2=urn:publicid:IDN+openflow:foam:foam.instageni.idre.ucla.edu+authority+am,https://foam.instageni.idre.ucla.edu:3626/foam/gapi/2
+
+# ======
+# Oakland Scientific Facility (OSF) ExoGENI
+# ======
+osf-eg=urn:publicid:IDN+exogeni.net:osfvmsite+authority+am,https://osf-hn.exogeni.net:11443/orca/xmlrpc
+osf-eg2=urn:publicid:IDN+exogeni.net:osfvmsite+authority+am,https://osf-hn.exogeni.net:11443/orca/xmlrpc
+osf-eg-of=urn:publicid:IDN+openflow:foam:osf-hn.exogeni.net+authority+am,https://osf-hn.exogeni.net:3626/foam/gapi/2
+osf-eg-of1=urn:publicid:IDN+openflow:foam:osf-hn.exogeni.net+authority+am,https://osf-hn.exogeni.net:3626/foam/gapi/1
+osf-eg-of2=urn:publicid:IDN+openflow:foam:osf-hn.exogeni.net+authority+am,https://osf-hn.exogeni.net:3626/foam/gapi/2
+
+# ======
+# Starlight ExoGENI
+# ======
+sl-eg=urn:publicid:IDN+exogeni.net:slvmsite+authority+am,https://sl-hn.exogeni.net:11443/orca/xmlrpc
+sl-eg2=urn:publicid:IDN+exogeni.net:slvmsite+authority+am,https://sl-hn.exogeni.net:11443/orca/xmlrpc
+sl-eg-of=urn:publicid:IDN+openflow:foam:sl-hn.exogeni.net+authority+am,https://sl-hn.exogeni.net:3626/foam/gapi/2
+sl-eg-of1=urn:publicid:IDN+openflow:foam:sl-hn.exogeni.net+authority+am,https://sl-hn.exogeni.net:3626/foam/gapi/1
+sl-eg-of2=urn:publicid:IDN+openflow:foam:sl-hn.exogeni.net+authority+am,https://sl-hn.exogeni.net:3626/foam/gapi/2
+
+# ======
+# UC Davis ExoGENI
+# ======
+ucdavis-eg=urn:publicid:IDN+exogeni.net:ucdvmsite+authority+am,https://ucd-hn.exogeni.net:11443/orca/xmlrpc
+ucdavis-eg2=urn:publicid:IDN+exogeni.net:ucdvmsite+authority+am,https://ucd-hn.exogeni.net:11443/orca/xmlrpc
+ucdavis-eg-of=urn:publicid:IDN+openflow:foam:ucd-hn.exogeni.net+authority+am,https://ucd-hn.exogeni.net:3626/foam/gapi/2
+ucdavis-eg-of1=urn:publicid:IDN+openflow:foam:ucd-hn.exogeni.net+authority+am,https://ucd-hn.exogeni.net:3626/foam/gapi/1
+ucdavis-eg-of2=urn:publicid:IDN+openflow:foam:ucd-hn.exogeni.net+authority+am,https://ucd-hn.exogeni.net:3626/foam/gapi/2
+
+# ======
+# U of Florida ExoGENI
+# ======
+ufl-eg=urn:publicid:IDN+exogeni.net:uflvmsite+authority+am,https://ufl-hn.exogeni.net:11443/orca/xmlrpc
+ufl-eg2=urn:publicid:IDN+exogeni.net:uflvmsite+authority+am,https://ufl-hn.exogeni.net:11443/orca/xmlrpc
+ufl-eg-of=urn:publicid:IDN+openflow:foam:ufl-hn.exogeni.net+authority+am,https://ufl-hn.exogeni.net:3626/foam/gapi/2
+ufl-eg-of1=urn:publicid:IDN+openflow:foam:ufl-hn.exogeni.net+authority+am,https://ufl-hn.exogeni.net:3626/foam/gapi/1
+ufl-eg-of2=urn:publicid:IDN+openflow:foam:ufl-hn.exogeni.net+authority+am,https://ufl-hn.exogeni.net:3626/foam/gapi/2
+
+# ======
+# Clemson GRAM / OpenGENI
+# ======
+clemson-og=urn:publicid:IDN+clemson-clemson-control-1.clemson.edu+authority+am,https://clemson-clemson-control-1.clemson.edu:5002
+clemson-og2=urn:publicid:IDN+clemson-clemson-control-1.clemson.edu+authority+am,https://clemson-clemson-control-1.clemson.edu:5002
+clemson-og3=urn:publicid:IDN+clemson-clemson-control-1.clemson.edu+authority+am,https://clemson-clemson-control-1.clemson.edu:5001/
+
+# ======
+# GPO GRAM / OpenGENI
+# ======
+gpo-og=urn:publicid:IDN+bbn-cam-ctrl-1.gpolab.bbn.com+authority+am,https://bbn-cam-ctrl-1.gpolab.bbn.com:5002
+gpo-og2=urn:publicid:IDN+bbn-cam-ctrl-1.gpolab.bbn.com+authority+am,https://bbn-cam-ctrl-1.gpolab.bbn.com:5002
+gpo-og3=urn:publicid:IDN+bbn-cam-ctrl-1.gpolab.bbn.com+authority+am,https://bbn-cam-ctrl-1.gpolab.bbn.com:5001/
