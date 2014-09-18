@@ -114,14 +114,15 @@ class ManifestRSpecCombiner:
                 self.logger.debug("Couldn't find %s rspec node!", am)
                 continue
             attrCnt = am_rspec_node.attributes.length
-#            self.logger.debug("%s rspec tag has %d attributes", am, attrCnt)
+            self.logger.debug("%s rspec tag has %d attributes", am, attrCnt)
             if attrCnt == 0:
                 continue
-            for i in range(attrCnt-1):
+            for i in range(attrCnt):
                 attr = am_rspec_node.attributes.item(i)
+                #self.logger.debug("AM Attr %d is %s=%s", i, attr.name, attr.value)
                 if rspec_node.hasAttribute(attr.name):
-#                    self.logger.debug("Template already had attr %s. Had val %s (%s had val %s)", attr.name, rspec_node.getAttribute(attr.name), am, attr.value)
-                    if "schemaLocation" in attr.name:
+                    #self.logger.debug("Template already had attr %s. Had val %s (%s had val %s)", attr.name, rspec_node.getAttribute(attr.name), am, attr.value)
+                    if "xsi:schemaLocation" == str(attr.name):
                         # Split both old and new by space
                         oldVals = rspec_node.getAttribute(attr.name).split()
                         newVals = attr.value.split()
@@ -136,7 +137,7 @@ class ManifestRSpecCombiner:
                         self.logger.debug("%s was %s. AM had %s. Setting SL to %s", attr.name, rspec_node.getAttribute(attr.name), attr.value, newSL)
                         rspec_node.setAttribute(attr.name, newSL)
                     continue
-#                self.logger.debug("Adding to Template attr %s (val %s) from %s", attr.name, attr.value, am)
+                self.logger.debug("Adding to Template attr %s (val %s) from %s", attr.name, attr.value, am)
                 rspec_node.setAttribute(attr.name, attr.value)
 
     def combineNodes(self, ams_list, dom_template):
