@@ -53,6 +53,7 @@ New in v2.7:
  * Use relative imports in `speaksfor_util` if possible. (#657)
  * Fix URL to URN lookups to better handle names that differ by a prefix. (#683)
  * Increase the sleep between busy SSL call retries from 15 to 20 seconds. (#697)
+ * Rename `addAliases.sh` to `addAliases.command` for Mac install. (#647)
 
 New in v2.6:
  * New function `removeslicemember <slice> <username>`: 
