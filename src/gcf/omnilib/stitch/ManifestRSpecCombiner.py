@@ -70,9 +70,74 @@ class ManifestRSpecCombiner:
         self.combineNodes(ams_list, dom_template)
         self.combineLinks(ams_list, dom_template)
         self.combineHops(ams_list, dom_template)
+        self.combineNSes(ams_list, dom_template)
         self.addAggregateDetails(ams_list, dom_template)
 #        self.logger.debug("After addAggDets, man is %s", stripBlankLines(dom_template.toprettyxml(encoding="utf-8")))
         return dom_template
+
+    def combineNSes(self, ams_list, dom_template):
+        # Ensure all the top-level rspec element attributes are combined. 
+        # Specifically doing this to ensure we get all xmlns:* attributes
+
+        doc_root = dom_template.documentElement
+        children = doc_root.childNodes
+        # Find all the client_ids for nodes in the template too
+        rspec_node = None
+        if doc_root.nodeType == Node.ELEMENT_NODE and \
+                doc_root.localName == defs.RSPEC_TAG:
+            rspec_node = doc_root
+        else:
+            for child in children:
+                if child.nodeType == Node.ELEMENT_NODE and \
+                        child.localName == defs.RSPEC_TAG:
+                    rspec_node = child
+                    break
+        if rspec_node is None:
+            self.logger.debug("Couldn't find rspec in template!")
+            return
+        for am in ams_list:
+            am_manifest_dom = am.manifestDom
+            if am_manifest_dom == dom_template:
+                continue
+            am_doc_root = am_manifest_dom.documentElement
+            am_rspec_node = None
+            if am_doc_root.nodeType == Node.ELEMENT_NODE and \
+                    am_doc_root.localName == defs.RSPEC_TAG:
+                am_rspec_node = am_doc_root
+            else:
+                for child in am_doc_root.childNodes:
+                    if child.nodeType == Node.ELEMENT_NODE and \
+                            child.localName == defs.RSPEC_TAG:
+                        am_rspec_node = child
+                        break
+            if am_rspec_node is None:
+                self.logger.debug("Couldn't find %s rspec node!", am)
+                continue
+            attrCnt = am_rspec_node.attributes.length
+#            self.logger.debug("%s rspec tag has %d attributes", am, attrCnt)
+            if attrCnt == 0:
+                continue
+            for i in range(attrCnt-1):
+                attr = am_rspec_node.attributes.item(i)
+                if rspec_node.hasAttribute(attr.name):
+#                    self.logger.debug("Template already had attr %s. Had val %s (%s had val %s)", attr.name, rspec_node.getAttribute(attr.name), am, attr.value)
+                    if "schemaLocation" in attr.name:
+                        # Split both old and new by space
+                        oldVals = rspec_node.getAttribute(attr.name).split()
+                        newVals = attr.value.split()
+                        toAdd = []
+                        for val in newVals:
+                            if val in oldVals:
+                                continue
+                            toAdd.append(val)
+                        for val in toAdd:
+                            oldVals.append(val)
+                        newSL = " ".join(oldVals)
+                        self.logger.debug("%s was %s. AM had %s. Setting SL to %s", attr.name, rspec_node.getAttribute(attr.name), attr.value, newSL)
+                        rspec_node.setAttribute(attr.name, newSL)
+                    continue
+#                self.logger.debug("Adding to Template attr %s (val %s) from %s", attr.name, attr.value, am)
+                rspec_node.setAttribute(attr.name, attr.value)
 
     def combineNodes(self, ams_list, dom_template):
         '''Replace the 'node' section of the dom_template with 
@@ -153,20 +218,26 @@ class ManifestRSpecCombiner:
         # and the link has that AM as a component_manager, then append this link to the template
         for agg in ams_list:
             man = agg.manifestDom
-            link_elements = man.getElementsByTagName(defs.LINK_TAG)
-            for link2 in link_elements:
+            man_root = man.documentElement
+            man_kids = man_root.childNodes
+            for link2 in man_kids:
+                if link2.nodeType != Node.ELEMENT_NODE or \
+                        link2.localName != defs.LINK_TAG:
+                    continue
                 cid = link2.getAttribute(CLIENT_ID)
                 # If the manifest has this link, then we're good
                 if cid in template_link_cids:
                     continue
-                component_manager_elements = link.getElementsByTagName(COMP_MGR)
                 myLink = False
-                for cme in component_manager_elements:
+                for cme in link.childNodes:
+                    if cme.nodeType != Node.ELEMENT_NODE or cme.localName != COMP_MGR:
+                        continue
                     cmid = str(cme.getAttribute(COMP_MGR_NAME))
                     if cmid in agg.urn_syns:
                         myLink = True
                         break
                 if myLink:
+#                    self.logger.debug("Adding link %s (%s)", cid, link2.toxml(encoding="utf-8"))
                     doc_root.appendChild(link2)
                     template_link_cids.append(cid)
 
@@ -189,15 +260,18 @@ class ManifestRSpecCombiner:
 
                 # get list of all cmids on this link
                 # Only look at AMs that match
-                component_manager_elements = link.getElementsByTagName(COMP_MGR)
                 cms = []
-                for cme in component_manager_elements:
-                   cms.append(str(cme.getAttribute(COMP_MGR_NAME)))
+                for cme in link.childNodes:
+                    if cme.nodeType != Node.ELEMENT_NODE or cme.localName != COMP_MGR:
+                        continue
+                    cms.append(str(cme.getAttribute(COMP_MGR_NAME)))
 #                self.logger.debug("Ams in Link %s: %s", client_id, cms)
 
                 # Get interface_ref elements that need to be swapped
                 intfs = {} # Hash by interface_ref client_id of iref elements to swap
-                for intf in link.getElementsByTagName(INTFC_REF):
+                for intf in link.childNodes:
+                    if intf.nodeType != Node.ELEMENT_NODE or intf.localName != INTFC_REF:
+                        continue
                     if not intf.hasAttribute(SLIVER_ID) and not intf.hasAttribute(COMP_ID):
                         intfs[str(intf.getAttribute(CLIENT_ID))] = intf
 #                        self.logger.debug("intfc_ref %s has no sliver_id or component_id", intf.getAttribute(CLIENT_ID))
@@ -240,8 +314,10 @@ class ManifestRSpecCombiner:
 #                        self.logger.debug("Looking at AM %s for link %s", agg.urn, client_id)
 
                     man = agg.manifestDom
-                    link_elements = man.getElementsByTagName(defs.LINK_TAG)
-                    for link2 in link_elements:
+                    for link2 in man.documentElement.childNodes:
+                        if link2.nodeType != Node.ELEMENT_NODE or \
+                                link2.localName != defs.LINK_TAG:
+                            continue
                         # If this is a manifest link and all irefs have
                         # manifest info, then this link is done. Move on.
                         # FIXME: This means we do not add the link sliver_id
@@ -263,7 +339,7 @@ class ManifestRSpecCombiner:
                                             intf.localName == INTFC_REF and \
                                             (intf.hasAttribute(SLIVER_ID) or intf.hasAttribute(COMP_ID)):
                                         for intf2 in link2.childNodes:
-                                            if inf2.nodeType == Node.ELEMENT_NODE and \
+                                            if intf2.nodeType == Node.ELEMENT_NODE and \
                                                     intf2.localName == INTFC_REF and \
                                                     str(intf2.getAttribute(CLIENT_ID)) == str(intf.getAttribute(CLIENT_ID)) and \
                                                     (not intf2.hasAttribute(SLIVER_ID) and not intf2.hasAttribute(COMP_ID)):
@@ -274,7 +350,9 @@ class ManifestRSpecCombiner:
                                 # Need to recreate intfs dict
                                 # Get interface_ref elements that need to be swapped
                                 intfs = {}
-                                for intf in link2.getElementsByTagName(INTFC_REF):
+                                for intf in link2.childNodes:
+                                    if intf.nodeType != Node.ELEMENT_NODE or intf.localName != INTFC_REF:
+                                        continue
                                     if not intf.hasAttribute(SLIVER_ID) and not intf.hasAttribute(COMP_ID):
                                         intfs[str(intf.getAttribute(CLIENT_ID))] = intf
 #                                        self.logger.debug("intfc_ref %s has no sliver_id or component_id", intf.getAttribute(CLIENT_ID))

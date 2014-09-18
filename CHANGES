@@ -65,6 +65,10 @@ gcf 2.7:
     above, determined by `component_manager_id` on nodes). (#687)
    * Fill it in if missing.
    * Warn if it is more than one AM or differs from what the RSpec specifies.
+  * Fix up combining manifests: (#612)
+   * Fix bug in finding links to avoid adding stitching links as regular links.
+   * Combine all top-level attributes so all namespaces are declared.
+
 
  * readyToLogin
   * Handle when omni switches AM API version number (#643)
