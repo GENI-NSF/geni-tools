@@ -40,7 +40,7 @@ cp ${SRCDIR}/windows_install/LICENSE.txt $DESTDIR
 
 #copy other files of interest
 cp ${SRCDIR}/mac_install/background.png $DESTDIR
-cp ${SRCDIR}/mac_install/addAliases.sh $DESTDIR
+cp ${SRCDIR}/mac_install/addAliases.command $DESTDIR
 cp ${SRCDIR}/mac_install/INSTALL.txt $COVERDIR
 
 #copy READMES
