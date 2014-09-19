@@ -30,6 +30,9 @@ default_cf = my_gcf
 # users = Alice, Bob
 
 # Over-ride the commandline setting of --useSliceMembers to force it True
+# to force using slice members defined at a chapi style framework CH
+# when creating accounts and installing SSH keys.
+# Can also specify False to force ignoring those users.
 # useslicemembers = True
 
 # Over-ride the commandline setting of --ignoreConfigUsers to force it True
