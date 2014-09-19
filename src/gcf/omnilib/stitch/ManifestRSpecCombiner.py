@@ -71,9 +71,67 @@ class ManifestRSpecCombiner:
         self.combineLinks(ams_list, dom_template)
         self.combineHops(ams_list, dom_template)
         self.combineNSes(ams_list, dom_template)
+        self.combineOthers(ams_list, dom_template)
         self.addAggregateDetails(ams_list, dom_template)
 #        self.logger.debug("After addAggDets, man is %s", stripBlankLines(dom_template.toprettyxml(encoding="utf-8")))
         return dom_template
+
+    def combineOthers(self, ams_list, dom_template):
+        # Add to the base any top level elements not already there
+        doc_root = dom_template.documentElement
+        children = doc_root.childNodes
+        template_kids = []
+        # Find all the client_ids for nodes in the template too
+        rspec_node = None
+        if doc_root.nodeType == Node.ELEMENT_NODE and \
+                doc_root.localName == defs.RSPEC_TAG:
+            rspec_node = doc_root
+        else:
+            for child in children:
+                if child.nodeType == Node.ELEMENT_NODE and \
+                        child.localName == defs.RSPEC_TAG:
+                    rspec_node = child
+                    break
+        if rspec_node is None:
+            self.logger.debug("Couldn't find rspec in template!")
+            return
+        for child in rspec_node.childNodes:
+            if child.localName in (defs.NODE_TAG, defs.LINK_TAG, defs.STITCHING_TAG):
+                continue
+            cstr = child.toxml(encoding="utf-8").strip()
+            if cstr == "":
+                continue
+            template_kids.append(cstr)
+#            self.logger.debug("Template had element: '%s'...", cstr[:min(len(cstr), 60)])
+
+        for am in ams_list:
+            am_manifest_dom = am.manifestDom
+            if am_manifest_dom == dom_template:
+                continue
+            am_doc_root = am_manifest_dom.documentElement
+            am_rspec_node = None
+            if am_doc_root.nodeType == Node.ELEMENT_NODE and \
+                    am_doc_root.localName == defs.RSPEC_TAG:
+                am_rspec_node = am_doc_root
+            else:
+                for child in am_doc_root.childNodes:
+                    if child.nodeType == Node.ELEMENT_NODE and \
+                            child.localName == defs.RSPEC_TAG:
+                        am_rspec_node = child
+                        break
+            if am_rspec_node is None:
+                self.logger.debug("Couldn't find %s rspec node!", am)
+                continue
+            for child in am_rspec_node.childNodes:
+                if child.localName in (defs.NODE_TAG, defs.LINK_TAG, defs.STITCHING_TAG):
+                    continue
+                cstr = child.toxml(encoding="utf-8").strip()
+                if cstr == "":
+                    continue
+                self.logger.debug("%s manifest had new top level element: '%s'...", am, cstr[:min(len(cstr), 60)])
+                if cstr not in template_kids:
+                    rspec_node.appendChild(child)
+                    self.logger.debug("... appended it")
 
     def combineNSes(self, ams_list, dom_template):
         # Ensure all the top-level rspec element attributes are combined. 

@@ -83,7 +83,7 @@ gcf 2.7:
    * Fix bug in finding links to avoid adding stitching links as regular links.
    * Combine all top-level attributes so all namespaces are declared.
    * Basic support for 2 rspecs with the same node client_id on different AMs. (#700)
-
+   * Merge in any non node/link/stitching top level elements in the combined manifest. (#699)
 
  * readyToLogin
   * Handle when omni switches AM API version number (#643)
