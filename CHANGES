@@ -5,6 +5,16 @@ gcf 2.7:
   * Calls to `status` and `sliverstatus` will also call the CH
     to try to sync up the CH records of slivers with truth
     as reported by the AM. (#634)
+  * Make `useSliceMembers` True by default. (#667)
+   * By default, Omni will create accounts and install SSH keys for members of your slice, 
+     if you are using a CHAPI style framework / Clearinghouse 
+     which allows defining slice members (as the GENI Clearinghouse does). 
+   * This is not a change for Omni users who configured Omni using the `omni-configure` script,
+     which already forced that setting to true.
+   * Added new option `--noSliceMembers` to over-ride that default and tell Omni
+     to ignore any slice members defined at the Clearinghouse.
+   * You may also set `useslicemembers=False` in the `omni` section of
+     your `omni_config` to over-ride the `useSliceMembers` default of True.
   * Honor the `useslicemembers` and `ignoreconfigusers` options in the `omni_config` (#671)
   * Fix `get_member_email` e.g. from `listprojectmembers` for speaks-for. (#676)
   * Fix nickname cache updating when temp and home directories are on 

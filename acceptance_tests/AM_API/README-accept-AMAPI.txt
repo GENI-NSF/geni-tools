@@ -460,16 +460,23 @@ Options:
                         time as possible, instead of failing if the requested
                         time is not possible. Default is False.
     -V API_VERSION, --api-version=API_VERSION
-                        Specify version of AM API to use (default 2)
+                        Specify version of AM API to use (default v2)
     --useSliceAggregates
                         Perform the slice action at all aggregates the given
                         slice is known to use according to clearinghouse
                         records. Default is False.
     --useSliceMembers   Create accounts and install slice members' SSH keys on
                         reserved resources in createsliver, provision or
-                        performoperationalaction. Default is False. When true,
+                        performoperationalaction. Default is True. When true,
                         adds these users and keys to those read from your
-                        omni_config (unless --ignoreConfigUsers).
+                        omni_config (unless --ignoreConfigUsers). See
+                        --noSliceMembers which takes precedence.
+    --noSliceMembers    Reverse of --useSliceMembers. Do NOT create accounts
+                        or install slice members' SSH keys on reserved
+                        resources in createsliver, provision or
+                        performoperationalaction. Default is False. When
+                        specified, only users from your omni_config are used
+                        (unless --ignoreConfigUsers).
     --ignoreConfigUsers
                         Ignore users and SSH keys listed in your omni_config
                         when installing SSH keys on resources in createsliver
@@ -523,10 +530,10 @@ Options:
                         --info) the more verbose one will be preferred.
     --verbosessl        Turn on verbose SSL / XMLRPC logging
     -l LOGCONFIG, --logconfig=LOGCONFIG
-                        Python logging config file
+                        Python logging config file. Default: 'none'
     --logoutput=LOGOUTPUT
                         Python logging output file [use %(logfilename)s in
-                        logging config file]
+                        logging config file]. Default: 'acceptance.log'
     --tostdout          Print results like rspecs to STDOUT instead of to log
                         stream
 

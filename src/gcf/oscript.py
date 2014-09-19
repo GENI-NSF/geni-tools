@@ -316,14 +316,20 @@ def load_config(opts, logger, config={}, filename=None):
         if config['omni'].has_key('default_project'):
             opts.project = config['omni']['default_project']
 
-    # Config of useslicemembers some value of true sets the option
+    # Config of useslicemembers some value of true or false sets the option
     if hasattr(opts,'useSliceMembers') and config['omni'].has_key('useslicemembers'):
         usm = config['omni']['useslicemembers'].strip().lower()
         if usm in ('t', 'true', 'y', 'yes', '1', 'on'):
             usm = True
             if not opts.useSliceMembers:
-                logger.info("Setting option useSliceMembers based on omni_config setting")
+                logger.info("Setting option useSliceMembers True based on omni_config setting")
                 opts.useSliceMembers = True
+        elif usm in ('f', 'false', 'n', 'no', '0', 'off'):
+            usm = False
+            if opts.useSliceMembers:
+                logger.info("Un-Setting option useSliceMembers (set False) based on omni_config setting")
+                opts.useSliceMembers = False
+
     # Config of ignoreconfigusers some value of true sets the option
     if hasattr(opts,'ignoreConfigUsers') and config['omni'].has_key('ignoreconfigusers'):
         usm = config['omni']['ignoreconfigusers'].strip().lower()
@@ -969,9 +975,12 @@ def getParser():
                       help="Specify version of AM API to use (default v%default)")
     basicgroup.add_option("--useSliceAggregates", default=False, action="store_true",
                           help="Perform the slice action at all aggregates the given slice is known to use according to clearinghouse records. Default is %default.")
-    basicgroup.add_option("--useSliceMembers", default=False, action="store_true",
+    basicgroup.add_option("--useSliceMembers", default=True, action="store_true",
                           help="Create accounts and install slice members' SSH keys on reserved resources in createsliver, provision or performoperationalaction. Default is %default. " + \
-                              "When true, adds these users and keys to those read from your omni_config (unless --ignoreConfigUsers).")
+                              "When true, adds these users and keys to those read from your omni_config (unless --ignoreConfigUsers). See --noSliceMembers which takes precedence.")
+    basicgroup.add_option("--noSliceMembers", default=False, action="store_true",
+                          help="Reverse of --useSliceMembers. Do NOT create accounts or install slice members' SSH keys on reserved resources in createsliver, provision or performoperationalaction. Default is %default. " + \
+                              "When specified, only users from your omni_config are used (unless --ignoreConfigUsers).")
     basicgroup.add_option("--ignoreConfigUsers", default=False, action="store_true",
                           help="Ignore users and SSH keys listed in your omni_config when installing SSH keys on resources in createsliver or provision or " + \
                               "performoperationalaction. Default is false - your omni_config users are read and used.")
@@ -1189,6 +1198,11 @@ def parse_args(argv, options=None, parser=None):
         options.usercredfile = os.path.normpath(os.path.normcase(os.path.expanduser(options.usercredfile)))
     if options.slicecredfile:
         options.slicecredfile = os.path.normpath(os.path.normcase(os.path.expanduser(options.slicecredfile)))
+
+    # noSliceMembers forces useSliceMembers to be false
+    # Note you can also force it false with an omni_config setting of useslicemembers=False in the omni section
+    if options.noSliceMembers and options.useSliceMembers:
+        options.useSliceMembers = False
 
     return options, args
 

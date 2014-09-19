@@ -45,6 +45,16 @@ New in v2.7:
  * Calls to `status` and `sliverstatus` will also call the CH
    to try to sync up the CH records of slivers with truth
    as reported by the AM. (#634)
+ * Make `useSliceMembers` True by default. (#667)
+  * By default, Omni will create accounts and install SSH keys for members of your slice, 
+    if you are using a CHAPI style framework / Clearinghouse 
+    which allows defining slice members (as the GENI Clearinghouse does). 
+  * This is not a change for Omni users who configured Omni using the `omni-configure` script,
+    which already forced that setting to true.
+  * Added new option `--noSliceMembers` to over-ride that default and tell Omni
+    to ignore any slice members defined at the Clearinghouse.
+  * You may also set `useslicemembers=False` in the `omni` section of
+    your `omni_config` to over-ride the `useSliceMembers` default of True.
  * Honor the `useslicemembers` and `ignoreconfigusers` options in the `omni_config` (#671)
  * Fix `get_member_email` e.g. from `listprojectmembers` for speaks-for. (#676)
  * Fix nickname cache updating when temp and home directories are on 
@@ -752,7 +762,9 @@ http://groups.geni.net/geni/wiki/HowToUseOmni
 
  Compute resources typically use SSH to let you log in to the
  machines. The SSH keys configured in your omni_config `users` section
- should be available for use. See the options `--useSliceMembers` and
+ plus those for all members of your slice (when using select `chapi`
+ style clearinghouses like the GENI Clearinghouse)
+ should be available for use. See the options `--noSliceMembers` and
  `--ignoreConfigUsers` to change this behavior.
 
 10. Delete slivers when you are done, freeing the resources for others:
@@ -788,7 +800,7 @@ Omni supports the following command-line options.
 {{{
 $ ~/gcf/src/omni.py -h                            
 Usage: 
-GENI Omni Command Line Aggregate Manager Tool Version 2.6
+GENI Omni Command Line Aggregate Manager Tool Version 2.7
 Copyright (c) 2014 Raytheon BBN Technologies
 
 omni.py [options] [--project <proj_name>] <command and arguments> 
@@ -873,9 +885,16 @@ Options:
                         records. Default is False.
     --useSliceMembers   Create accounts and install slice members' SSH keys on
                         reserved resources in createsliver, provision or
-                        performoperationalaction. Default is False. When true,
+                        performoperationalaction. Default is True. When true,
                         adds these users and keys to those read from your
-                        omni_config (unless --ignoreConfigUsers).
+                        omni_config (unless --ignoreConfigUsers). See
+                        --noSliceMembers which takes precedence.
+    --noSliceMembers    Reverse of --useSliceMembers. Do NOT create accounts
+                        or install slice members' SSH keys on reserved
+                        resources in createsliver, provision or
+                        performoperationalaction. Default is False. When
+                        specified, only users from your omni_config are used
+                        (unless --ignoreConfigUsers).
     --ignoreConfigUsers
                         Ignore users and SSH keys listed in your omni_config
                         when installing SSH keys on resources in createsliver
@@ -1038,8 +1057,6 @@ few of them.
  - `-o`: to save manifest RSpecs to a file
  - `--useSliceAggregates`: renew or delete at all aggregates where you
  used Omni to reserve resources
- - `--useSliceMembers`: Have all your slice members get accounts on
- your compute resources
  - `--optionsfile`: Specify custom options for commands
  - `-u`: Specify a particular sliver to act on when using APIv3
  - `--debug`: Turn on debug logging when resolving an Omni problem
@@ -1074,13 +1091,10 @@ Basic Options:
  `deletesliver`. It relies on the clearinghouse's advisory list of aggregates where
  you have used Omni to reserve resources - reservations made using
  other tools may not be reflected.
- - `--useSliceMembers` is supported only by framework type
- `chapi`. See `createsliver`
  - `--ignoreConfigUsers: By default, `createsliver` and `provision`
- tell the aggregate to create accounts for users listed in the users
+ tell the aggregate to create accounts including for users listed in the users
  section of your `omni_config`, and install the listed SSH keys. With
- this option, Omni will not use those keys. Typically this is used
- with `--useSliceMembers`.
+ this option, Omni will not use those keys. See also `--noSliceMembers`.
 
 AM API v3 Options:
  - `--best-effort`: In AM API v3 operations are on multiple
@@ -1123,6 +1137,13 @@ Advanced / Developer Options:
   Omni operations (such as provided by `--useSliceMembers` and
   `--useSliceAggregates`). However, you can disable these calls with
   this option.
+ - `--noSliceMembers`: Disable `useSliceMembers`, which is True by default.
+   By default, Omni tries to contact your clearinghouse to retrieve
+   any slice members, to install their SSH keys on any reserved
+   resources. This is only supported at some CHAPI-based
+   clearinghouses, specifically the GENI Clearinghouse. Note also that
+   `useslicemembers` in the `omni` section of your `omni_config` file
+   can be set to `false` to disable `useSliceMembers`.
 
 === Supported commands ===
 Omni supports the following commands.
@@ -1814,7 +1835,12 @@ Sample Usage:
  * Reserve resources, installing all slice members' keys on the new
  nodes, but not any users listed in `omni_config`.
 {{{
-     omni.py -a gpo-ig --useSliceMembers --ignoreConfigUsers \
+     omni.py -a gpo-ig --ignoreConfigUsers \
+             createsliver myslices resources.rspec
+}}}
+ * Reserve resources, installing only SSH keys for users listed in `omni_config`.
+{{{
+     omni.py -a gpo-ig --noSliceMembers \
              createsliver myslices resources.rspec
 }}}
 
@@ -1874,15 +1900,27 @@ Slice credential is usually retrieved from the Slice Authority. But
 with the `--slicecredfile` option it is read from that file, if it exists.
 
 Users and SSH Keys:
-By default, the omni_config `users` section is used to get a set of SSH keys that
-should be loaded onto the remote node to allow SSH login, if the
-remote resource and aggregate support this. 2 options control this:
+By default, Omni passes to the aggregate a list of users and SSH keys
+that combines those listed as members of your slice at the
+Clearinghouse, plus those listed in your `omni_config` file `users`
+section. Thus any member of your slice _plus_ anyone using the
+specific SSH keys you specify will be able to log in via SSH into reserved
+compute resources.
+2 command-line options control this:
  - `--ignoreConfiguUsers': When supplied, ignore the omni_config
  `users` and do not install any keys listed there.
- - `--useSliceMembers`: When supplied and you use a
- framework/clearinghouse that supports it (i.e. type `chapi), query
- the clearinghouse for all configured members of the slice and their
- public SSH keys. Also install those users and keys.
+ - `--noSliceMembers`: When supplied, over-ride the default of
+ `--useSliceMembers`, and do NOT contact the clearinghouse to retrieve
+ slice members.
+There also remains the old (pre v2.7) option
+`--useSliceMembers`. However, that option has no effect - it is True
+by default.
+You can also control this behavior using 2 settings in your
+`omni_config` file in the `omni` section. 
+ * Add the setting `useslicemembers=True` or `useslicemembers=False` to toggle retrieving
+   slice members' SSH keys. 
+ * Additionally, setting `ignoreconfigusers=True` has the same effect as
+   including `--ignoreConfigUsers` as a commandline option.
 
 Note you likely want to check `sliverstatus` to ensure your resource comes up.
 And check the sliver expiration time; you may want to call `renewsliver` to extend the expiration time.
@@ -2031,15 +2069,27 @@ Note that some aggregates may require provisioning all slivers in the same state
 time, per the `geni_single_allocation` !GetVersion return.
 
 Users and SSH Keys:
-By default, the omni_config `users` section is used to get a set of SSH keys that
-should be loaded onto the remote node to allow SSH login, if the
-remote resource and aggregate support this. 2 options control this:
+By default, Omni passes to the aggregate a list of users and SSH keys
+that combines those listed as members of your slice at the
+Clearinghouse, plus those listed in your `omni_config` file `users`
+section. Thus any member of your slice _plus_ anyone using the
+specific SSH keys you specify will be able to log in via SSH into reserved
+compute resources.
+2 command-line options control this:
  - `--ignoreConfiguUsers': When supplied, ignore the omni_config
  `users` and do not install any keys listed there.
- - `--useSliceMembers`: When supplied and you use a
- framework/clearinghouse that supports it (i.e. type `chapi), query
- the clearinghouse for all configured members of the slice and their
- public SSH keys. Also install those users and keys.
+ - `--noSliceMembers`: When supplied, over-ride the default of
+ `--useSliceMembers`, and do NOT contact the clearinghouse to retrieve
+ slice members.
+There also remains the old (pre v2.7) option
+`--useSliceMembers`. However, that option has no effect - it is True
+by default.
+You can also control this behavior using 2 settings in your
+`omni_config` file in the `omni` section. 
+ * Add the setting `useslicemembers=True` or `useslicemembers=False` to toggle retrieving
+   slice members' SSH keys. 
+ * Additionally, setting `ignoreconfigusers=True` has the same effect as
+   including `--ignoreConfigUsers` as a commandline option.
 
 Output directing options:
  - `-o`: Save result in per-aggregate files
