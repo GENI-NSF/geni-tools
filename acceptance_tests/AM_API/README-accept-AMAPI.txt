@@ -465,23 +465,6 @@ Options:
                         Perform the slice action at all aggregates the given
                         slice is known to use according to clearinghouse
                         records. Default is False.
-    --useSliceMembers   Create accounts and install slice members' SSH keys on
-                        reserved resources in createsliver, provision or
-                        performoperationalaction. Default is True. When true,
-                        adds these users and keys to those read from your
-                        omni_config (unless --ignoreConfigUsers). See
-                        --noSliceMembers which takes precedence.
-    --noSliceMembers    Reverse of --useSliceMembers. Do NOT create accounts
-                        or install slice members' SSH keys on reserved
-                        resources in createsliver, provision or
-                        performoperationalaction. Default is False. When
-                        specified, only users from your omni_config are used
-                        (unless --ignoreConfigUsers).
-    --ignoreConfigUsers
-                        Ignore users and SSH keys listed in your omni_config
-                        when installing SSH keys on resources in createsliver
-                        or provision or performoperationalaction. Default is
-                        false - your omni_config users are read and used.
 
   AM API v3+:
     Options used in AM API v3 or later
@@ -602,29 +585,42 @@ Options:
                         read this cache, delete your local AggNickCache or use
                         --NoAggNickCache.
 
-  For Developers:
-    Features only needed by developers
+  For Developers / Advanced Users:
+    Features only needed by developers or advanced users
 
-    --abac              Use ABAC authorization
-    --arbitrary-option  Add an arbitrary option to ListResources (for testing
-                        purposes)
-    --devmode           Run in developer mode: more verbose, less error
-                        checking of inputs
-    --no-compress       Do not compress returned values
-    --no-ssl            do not use ssl
-    --no-tz             Do not send timezone on RenewSliver
-    --orca-slice-id=ORCA_SLICE_ID
-                        Use the given Orca slice id
-    --raise-error-on-v2-amapi-error
-                        In AM API v2, if an AM returns a non-0 (failure)
-                        result code, raise an AMAPIError. Default is False.
-                        For use by scripts.
+    --useSliceMembers   DEPRECATED - this option no longer has any effect. The
+                        option is always true, unless you specify
+                        --noSliceMembers.
+    --noSliceMembers    Reverse of --useSliceMembers. Do NOT create accounts
+                        or install slice members' SSH keys on reserved
+                        resources in createsliver, provision or
+                        performoperationalaction. Default is False. When
+                        specified, only users from your omni_config are used
+                        (unless --ignoreConfigUsers).
+    --ignoreConfigUsers
+                        Ignore users and SSH keys listed in your omni_config
+                        when installing SSH keys on resources in createsliver
+                        or provision or performoperationalaction. Default is
+                        false - your omni_config users are read and used.
     --ssltimeout=SSLTIMEOUT
                         Seconds to wait before timing out AM and CH calls.
                         Default is 360 seconds.
     --noExtraCHCalls    Disable extra Clearinghouse calls like reporting
                         slivers. Default is False.
-
+    --devmode           Run in developer mode: more verbose, less error
+                        checking of inputs
+    --raise-error-on-v2-amapi-error
+                        In AM API v2, if an AM returns a non-0 (failure)
+                        result code, raise an AMAPIError. Default is False.
+                        For use by scripts.
+    --no-compress       Do not compress returned values
+    --abac              Use ABAC authorization
+    --arbitrary-option  Add an arbitrary option to ListResources (for testing
+                        purposes)
+    --no-ssl            do not use ssl
+    --no-tz             Do not send timezone on RenewSliver
+    --orca-slice-id=ORCA_SLICE_ID
+                        Use the given Orca slice id
 
 $ ./am_api_accept_delegate.py -h      
 Usage:                                                                    

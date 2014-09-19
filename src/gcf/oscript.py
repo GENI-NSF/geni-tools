@@ -489,6 +489,8 @@ def initialize(argv, options=None ):
 
     opts, args = parse_args(argv, options)
     logger = configure_logging(opts)
+    if "--useSliceMembers" in argv:
+        logger.info("Option --useSliceMembers is no longer necessary and is now deprecated, as that behavior is now the default. This option will be removed in a future release.")
     config = load_agg_nick_config(opts, logger)
     config = load_config(opts, logger, config)
     framework = load_framework(config, opts)
@@ -975,17 +977,8 @@ def getParser():
                       help="Specify version of AM API to use (default v%default)")
     basicgroup.add_option("--useSliceAggregates", default=False, action="store_true",
                           help="Perform the slice action at all aggregates the given slice is known to use according to clearinghouse records. Default is %default.")
-    basicgroup.add_option("--useSliceMembers", default=True, action="store_true",
-                          help="Create accounts and install slice members' SSH keys on reserved resources in createsliver, provision or performoperationalaction. Default is %default. " + \
-                              "When true, adds these users and keys to those read from your omni_config (unless --ignoreConfigUsers). See --noSliceMembers which takes precedence.")
-    basicgroup.add_option("--noSliceMembers", default=False, action="store_true",
-                          help="Reverse of --useSliceMembers. Do NOT create accounts or install slice members' SSH keys on reserved resources in createsliver, provision or performoperationalaction. Default is %default. " + \
-                              "When specified, only users from your omni_config are used (unless --ignoreConfigUsers).")
-    basicgroup.add_option("--ignoreConfigUsers", default=False, action="store_true",
-                          help="Ignore users and SSH keys listed in your omni_config when installing SSH keys on resources in createsliver or provision or " + \
-                              "performoperationalaction. Default is false - your omni_config users are read and used.")
-
     parser.add_option_group( basicgroup )
+
     # AM API v3 specific
     v3group = optparse.OptionGroup( parser, "AM API v3+",
                           "Options used in AM API v3 or later" )
@@ -1008,7 +1001,6 @@ def getParser():
                       help="Supply given URN as user we are speaking for in Speaks For option")
     v3group.add_option("-u", "--sliver-urn", dest="slivers", action="append",
                       help="Sliver URN (not name) on which to act. Supply this option multiple times for multiple slivers, or not at all to apply to the entire slice")
-
     parser.add_option_group( v3group )
 
     # logging levels
@@ -1053,6 +1045,7 @@ def getParser():
                       help="Name of slice credential file to read from if it exists, or save to when running like '--slicecredfile " + 
                          "mySliceCred.xml -o getslicecred mySliceName'. Defaults to value of 'GENI_SLICECRED' environment variable if defined.")
     parser.add_option_group( filegroup )
+
     # GetVersion
     gvgroup = optparse.OptionGroup( parser, "GetVersion Cache",
                           "Control GetVersion Cache" )
@@ -1092,32 +1085,40 @@ def getParser():
                       help="Website with latest agg_nick_cache, default is %default. To force Omni to read this cache, delete your local AggNickCache or use --NoAggNickCache.")
     parser.add_option_group( angroup )
 
-    # Development related
-    devgroup = optparse.OptionGroup( parser, "For Developers",
-                          "Features only needed by developers" )
+    # Development / Advanced
+    devgroup = optparse.OptionGroup( parser, "For Developers / Advanced Users",
+                          "Features only needed by developers or advanced users" )
+    devgroup.add_option("--useSliceMembers", default=True, action="store_true",
+                          help="DEPRECATED - this option no longer has any effect. The option is always true, unless you specify --noSliceMembers.")
+    devgroup.add_option("--noSliceMembers", default=False, action="store_true",
+                          help="Reverse of --useSliceMembers. Do NOT create accounts or install slice members' SSH keys on reserved resources in createsliver, provision or performoperationalaction. Default is %default. " + \
+                              "When specified, only users from your omni_config are used (unless --ignoreConfigUsers).")
+    devgroup.add_option("--ignoreConfigUsers", default=False, action="store_true",
+                          help="Ignore users and SSH keys listed in your omni_config when installing SSH keys on resources in createsliver or provision or " + \
+                              "performoperationalaction. Default is false - your omni_config users are read and used.")
+    devgroup.add_option("--ssltimeout", default=360, action="store", type="float",
+                        help="Seconds to wait before timing out AM and CH calls. Default is %default seconds.")
+    devgroup.add_option("--noExtraCHCalls", default=False, action="store_true",
+                        help="Disable extra Clearinghouse calls like reporting slivers. Default is %default.")
+    devgroup.add_option("--devmode", default=False, action="store_true",
+                      help="Run in developer mode: more verbose, less error checking of inputs")
+    devgroup.add_option("--raise-error-on-v2-amapi-error", dest='raiseErrorOnV2AMAPIError',
+                      default=False, action="store_true",
+                      help="In AM API v2, if an AM returns a non-0 (failure) result code, raise an AMAPIError. Default is %default. For use by scripts.")
+    devgroup.add_option("--no-compress", dest='geni_compressed', 
+                      default=True, action="store_false",
+                      help="Do not compress returned values")
     devgroup.add_option("--abac", default=False, action="store_true",
                       help="Use ABAC authorization")
     devgroup.add_option("--arbitrary-option", dest='arbitrary_option',
                       default=False, action="store_true",
                       help="Add an arbitrary option to ListResources (for testing purposes)")
-    devgroup.add_option("--devmode", default=False, action="store_true",
-                      help="Run in developer mode: more verbose, less error checking of inputs")
-    devgroup.add_option("--no-compress", dest='geni_compressed', 
-                      default=True, action="store_false",
-                      help="Do not compress returned values")
     devgroup.add_option("--no-ssl", dest="ssl", action="store_false",
                       default=True, help="do not use ssl")
     devgroup.add_option("--no-tz", default=False, action="store_true",
                       help="Do not send timezone on RenewSliver")
     devgroup.add_option("--orca-slice-id", dest="orca_slice_id",
                       help="Use the given Orca slice id")
-    devgroup.add_option("--raise-error-on-v2-amapi-error", dest='raiseErrorOnV2AMAPIError',
-                      default=False, action="store_true",
-                      help="In AM API v2, if an AM returns a non-0 (failure) result code, raise an AMAPIError. Default is %default. For use by scripts.")
-    devgroup.add_option("--ssltimeout", default=360, action="store", type="float",
-                        help="Seconds to wait before timing out AM and CH calls. Default is %default seconds.")
-    devgroup.add_option("--noExtraCHCalls", default=False, action="store_true",
-                        help="Disable extra Clearinghouse calls like reporting slivers. Default is %default.")
     parser.add_option_group( devgroup )
     return parser
 
@@ -1201,7 +1202,7 @@ def parse_args(argv, options=None, parser=None):
 
     # noSliceMembers forces useSliceMembers to be false
     # Note you can also force it false with an omni_config setting of useslicemembers=False in the omni section
-    if options.noSliceMembers and options.useSliceMembers:
+    if options.noSliceMembers:
         options.useSliceMembers = False
 
     return options, args

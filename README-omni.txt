@@ -45,12 +45,14 @@ New in v2.7:
  * Calls to `status` and `sliverstatus` will also call the CH
    to try to sync up the CH records of slivers with truth
    as reported by the AM. (#634)
- * Make `useSliceMembers` True by default. (#667)
+ * Make `useSliceMembers` True by default and deprecate the option. (#667)
   * By default, Omni will create accounts and install SSH keys for members of your slice, 
     if you are using a CHAPI style framework / Clearinghouse 
     which allows defining slice members (as the GENI Clearinghouse does). 
   * This is not a change for Omni users who configured Omni using the `omni-configure` script,
     which already forced that setting to true.
+  * The old `--useSliceMembers` option is deprecated and will be
+    removed in a future release.
   * Added new option `--noSliceMembers` to over-ride that default and tell Omni
     to ignore any slice members defined at the Clearinghouse.
   * You may also set `useslicemembers=False` in the `omni` section of
@@ -883,23 +885,6 @@ Options:
                         Perform the slice action at all aggregates the given
                         slice is known to use according to clearinghouse
                         records. Default is False.
-    --useSliceMembers   Create accounts and install slice members' SSH keys on
-                        reserved resources in createsliver, provision or
-                        performoperationalaction. Default is True. When true,
-                        adds these users and keys to those read from your
-                        omni_config (unless --ignoreConfigUsers). See
-                        --noSliceMembers which takes precedence.
-    --noSliceMembers    Reverse of --useSliceMembers. Do NOT create accounts
-                        or install slice members' SSH keys on reserved
-                        resources in createsliver, provision or
-                        performoperationalaction. Default is False. When
-                        specified, only users from your omni_config are used
-                        (unless --ignoreConfigUsers).
-    --ignoreConfigUsers
-                        Ignore users and SSH keys listed in your omni_config
-                        when installing SSH keys on resources in createsliver
-                        or provision or performoperationalaction. Default is
-                        false - your omni_config users are read and used.
 
   AM API v3+:
     Options used in AM API v3 or later
@@ -948,7 +933,7 @@ Options:
                         --info) the more verbose one will be preferred.
     --verbosessl        Turn on verbose SSL / XMLRPC logging
     -l LOGCONFIG, --logconfig=LOGCONFIG
-                        Python logging config file
+                        Python logging config file. Default: 'none'
     --logoutput=LOGOUTPUT
                         Python logging output file [use %(logfilename)s in
                         logging config file]. Default: 'omni.log'
@@ -1020,28 +1005,42 @@ Options:
                         read this cache, delete your local AggNickCache or use
                         --NoAggNickCache.
 
-  For Developers:
-    Features only needed by developers
+  For Developers / Advanced Users:
+    Features only needed by developers or advanced users
 
-    --abac              Use ABAC authorization
-    --arbitrary-option  Add an arbitrary option to ListResources (for testing
-                        purposes)
-    --devmode           Run in developer mode: more verbose, less error
-                        checking of inputs
-    --no-compress       Do not compress returned values
-    --no-ssl            do not use ssl
-    --no-tz             Do not send timezone on RenewSliver
-    --orca-slice-id=ORCA_SLICE_ID
-                        Use the given Orca slice id
-    --raise-error-on-v2-amapi-error
-                        In AM API v2, if an AM returns a non-0 (failure)
-                        result code, raise an AMAPIError. Default is False.
-                        For use by scripts.
+    --useSliceMembers   DEPRECATED - this option no longer has any effect. The
+                        option is always true, unless you specify
+                        --noSliceMembers.
+    --noSliceMembers    Reverse of --useSliceMembers. Do NOT create accounts
+                        or install slice members' SSH keys on reserved
+                        resources in createsliver, provision or
+                        performoperationalaction. Default is False. When
+                        specified, only users from your omni_config are used
+                        (unless --ignoreConfigUsers).
+    --ignoreConfigUsers
+                        Ignore users and SSH keys listed in your omni_config
+                        when installing SSH keys on resources in createsliver
+                        or provision or performoperationalaction. Default is
+                        false - your omni_config users are read and used.
     --ssltimeout=SSLTIMEOUT
                         Seconds to wait before timing out AM and CH calls.
                         Default is 360 seconds.
     --noExtraCHCalls    Disable extra Clearinghouse calls like reporting
                         slivers. Default is False.
+    --devmode           Run in developer mode: more verbose, less error
+                        checking of inputs
+    --raise-error-on-v2-amapi-error
+                        In AM API v2, if an AM returns a non-0 (failure)
+                        result code, raise an AMAPIError. Default is False.
+                        For use by scripts.
+    --no-compress       Do not compress returned values
+    --abac              Use ABAC authorization
+    --arbitrary-option  Add an arbitrary option to ListResources (for testing
+                        purposes)
+    --no-ssl            do not use ssl
+    --no-tz             Do not send timezone on RenewSliver
+    --orca-slice-id=ORCA_SLICE_ID
+                        Use the given Orca slice id
 }}}
 
 ==== Notes on Options ====
@@ -1091,10 +1090,6 @@ Basic Options:
  `deletesliver`. It relies on the clearinghouse's advisory list of aggregates where
  you have used Omni to reserve resources - reservations made using
  other tools may not be reflected.
- - `--ignoreConfigUsers: By default, `createsliver` and `provision`
- tell the aggregate to create accounts including for users listed in the users
- section of your `omni_config`, and install the listed SSH keys. With
- this option, Omni will not use those keys. See also `--noSliceMembers`.
 
 AM API v3 Options:
  - `--best-effort`: In AM API v3 operations are on multiple
@@ -1130,20 +1125,24 @@ Advanced / Developer Options:
  360 seconds (6 minutes). Use this option to change that timeout. If
  commands to a server that you believe is up are failing, try
  specifying a timeout of `0` to disable the timeout.
-  - `--noExtraCHCalls`: Omni makes multiple calls to the
-  clearinghouse, particularly when using framework type `chapi`. These
-  include reporting creation / renewal of slivers, querying for lists
-  of aggregates, etc. These functions are necessary to support some
-  Omni operations (such as provided by `--useSliceMembers` and
-  `--useSliceAggregates`). However, you can disable these calls with
-  this option.
+ - `--noExtraCHCalls`: Omni makes multiple calls to the
+ clearinghouse, particularly when using framework type `chapi`. These
+ include reporting creation / renewal of slivers, querying for lists
+ of aggregates, etc. These functions are necessary to support some
+ Omni operations (such as provided by `--useSliceMembers` and
+ `--useSliceAggregates`). However, you can disable these calls with
+ this option.
  - `--noSliceMembers`: Disable `useSliceMembers`, which is True by default.
-   By default, Omni tries to contact your clearinghouse to retrieve
-   any slice members, to install their SSH keys on any reserved
-   resources. This is only supported at some CHAPI-based
-   clearinghouses, specifically the GENI Clearinghouse. Note also that
-   `useslicemembers` in the `omni` section of your `omni_config` file
-   can be set to `false` to disable `useSliceMembers`.
+ By default, Omni tries to contact your clearinghouse to retrieve
+ any slice members, to install their SSH keys on any reserved
+ resources. This is only supported at some CHAPI-based
+ clearinghouses, specifically the GENI Clearinghouse. Note also that
+ `useslicemembers` in the `omni` section of your `omni_config` file
+ can be set to `false` to disable `useSliceMembers`.
+ - `--ignoreConfigUsers: By default, `createsliver` and `provision`
+ tell the aggregate to create accounts including for users listed in the users
+ section of your `omni_config`, and install the listed SSH keys. With
+ this option, Omni will not use those keys. See also `--noSliceMembers`.
 
 === Supported commands ===
 Omni supports the following commands.
@@ -1909,12 +1908,10 @@ compute resources.
 2 command-line options control this:
  - `--ignoreConfiguUsers': When supplied, ignore the omni_config
  `users` and do not install any keys listed there.
- - `--noSliceMembers`: When supplied, over-ride the default of
- `--useSliceMembers`, and do NOT contact the clearinghouse to retrieve
- slice members.
-There also remains the old (pre v2.7) option
-`--useSliceMembers`. However, that option has no effect - it is True
-by default.
+ - `--noSliceMembers`: When supplied, over-ride the default 
+ and do NOT contact the clearinghouse to retrieve slice members.
+The old (pre v2.7) option `--useSliceMembers` is deprecated, and has
+no effect - the behavior it enables is the default.
 You can also control this behavior using 2 settings in your
 `omni_config` file in the `omni` section. 
  * Add the setting `useslicemembers=True` or `useslicemembers=False` to toggle retrieving
@@ -2078,12 +2075,10 @@ compute resources.
 2 command-line options control this:
  - `--ignoreConfiguUsers': When supplied, ignore the omni_config
  `users` and do not install any keys listed there.
- - `--noSliceMembers`: When supplied, over-ride the default of
- `--useSliceMembers`, and do NOT contact the clearinghouse to retrieve
- slice members.
-There also remains the old (pre v2.7) option
-`--useSliceMembers`. However, that option has no effect - it is True
-by default.
+ - `--noSliceMembers`: When supplied, over-ride the default 
+ and do NOT contact the clearinghouse to retrieve slice members.
+The old (pre v2.7) option `--useSliceMembers` is deprecated, and has
+no effect - the behavior it enables is the default.
 You can also control this behavior using 2 settings in your
 `omni_config` file in the `omni` section. 
  * Add the setting `useslicemembers=True` or `useslicemembers=False` to toggle retrieving
