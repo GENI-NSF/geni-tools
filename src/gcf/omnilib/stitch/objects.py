@@ -742,11 +742,17 @@ class Aggregate(object):
                     if amExpDays is not None:
                         self.logger.debug("%s policy says expDays=%d", am, amExpDays)
                         newminDays = min(minDays, amExpDays)
-                        if newminDays != minDays:
+                        # Reset newExpires even if the # days didn't change, in case the slice expires
+                        # in this # of days (so at midnight say) and the calculated minDays is on the same day
+                        # (likely earlier)
+                        if newminDays <= minDays:
                             minDays = newminDays
                             # New desired expiration is now plus that # of days, less a little to make sure
                             # We don't violate local AM policy
-                            newExpires = min(now + datetime.timedelta(days=minDays) - datetime.timedelta(minutes=10), newExpires)
+                            newExpires2 = min(now + datetime.timedelta(days=minDays), newExpires)
+                            if newExpires2 < newExpires:
+                                newExpires = newExpires2 - datetime.timedelta(minutes=10)
+#                            newExpires = min(now + datetime.timedelta(days=minDays) - datetime.timedelta(minutes=10), newExpires)
 #                        self.logger.debug("%s policy says expDays=%d so minDays=%d, newExpires=%s", am, amExpDays, minDays, newExpires)
                     self.logger.debug("After %s, minDays=%d, newExpires=%s", am, minDays, newExpires)
             # End loop over AMs on path
