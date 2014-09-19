@@ -1,6 +1,6 @@
 SRCDIR=~/gcf
-DESTDIR=~/omniTools/omniTools-2.7
 COVERDIR=~/omniTools
+DESTDIR=${COVERDIR}/omniTools-2.7
 
 cd ${SRCDIR}/src
 py2applet --make-setup clear-passphrases.py 
