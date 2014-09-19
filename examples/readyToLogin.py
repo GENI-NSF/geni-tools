@@ -581,8 +581,10 @@ def printLoginInfo( loginInfoDict, keyList ) :
 
     for client_id, itemList in sortedAMInfo.items():
       for item in itemList:
-          if not firstTime.has_key( item['client_id'] ):
-              firstTime[ item['client_id'] ] = True
+          if not firstTime.has_key( amUrl ):
+              firstTime[amUrl] = {}
+          if not firstTime[amUrl].has_key( item['client_id'] ):
+              firstTime[amUrl][item['client_id'] ] = True
           #    print "This is first time for %s" % item['client_id']
           output = ""
           if options.readyonly :
@@ -594,7 +596,7 @@ def printLoginInfo( loginInfoDict, keyList ) :
               sys.stderr.write("There is no status information for node %s. Print login info." % item['client_id'])
           # If there are status info print it, if not just skip it
           try:
-            if firstTime[ item['client_id'] ]:
+            if firstTime[amUrl][item['client_id'] ]:
                 gsOut = ""
                 amsOut = ""
                 if item.has_key('geni_status') and item['geni_status'].strip()!="":
@@ -611,7 +613,7 @@ def printLoginInfo( loginInfoDict, keyList ) :
                 else:
                         output += "\n%s's geni_status is: unknown \n" % (item['client_id'])
                 # Check if node is in ready state
-            firstTime[ item['client_id'] ]=False
+            firstTime[amUrl][ item['client_id'] ]=False
           except KeyError as ke:
               #print "Got error looking in firstTime for %s: %s" % (item['client_id'], ke)
               pass
