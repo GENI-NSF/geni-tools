@@ -159,8 +159,9 @@ class ManifestRSpecCombiner:
                     template_nodes_by_cmid[cmid] = []
                 template_nodes_by_cmid[cmid].append(child)
                 cid = child.getAttribute(CLIENT_ID)
-                if not cid in template_node_cids:
-                    template_node_cids.append(cid)
+                key = cid + cmid
+                if not key in template_node_cids:
+                    template_node_cids.append(key)
 
 #        print "DICT = " + str(template_nodes_by_cmid)
         
@@ -179,7 +180,8 @@ class ManifestRSpecCombiner:
                         child.localName == defs.NODE_TAG:
                     cid = child.getAttribute(CLIENT_ID)
                     cmid = child.getAttribute(COMPONENT_MGR_ID)
-                    if not cid in template_node_cids and cmid in am.urn_syns:
+                    key = cid + cmid
+                    if not key in template_node_cids and cmid in am.urn_syns:
                         doc_root.appendChild(child)
             # Now do the node replacing as necessary
             for urn in am.urn_syns:

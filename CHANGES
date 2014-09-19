@@ -64,6 +64,7 @@ gcf 2.7:
   * `Malformed arguments: *** verifygenicred` is fatal at PG AMs.
     Perhaps the slice needs to be renewed? (#691)
   * `Malformed rspec` error is fatal at SFA AMs. (#693)
+  * `Duplicate node` is fatal at PG/IG (2 nodes same client_id). (#701)
   * Avoid requesting VLAN tag 'any' at OESS and DCN AMs. (#644)
   * Be sure to avoid requesting 'any' from AMs that do not support it. 
     Copy the `isOESS` attribute across SCS calls. (#681)
@@ -81,6 +82,7 @@ gcf 2.7:
   * Fix up combining manifests: (#612)
    * Fix bug in finding links to avoid adding stitching links as regular links.
    * Combine all top-level attributes so all namespaces are declared.
+   * Basic support for 2 rspecs with the same node client_id on different AMs. (#700)
 
 
  * readyToLogin

@@ -715,6 +715,39 @@ class Aggregate(object):
         newExpires = naiveUTC(sliceexp)
         self.logger.debug("Starting newExpires at slice expiration %s, so init minDays to %d", sliceexp, minDays)
 
+        # Ensure we obey this AMs rules
+        amExpDays = None
+        # This part is ugly. We hardcode some knowledge of what current AM policies are.
+        # AL2S policy is missing, PG Utah and iMinds policies are missing, as are any new AM types
+        # This would be better from GetVersion or some cache file we periodically download. FIXME!
+        # HACK!
+        if self.isPG:
+            # If this is Utah PG or DDC, set to their shorter expiration
+            if self.urn in [defs.PGU_URN, defs.IGUDDC_URN]:
+                amExpDays = defs.DEF_SLIVER_EXPIRATION_UTAH
+                self.logger.debug("%s is Utah PG or DDC - %d day sliver expiration", self, defs.DEF_SLIVER_EXPIRATION_UTAH)
+            else:
+                amExpDays = defs.DEF_SLIVER_EXPIRATION_IG
+        elif self.isEG:
+            amExpDays = defs.DEF_SLIVER_EXPIRATION_EG
+        elif self.isGRAM:
+            amExpDays = defs.DEF_SLIVER_EXPIRATION_GRAM
+
+        if amExpDays is not None:
+            self.logger.debug("%s policy says expDays=%d", self, amExpDays)
+            newminDays = min(minDays, amExpDays)
+            # Reset newExpires even if the # days didn't change, in case the slice expires
+            # in this # of days (so at midnight say) and the calculated minDays is on the same day
+            # (likely earlier)
+            if newminDays <= minDays:
+                minDays = newminDays
+                # New desired expiration is now plus that # of days, less a little to make sure
+                # We don't violate local AM policy
+                newExpires2 = min(now + datetime.timedelta(days=minDays), newExpires)
+                if newExpires2 < newExpires:
+                    newExpires = newExpires2 - datetime.timedelta(minutes=10)
+            self.logger.debug("After checking own rules, minDays=%d, newExpires=%s", minDays, newExpires)
+
         for path in self.paths:
             for am in path.aggregates:
                 if am.sliverExpirations and len(am.sliverExpirations) > 0 and am.sliverExpirations[0] is not None:
@@ -1712,6 +1745,10 @@ class Aggregate(object):
                                 self.logger.debug("Fatal error from PG AM - rspec problem")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Request RSpec typo? %s..." % (self, str(ae)[:120])
+                            elif code == 1 and amcode == 1 and ("Duplicate node" in msg or "Duplicate node" in val):
+                                self.logger.debug("Fatal error from PG AM - 2 nodes same client_id")
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s. 2 of your nodes have the same client_id. %s..." % (self, str(ae)[:120])
                         elif self.isEG:
                             # AM said success but manifest said failed
                             # FIXME: Other fatal errors?
