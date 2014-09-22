@@ -421,7 +421,8 @@ class Aggregate(object):
                 if handler.level == logging.DEBUG:
                     self.inDebug = True
                     break
-
+        # Cache the slice cred to only query it once per AM
+        self.slicecred = None
 
     def __str__(self):
         if self.nick:
@@ -706,12 +707,46 @@ class Aggregate(object):
                 self.logger = logger
                 self.opts = opts
 
-        sliceCred = _load_cred(MyHandler(self.logger, opts), opts.slicecredfile)
-        sliceexp = get_cred_exp(self.logger, sliceCred)
+        if self.slicecred is None:
+            self.slicecred = _load_cred(MyHandler(self.logger, opts), opts.slicecredfile)
+        sliceexp = get_cred_exp(self.logger, self.slicecred)
         sliceExpFromNow = naiveUTC(sliceexp) - now
         minDays = sliceExpFromNow.days
         newExpires = naiveUTC(sliceexp)
         self.logger.debug("Starting newExpires at slice expiration %s, so init minDays to %d", sliceexp, minDays)
+
+        # Ensure we obey this AMs rules
+        amExpDays = None
+        # This part is ugly. We hardcode some knowledge of what current AM policies are.
+        # AL2S policy is missing, PG Utah and iMinds policies are missing, as are any new AM types
+        # This would be better from GetVersion or some cache file we periodically download. FIXME!
+        # HACK!
+        if self.isPG:
+            # If this is Utah PG or DDC, set to their shorter expiration
+            if self.urn in [defs.PGU_URN, defs.IGUDDC_URN]:
+                amExpDays = defs.DEF_SLIVER_EXPIRATION_UTAH
+                self.logger.debug("%s is Utah PG or DDC - %d day sliver expiration", self, defs.DEF_SLIVER_EXPIRATION_UTAH)
+            else:
+                amExpDays = defs.DEF_SLIVER_EXPIRATION_IG
+        elif self.isEG:
+            amExpDays = defs.DEF_SLIVER_EXPIRATION_EG
+        elif self.isGRAM:
+            amExpDays = defs.DEF_SLIVER_EXPIRATION_GRAM
+
+        if amExpDays is not None:
+            self.logger.debug("%s policy says expDays=%d", self, amExpDays)
+            newminDays = min(minDays, amExpDays)
+            # Reset newExpires even if the # days didn't change, in case the slice expires
+            # in this # of days (so at midnight say) and the calculated minDays is on the same day
+            # (likely earlier)
+            if newminDays <= minDays:
+                minDays = newminDays
+                # New desired expiration is now plus that # of days, less a little to make sure
+                # We don't violate local AM policy
+                newExpires2 = min(now + datetime.timedelta(days=minDays), newExpires)
+                if newExpires2 < newExpires:
+                    newExpires = newExpires2 - datetime.timedelta(minutes=10)
+            self.logger.debug("After checking own rules, minDays=%d, newExpires=%s", minDays, newExpires)
 
         for path in self.paths:
             for am in path.aggregates:
@@ -740,11 +775,17 @@ class Aggregate(object):
                     if amExpDays is not None:
                         self.logger.debug("%s policy says expDays=%d", am, amExpDays)
                         newminDays = min(minDays, amExpDays)
-                        if newminDays != minDays:
+                        # Reset newExpires even if the # days didn't change, in case the slice expires
+                        # in this # of days (so at midnight say) and the calculated minDays is on the same day
+                        # (likely earlier)
+                        if newminDays <= minDays:
                             minDays = newminDays
                             # New desired expiration is now plus that # of days, less a little to make sure
                             # We don't violate local AM policy
-                            newExpires = min(now + datetime.timedelta(days=minDays) - datetime.timedelta(minutes=10), newExpires)
+                            newExpires2 = min(now + datetime.timedelta(days=minDays), newExpires)
+                            if newExpires2 < newExpires:
+                                newExpires = newExpires2 - datetime.timedelta(minutes=10)
+#                            newExpires = min(now + datetime.timedelta(days=minDays) - datetime.timedelta(minutes=10), newExpires)
 #                        self.logger.debug("%s policy says expDays=%d so minDays=%d, newExpires=%s", am, amExpDays, minDays, newExpires)
                     self.logger.debug("After %s, minDays=%d, newExpires=%s", am, minDays, newExpires)
             # End loop over AMs on path
@@ -1704,6 +1745,10 @@ class Aggregate(object):
                                 self.logger.debug("Fatal error from PG AM - rspec problem")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Request RSpec typo? %s..." % (self, str(ae)[:120])
+                            elif code == 1 and amcode == 1 and ("Duplicate node" in msg or "Duplicate node" in val):
+                                self.logger.debug("Fatal error from PG AM - 2 nodes same client_id")
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s. 2 of your nodes have the same client_id. %s..." % (self, str(ae)[:120])
                         elif self.isEG:
                             # AM said success but manifest said failed
                             # FIXME: Other fatal errors?
@@ -1765,6 +1810,11 @@ class Aggregate(object):
                             isFatal = True
                             self.logger.debug("AuthZ error from SFA AM")
                             fatalMsg = "Reservation impossible at %s. This aggregate does not trust your certificate or credential.: %s..." % (self, str(ae)[:120])
+                        elif self.isOESS:
+                            # Ticket #696
+                            if "requested VLAN not available on this endpoint" in msg or "requested VLAN not available on this endpoint" in val:
+                                self.logger.debug("Assuming this OESS message means this particular VLAN tag is not available")
+                                isVlanAvailableIssue = True
                     except Exception, e:
                         if isinstance(e, StitchingError):
                             raise e
@@ -2239,8 +2289,9 @@ class Aggregate(object):
                         self.logger = logger
                         self.opts = opts
 
-                sliceCred = _load_cred(MyHandler(self.logger, opts), opts.slicecredfile)
-                sliceexp = get_cred_exp(self.logger, sliceCred)
+                if self.slicecred is None:
+                    self.slicecred = _load_cred(MyHandler(self.logger, opts), opts.slicecredfile)
+                sliceexp = get_cred_exp(self.logger, self.slicecred)
                 sliceexp = naiveUTC(sliceexp)
                 if thisExp > sliceexp:
                     # An ION bug!

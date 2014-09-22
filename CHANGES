@@ -5,6 +5,18 @@ gcf 2.7:
   * Calls to `status` and `sliverstatus` will also call the CH
     to try to sync up the CH records of slivers with truth
     as reported by the AM. (#634)
+  * Make `useSliceMembers` True by default and deprecate the option. (#667)
+   * By default, Omni will create accounts and install SSH keys for members of your slice, 
+     if you are using a CHAPI style framework / Clearinghouse 
+     which allows defining slice members (as the GENI Clearinghouse does). 
+   * This is not a change for Omni users who configured Omni using the `omni-configure` script,
+     which already forced that setting to true.
+   * The old `--useSliceMembers` option is deprecated and will be
+     removed in a future release.
+   * Added new option `--noSliceMembers` to over-ride that default and tell Omni
+     to ignore any slice members defined at the Clearinghouse.
+   * You may also set `useslicemembers=False` in the `omni` section of
+     your `omni_config` to over-ride the `useSliceMembers` default of True.
   * Honor the `useslicemembers` and `ignoreconfigusers` options in the `omni_config` (#671)
   * Fix `get_member_email` e.g. from `listprojectmembers` for speaks-for. (#676)
   * Fix nickname cache updating when temp and home directories are on 
@@ -12,6 +24,8 @@ gcf 2.7:
   * Look for fallback `agg_nick_cache` in correct location (#662)
   * Use relative imports in `speaksfor_util` if possible. (#657)
   * Fix URL to URN lookups to better handle names that differ by a prefix. (#683)
+  * Increase the sleep between busy SSL call retries from 15 to 20 seconds. (#697)
+  * Rename `addAliases.sh` to `addAliases.command` for Mac install. (#647)
 
  * Stitcher
   * Stitcher can now process any multi aggregate bound request. Any request
@@ -50,6 +64,7 @@ gcf 2.7:
   * `Malformed arguments: *** verifygenicred` is fatal at PG AMs.
     Perhaps the slice needs to be renewed? (#691)
   * `Malformed rspec` error is fatal at SFA AMs. (#693)
+  * `Duplicate node` is fatal at PG/IG (2 nodes same client_id). (#701)
   * Avoid requesting VLAN tag 'any' at OESS and DCN AMs. (#644)
   * Be sure to avoid requesting 'any' from AMs that do not support it. 
     Copy the `isOESS` attribute across SCS calls. (#681)
@@ -59,15 +74,31 @@ gcf 2.7:
   * Loop over all links when adding `component_manager` and `property`
     elements, rather than exit on first. (#680)
   * If a DCN AM reports insufficent bandwidth in sliverstatus, fail. (#653)
+  * Handle an OESS VLAN unavailable error. (#696)
+  * Check the `-a` arguments for RSpecs bound to a single AM (as
+    above, determined by `component_manager_id` on nodes). (#687)
+   * Fill it in if missing.
+   * Warn if it is more than one AM or differs from what the RSpec specifies.
+  * Fix up combining manifests: (#612)
+   * Fix bug in finding links to avoid adding stitching links as regular links.
+   * Combine all top-level attributes so all namespaces are declared.
+   * Basic support for 2 rspecs with the same node client_id on different AMs. (#700)
+   * Merge in any non node/link/stitching top level elements in the combined manifest. (#699)
 
  * readyToLogin
-   * Handle when omni switches AM API version number (#643)
-   * Remove defunct code (#666)
-   * Remove reliance on 'pg_manifest' field of SliverStatus return.  Leave fallback code for now. (#665)
-   * Replace `--noFallbackToStatusForPG` with `--fallbackToStatusForPG` with the opposite meaning (#393)
+  * Handle when omni switches AM API version number (#643)
+  * Remove defunct code (#666)
+  * Remove reliance on 'pg_manifest' field of SliverStatus return.  Leave fallback code for now. (#665)
+  * Replace `--noFallbackToStatusForPG` with `--fallbackToStatusForPG` with the opposite meaning (#393)
+  * Handle the same client_ids at different aggregates (#669)
 
  * remote-execute
-   * Allow `--host` to be specified multiple times (#668)
+  * Allow `--host` to be specified multiple times (#668)
+
+ * clear-passphrases
+  * Use SFA libraries to remove passphrases, removing reliance on OpenSSL binary.
+    Better error handling and cleaner log messages. 
+    Use `oscript` for config file loading. (#664)
 
  * gcf
    * Return `geni-expires` from the AM API v2 AM. (#679)

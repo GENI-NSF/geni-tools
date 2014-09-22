@@ -504,6 +504,9 @@ Cannot find the set of paths for the RequestTopology. '.
 `Malformed rspec`
  - There was a problem with your request RSpec. Do you have a typo?
 
+`Duplicate node`
+ - 2 of your nodes have the same client_id. Change one.
+
 === Errors in the tool – you may need to report this as a bug ===
 
 ` … has request tag XXX that is already in use by …`

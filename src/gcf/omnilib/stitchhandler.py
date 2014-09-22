@@ -215,6 +215,116 @@ class StitchingHandler(object):
             if unboundNode is not None:
                 self.logger.info("Node '%s' is unbound in request - all nodes must be bound for stitcher, as all aggregates get the same request RSpec" % unboundNode)
 
+            if self.isBound:
+                if self.opts.aggregate is None or len(self.opts.aggregate) == 0:
+                    # A bound non multi AM RSpec but no AM specified. Fill in the -a appropriately
+                    if self.parsedUserRequest.amURNs and len(self.parsedUserRequest.amURNs) > 0:
+                        amURN = self.parsedUserRequest.amURNs.pop()
+                        (nick, url) = handler_utils._lookupAggNickURLFromURNInNicknames(self.logger, self.config, amURN)
+                        if url and url.strip() != '':
+                            self.logger.debug("Setting -a argument for Omni: Found RSpec AM %s in omni_config AM nicknames: %s", amURN, nick)
+                            self.opts.aggregate = [nick]
+                        else:
+                            self.logger.debug("Could not find AM from RSpec for URN %s - Omni will have no -a argument", amURN)
+                    #else:
+                        # weird and really shouldn't happen
+                elif len(self.opts.aggregate) == 1:
+                    # If the AM specified is not what it is bound to, then what? complain? fix it? do it anyhow?
+                    # else this is good
+                    if self.parsedUserRequest.amURNs and len(self.parsedUserRequest.amURNs) > 0:
+                        amURN = self.parsedUserRequest.amURNs.pop()
+                        (nick, url) = handler_utils._lookupAggNickURLFromURNInNicknames(self.logger, self.config, amURN)
+                        amNick = None
+                        amURL = None
+                        if url and url.strip() != '':
+                            self.logger.debug("Found RSpec AM %s in omni_config AM nicknames: %s", amURN, nick)
+                            amNick = nick
+                            amURL = url
+
+                        if not self.opts.debug:
+                            # Suppress most log messages on the console for doing the nickname lookup
+                            lvl = logging.INFO
+                            handlers = self.logger.handlers
+                            if len(handlers) == 0:
+                                handlers = logging.getLogger().handlers
+                            for handler in handlers:
+                                if isinstance(handler, logging.StreamHandler):
+                                    lvl = handler.level
+                                    handler.setLevel(logging.WARN)
+                                    break
+
+                        url1,urn1 = handler_utils._derefAggNick(self, self.opts.aggregate[0])
+
+                        if not self.opts.debug:
+                            handlers = self.logger.handlers
+                            if len(handlers) == 0:
+                                handlers = logging.getLogger().handlers
+                            for handler in handlers:
+                                if isinstance(handler, logging.StreamHandler):
+                                    handler.setLevel(lvl)
+                                    break
+
+                        if (amNick and amNick == self.opts.aggregate[0]) or (amURL and amURL == url1) or (amURN == urn1):
+                            self.logger.debug("Supplied -a matches the AM found in the RSpec: %s=%s", amURN, self.opts.aggregate[0])
+                        elif amNick and url1:
+                            # A valid comparison that didn't find anything
+                            self.logger.warn("RSpec appears bound to a different AM than you are submitting it to. RSpec specifies AM %s (%s) but -a argument specifies %s (%s)! Continuing anyway....", amURN, amNick, self.opts.aggregate[0], url1)
+                            # FIXME: Correct it? Bail?
+                        # else:
+                            # Didn't get all the values for a proper comparison
+                    # else:
+                        # No AMs parsed out of the RSpec. I don't think this should happen
+                else:
+                    # the RSpec appeared to be single AM but multiple AMs specified.
+                    # Perhaps check if the bound AM is at least one of them?
+                    # Complain? Bail? Fix it? Continue?
+                    self.logger.debug("RSpec appeared bound to a single AM but multiple -a arguments specified?")
+
+                    if self.parsedUserRequest.amURNs and len(self.parsedUserRequest.amURNs) > 0:
+                        amURN = self.parsedUserRequest.amURNs.pop()
+                        (nick, url) = handler_utils._lookupAggNickURLFromURNInNicknames(self.logger, self.config, amURN)
+                        amNick = None
+                        amURL = None
+                        if url and url.strip() != '':
+                            self.logger.debug("Found RSpec AM %s URL from omni_config AM nicknames: %s", amURN, nick)
+                            amNick = nick
+                            amURL = url
+                        found = False
+                        for dasha in self.opts.aggregate:
+                            if not self.opts.debug:
+                                # Suppress most log messages on the console for doing the nickname lookup
+                                lvl = logging.INFO
+                                handlers = self.logger.handlers
+                                if len(handlers) == 0:
+                                    handlers = logging.getLogger().handlers
+                                for handler in handlers:
+                                    if isinstance(handler, logging.StreamHandler):
+                                        lvl = handler.level
+                                        handler.setLevel(logging.WARN)
+                                        break
+
+                            url1,urn1 = handler_utils._derefAggNick(self, dasha)
+
+                            if not self.opts.debug:
+                                handlers = self.logger.handlers
+                                if len(handlers) == 0:
+                                    handlers = logging.getLogger().handlers
+                                for handler in handlers:
+                                    if isinstance(handler, logging.StreamHandler):
+                                        handler.setLevel(lvl)
+                                        break
+
+                            if (amNick and amNick == dasha) or (amURL and amURL == url1) or (amURN == urn1):
+                                self.logger.debug("1 of the supplied -a args matches the AM found in the RSpec: %s", amURN)
+                                found = True
+                                break
+                        if not found:
+                            self.logger.warn("RSpec appears bound to a different AM than the multiple AMs you are submitting it to. RSpec specifies AM %s (%s) but -a argument specifies %s! Continuing anyway....", amURN, amNick, self.opts.aggregate)
+                        else:
+                            self.logger.warn("RSpec appeared bound to a single AM (%s) but multiple -a arguments specified? %s", amURN, self.opts.aggregate)
+                            self.logger.info("... continuing anyway")
+                            # FIXME: Correct it? Bail?
+
             if self.opts.noReservation:
                 self.logger.info("Not reserving resources")
                 sys.exit()
@@ -851,6 +961,9 @@ class StitchingHandler(object):
 
             raise StitchingError("Requested no reservation")
 
+        # Hand each AM the slice credential, so we only read it once
+        for am in self.ams_to_process:
+            am.slicecred = self.slicecred
 
         # The launcher handles calling the aggregates to do their allocation
         launcher = stitch.Launcher(self.opts, self.slicename, self.ams_to_process)
@@ -975,7 +1088,10 @@ class StitchingHandler(object):
             #     pass
             raise StitchingError("Could not get a slice credential for slice %s: %s" % (sliceurn, message))
 
+        self.slicecred = slicecred
+
         self.savedSliceCred = False
+
         # Force the slice cred to be from a saved file if not already set
         if not self.opts.slicecredfile:
             self.opts.slicecredfile = os.path.join(os.getenv("TMPDIR", os.getenv("TMP", "/tmp")), SLICECRED_FILENAME)
@@ -2148,6 +2264,7 @@ class StitchingHandler(object):
         self.logger.debug("Added expires %s", rspecs[0].getAttribute(defs.EXPIRES_ATTRIBUTE))
  
     def getUnboundNode(self):
+        '''Set self.isMultiAM by looking at Node component_manager_id fields. Also return at most 1 node without such a field.'''
         # If any node is unbound, then all AMs will try to allocate it.
         amURNs = []
         unboundNode = None

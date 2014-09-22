@@ -1279,6 +1279,8 @@ default_project=%s
 
 """ %(opts.framework, user, config['omni']['default_project'])
 
+        # FIXME: At some point, remove this since default
+        # is True as of v2.7
         if config['selected_framework']['type'] == 'chapi':
             omni_section += """
 # Over-ride the commandline setting of --useSliceMembers to force it True
