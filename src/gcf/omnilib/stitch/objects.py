@@ -1677,10 +1677,10 @@ class Aggregate(object):
                                                   code==2 and (amcode==2 or amcode==24)) or \
                                                   ((('vlan tag ' in msg and ' not available' in msg) or "Could not find a free vlan tag for" in msg or \
                                                         "Could not reserve a vlan tag for " in msg) and (code==1 or code==2) and (amcode==1 or amcode==24)):
-                                #                            self.logger.debug("Looks like a vlan availability issue")
+                                self.logger.debug("Looks like a vlan availability issue")
                                 isVlanAvailableIssue = True
                             elif code == 2 and amcode == 2 and "does not run on this hardware type" in msg:
-                                self.logger.debug("Fatal error from PG AM")
+                                self.logger.debug("Fatal HW type error from PG AM")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Did you request sliver_type emulab-openvz when emulab-xen is required? %s..." % (self, str(ae)[:120])
                             elif amcode==25 or amcode==26 or ((code == 2 or code==26) and (amcode == 2 or amcode==25 or amcode==26) and \
@@ -1688,42 +1688,42 @@ class Aggregate(object):
                                                                        'Inconsistent ifacemap' in msg or "Not enough bandwidth to connect some nodes" in msg or \
                                                                        "Too many VMs requested on physical host" in msg or \
                                                                        "Not enough nodes with fast enough interfaces" in msg)):
-                                self.logger.debug("Fatal error from PG AM")
+                                self.logger.debug("Fatal error (malformed req) from PG AM")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Malformed request or insufficient resources: %s..." % (self, str(ae)[:120])
                                 if 'Inconsistent ifacemap' in msg:
                                     fatalMsg = "Reservation request impossible at %s. Try using the --fixedEndpoint option. %s..." % (self, str(ae)[:120])
                             elif code == 6 and amcode == 6 and msg.startswith("Hostname > 63 char"):
-                                self.logger.debug("Fatal error from PG AM")
+                                self.logger.debug("Fatal error from PG AM - hostname too long")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Try a shorter client_id and/or slice name: %s..." % (self, str(ae)[:120])
                             elif code == 1 and amcode == 1 and msg.startswith("Duplicate link "):
-                                self.logger.debug("Fatal error from PG AM")
+                                self.logger.debug("Fatal error from PG AM - duplicate link")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Malformed request?: %s..." % (self, str(ae)[:120])
                             elif code == 7 and amcode == 7 and "Must delete existing sli" in msg:
-                                self.logger.debug("Fatal error from PG AM")
+                                self.logger.debug("Fatal error from PG AM - existing slice/sliver")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s: You already have a reservation in slice %s at this aggregate - delete it first or use another aggregate. %s..." % (self, slicename, str(ae)[:120])
                             elif code == 1 and amcode == 1 and msg == "Malformed keys":
-                                self.logger.debug("Fatal error from PG AM")
+                                self.logger.debug("Fatal error from PG AM - malformed keys")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Check your SSH keys: %s..." % (self, str(ae)[:120])
                             elif code == 1 and amcode == 1 and msg == "Signer certificate does not have a URL":
-                                self.logger.debug("Fatal error from PG AM")
+                                self.logger.debug("Fatal error from PG AM - bad signer cert")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Use a different SA or different aggregate: %s..." % (self, str(ae)[:120])
                             elif code == 2 and amcode == 2 and "Edge iface mismatch when stitching" in msg:
                                 # See ticket #570: happens when 2 VMs at an AM on same link
-                                self.logger.debug("Fatal error from PG AM")
+                                self.logger.debug("Fatal error from PG AM: iface mismatch")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Malformed request has 2 nodes at same AM on same named link: %s..." % (self, str(ae)[:120])
                             elif code == 2 and amcode == 2 and "no edge hop" in msg:
-                                self.logger.debug("Fatal error from PG AM")
+                                self.logger.debug("Fatal error from PG AM: no edge hop")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Malformed request lists this AM under the named link, but the AM has no interface on the link: %s..." % (self, str(ae)[:120])
                             elif code == 2 and amcode == 2 and "Need node id for links" in msg:
-                                self.logger.debug("Fatal error from PG AM")
+                                self.logger.debug("Fatal error from PG AM: need node id")
                                 isFatal = True
                                 badlink = None
                                 import re
@@ -1733,26 +1733,29 @@ class Aggregate(object):
                                     fatalMsg = "Reservation request impossible at %s. Link %s likely has a typo in one of the client_ids?: %s..." % (self, badlink, str(ae)[:120])
                                 else:
                                     fatalMsg = "Reservation request impossible at %s. A link likely has a typo in one of the client_ids?: %s..." % (self, str(ae)[:120])
-                            elif code == 2 and amcode == 2 and ("No possible mapping for " in msg or "Could not map to resources" in val):
-                                self.logger.debug("Fatal error from PG AM")
+                            elif code == 2 and amcode == 2 and ("No possible mapping for " in msg or (isinstance(val, str) and "Could not map to resources" in val)):
+                                self.logger.debug("Fatal error from PG AM: no mapping")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Malformed request? %s..." % (self, str(ae)[:120])
-                            elif code == 1 and amcode == 1 and ("Malformed arguments: *** verifygenicred" in msg or "Malformed arguments: *** verifygenicred" in val):
+                            elif code == 1 and amcode == 1 and ("Malformed arguments: *** verifygenicred" in msg or (isinstance(val, str) and "Malformed arguments: *** verifygenicred" in val)):
                                 self.logger.debug("Fatal error from PG AM - credential problem?")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Credential problem. Try renewing your slice? %s..." % (self, str(ae)[:120])
-                            elif code == 1 and amcode == 1 and ("Malformed rspec" in msg or "Malformed rspec" in val):
+                            elif code == 1 and amcode == 1 and ("Malformed rspec" in msg or (isinstance(val, str) and "Malformed rspec" in val)):
                                 self.logger.debug("Fatal error from PG AM - rspec problem")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Request RSpec typo? %s..." % (self, str(ae)[:120])
-                            elif code == 1 and amcode == 1 and ("Duplicate node" in msg or "Duplicate node" in val):
+                            elif code == 1 and amcode == 1 and "Duplicate node" in msg:
                                 self.logger.debug("Fatal error from PG AM - 2 nodes same client_id")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. 2 of your nodes have the same client_id. %s..." % (self, str(ae)[:120])
+                            else:
+                                self.logger.debug("Some other PG error: Code=%d, amcode=%d, msg=%s, val=%s", code, amcode, msg, str(val))
                         elif self.isEG:
                             # AM said success but manifest said failed
                             # FIXME: Other fatal errors?
                             if "edge domain does not exist" in msg or "check_image_size error" in msg or "incorrect image URL in ImageProxy" in msg:
+                                self.logger.debug("EG Fatal error: edge domain or image size or ...")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s: geni_sliver_info contained error: %s..." % (self, msg)
                             # FIXME: Detect error on link only
@@ -1773,12 +1776,12 @@ class Aggregate(object):
                                 else:
                                     isFatal = True
                                     fatalMsg = "Reservation request impossible at %s: geni_sliver_info contained error: %s..." % (self, msg)
+                                    self.logger.debug("Insuf numCPUCores EG fatal error")
                             # Ticket #606
                             if 'Error in building the dependency tree, probably not available vlan path' in msg:
                                 isVlanAvailableIssue = True
                                 self.logger.debug("Assuming EG error meant VLAN unavailable: %s", msg)
 
-                            pass
                         elif self.dcn:
                             # Really a 2nd time should be something else. But see http://groups.geni.net/geni/ticket/1207
                             if "AddPersonToSite: Invalid argument: No such site" in msg and self.allocateTries < 4:
@@ -1812,10 +1815,13 @@ class Aggregate(object):
                             fatalMsg = "Reservation impossible at %s. This aggregate does not trust your certificate or credential.: %s..." % (self, str(ae)[:120])
                         elif self.isOESS:
                             # Ticket #696
-                            if "requested VLAN not available on this endpoint" in msg or "requested VLAN not available on this endpoint" in val:
+                            if "requested VLAN not available on this endpoint" in msg or (isinstance(val, str) and "requested VLAN not available on this endpoint" in val):
                                 self.logger.debug("Assuming this OESS message means this particular VLAN tag is not available")
                                 isVlanAvailableIssue = True
                     except Exception, e:
+                        self.logger.debug("Caught unexpected error dispatching on AM Error type: %s", e)
+#                        import traceback
+#                        self.logger.debug(traceback.format_exc())
                         if isinstance(e, StitchingError):
                             raise e
 #                        self.logger.debug("Apparently not a vlan availability issue. Back to the SCS")
@@ -1871,6 +1877,7 @@ class Aggregate(object):
                 # Exit to User
                 raise StitchingError("Stitching failed due to aggregate error: Malformed error struct doing %s at %s: %s" % (opName, self, ae))
         except Exception, e:
+            self.logger.debug("Got: %s", e)
             # Some other error (OmniError, StitchingError)
 
             if self.isEG:
