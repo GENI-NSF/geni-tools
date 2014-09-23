@@ -35,6 +35,8 @@ gcf 2.7:
    * Combined manifest is now named: `<slicename>-manifest-rspec-multiam-combined.xml`
   * Added new option `--useSCSSugg` to always use VLAN tags picked
     by the SCS, not letting the AM pick. (#675)
+   * Refactor the picking 'any' VLAN tag code into another method,
+     and print the INFO message only once. (#705)
   * Add new option `--includehoponpath <hop> <path>` for requiring
     a particular hop only on a particular path, not all paths. (#654)
   * If you have multiple ExoGENI AMs in your request, you must submit
