@@ -29,10 +29,11 @@ from __future__ import absolute_import
 # These return bindings, which are a dictionary of {name : value}
 
 import time
+import xml.dom.minidom
+
 from ...sfa.trust import gid
 from ..util.cred_util import CredentialVerifier
 from .sfa_authorizer import SFA_Authorizer
-import xml.dom.minidom
 from .base_authorizer import AM_Methods
 from .util import *
 

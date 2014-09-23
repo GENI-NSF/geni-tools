@@ -21,6 +21,8 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
+from __future__ import absolute_import
+
 # Support for testing arguments/options of an AM call before invoking it
 # Possibly raising an exception, possibly modifying the arguments 
 # before invocation
