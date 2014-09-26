@@ -217,13 +217,24 @@ def getInfoFromSliceManifest( amUrl ) :
         print "ERROR: No value slot in return from %s from %s; review the logs."\
               % (apicall, amUrl)
         return []
+      if not apicallout[key].has_key('code') or apicallout[key]['code'] != 0:
+          msg = "ERROR: Failed to get manifest from %s call at %s; " % (apicall, amUrl)
+          if apicallout[key].has_key('output') and str(apicallout[key]['output']).strip() != "":
+              msg += apicallout[key]['output']
+          else:
+              msg += "review the logs"
+          print msg
+          return []
       value = apicallout[key]["value"]
 
       if tmpoptions.api_version == 2:
         manifest = value
       else:
         if tmpoptions.api_version == 3:
-          manifest = value['geni_rspec']
+            if not (isinstance(value, dict) and value.has_key('geni_rspec')):
+                print "ERROR: Malformed return from %s at %s - no rspec found" % (apicall, amUrl)
+                return []
+            manifest = value['geni_rspec']
         else:
           print "ERROR: API v%s not yet supported" %tmpoptions.api_version
           return []          
