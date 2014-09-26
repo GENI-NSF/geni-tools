@@ -204,7 +204,8 @@ options as Omni. `stitcher` however adds several options:
  Service will insist on including the specified switch/port on only
  the named computed stitching path. You can supply this argument many times. Use this
  with caution. Note that this only includes the hop on the named link,
- in contrast to `--includehop`.
+ in contrast to `--includehop`. Note also that a hop cannot both be
+ excluded (via `--excludehop`) and included (via `--includehop` or `--includehoponpath`).
 
 Together, the above options should allow you some control over the
 paths used for your circuits, without requiring that you construct the
