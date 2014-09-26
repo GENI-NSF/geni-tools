@@ -1047,6 +1047,8 @@ class StitchingHandler(object):
             raise OmniError("%s RSpec file did not contain an RSpec" % typeStr)
 #        if not is_rspec_of_type(requestString, rspecType):
 #        if not is_rspec_of_type(requestString, rspecType, "GENI 3", False, logger=self.logger):
+        # FIXME: ION does not support PGv2 schema RSpecs. Stitcher doesn't mind, and PG AMs don't mind, but
+        # this if the request is PGv2 and crosses ION this may cause trouble.
         if not (is_rspec_of_type(requestString, rspecType, "GENI 3", False) or is_rspec_of_type(requestString, rspecType, "ProtoGENI 2", False)):
             if self.opts.devmode:
                 self.logger.info("RSpec of wrong type or schema, but continuing...")

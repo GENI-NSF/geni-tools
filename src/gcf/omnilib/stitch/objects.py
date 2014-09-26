@@ -634,7 +634,13 @@ class Aggregate(object):
                 # Treat as error? Or as vlan unavailable? FIXME
                 self.handleVlanUnavailable("reservation", ("No suggested value element on hop %s" % hop), hop, True)
             elif suggestedValue in ('null', 'None', 'any'):
-                self.logger.error("Hop %s Suggested invalid: %s", hop, suggestedValue)
+                self.logger.error("Hop %s Suggested was invalid in manifest: %s", hop, suggestedValue)
+                # This could be due to the AM simply failing to properly construct the manifest
+                # But without this I don't know what VLAN tag was assigned
+                # and can't properly continue.
+                # Better to simply raise StitchingError?
+                # 9/2014: This happens if you request 'any' with a PGv2 schema RSpec at PG AMs
+
                 # Treat as error? Or as vlan unavailable? FIXME
                 self.handleVlanUnavailable("reservation", ("Invalid suggested value %s on hop %s" % (suggestedValue, hop)), hop, True)
             else:
