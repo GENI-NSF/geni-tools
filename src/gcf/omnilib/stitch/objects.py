@@ -1513,10 +1513,10 @@ class Aggregate(object):
                 self.inProcess = False
                 raise StitchingError(msg)
 
-#            # For testing VLAN Unavailable code, for the right AM, raise an AM API Error with code=24
-#            if self.nick == "stanford-ig":
+            # For testing VLAN Unavailable code, for the right AM, raise an AM API Error with code=24
+#            if self.nick == "max-ig":
 #                # FIXME: Could try other codes/messages for other way to detect the failed hop
-#                errStruct = {"code": {"geni_code": 24, "am_code": 24, "am_type": 'protogeni'}, "output": "Fake unavailable"}
+#                errStruct = {"code": {"geni_code": 2, "am_code": 24, "am_type": 'protogeni'}, "output": "vlan tag 9999 for 'link-ig-max-ig-gpo1' not available"}
 #                raise AMAPIError("*** Fake VLAN Unavailable error at %s" % self.nick, errStruct)
 
             # May have changed URL versions - if so, save off the corrected URL?
@@ -2659,7 +2659,14 @@ class Aggregate(object):
                     self.logger.debug("%s uses the VLANs picked elsewhere - so stitcher cannot redo the request locally.", hop)
                     errMsg = "Topology too complex - ask Stitching Service to find a VLAN tag (%s)" % errMsg
                     canRedoRequestHere = False
+
+                    # FIXME: Could mark the failed tag on hop as unavail where it came from, though that's a little disingenous.
+                    # Otherwise, this is negotiation: Must go back to the AM that picked, exclude the failed tag from teh request range, delete / mark incomplete any dependent AMs,
+                    # Also delete that AM, and retru.
+                    # Failing that, we want to fall through and have the SCS pick tags again
+
                     break
+
                 # If a hop has one tag left to pick from, cannot redo locally
                 if len(hop._hop_link.vlan_range_request) <= 1 and (not failedHop or hop == failedHop or ((not hop._hop_link.vlan_xlate or not failedHop._hop_link.vlan_xlate) and failedHop.path == hop.path)): # FIXME: And failedHop no xlate?
                     # Only the 1 VLAN tag was in the available range and we need a different tag
@@ -3030,7 +3037,25 @@ class Aggregate(object):
         # If we got here, we can't handle this locally
         self.logger.debug("%s failure could not be redone locally.", self)
 
-        if not self.userRequested:
+        if failedHop and failedHop.import_vlans:
+            # We know what hop failed. It didn't pick the VLAN tag - someone else did. If we were able to handle it locally, we did.
+            # If we go there, ideally we'd do negotiation - walk back up the chain to have whoever picked the tag avoid picking this tag.
+            # In the abscence of negotiation, let the SCS do it for us.
+            # Ticket #708
+            # Handle case like a failure at MAX-IG due to MAX picking a VLAN tag using 'any' that MAX-IG can't handle, by
+            # marking that tag unavailable and redoing the request, so MAX picks a different tag next time.
+            if self.userRequested:
+                self.logger.debug("User requested AM had a failed hop that imports VLANs. Fail to SCS (with that tag excluded), in hopes of the upstream AM picking a new tag.")
+            # Exit to SCS
+            # If we've tried this AM a few times, set its hops to be excluded
+            if self.allocateTries > self.MAX_TRIES:
+                self.logger.debug("%s allocation failed %d times - try excluding its hops", self, self.allocateTries)
+                for hop in self.hops:
+                    self.logger.debug
+                    hop.excludeFromSCS = True
+            self.inProcess = False
+            raise StitchingCircuitFailedError("Circuit reservation failed at %s. Try again from the SCS" % self)
+        elif not self.userRequested:
             # Exit to SCS
             # If we've tried this AM a few times, set its hops to be excluded
             if self.allocateTries > self.MAX_TRIES:

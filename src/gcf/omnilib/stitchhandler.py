@@ -695,7 +695,9 @@ class StitchingHandler(object):
             for agg in existingAggs:
                 if agg.dcn and agg.triedRes:
                     # Only need to sleep this much longer time
-                    # If this is a DCN AM that we tried a reservation on (whether it worked or failed)
+                    # if this is a DCN AM that we tried a reservation on (whether it worked or failed)
+                    if sTime == Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS:
+                        self.logger.debug("Must sleep longer cause had a previous reservation attempt at a DCN AM: %s", agg)
                     sTime = Aggregate.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS
                 # Reset whether we've tried this AM this time through
                 agg.triedRes = False

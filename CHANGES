@@ -88,6 +88,9 @@ gcf 2.7:
    * Basic support for 2 rspecs with the same node client_id on different AMs. (#700)
    * Merge in any non node/link/stitching top level elements in the combined manifest. (#699)
   * Fix up detection of error codes, specifically in the usual in `val`. (#702)
+  * If a VLAN was unavailable and another AM picked the tag and full negotiation
+    is required, for now fail to the SCS to handle it - even for user requested
+    aggregates. (#708)
 
  * readyToLogin
   * Handle when omni switches AM API version number (#643)
