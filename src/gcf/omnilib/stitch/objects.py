@@ -3045,6 +3045,7 @@ class Aggregate(object):
             # Handle case like a failure at MAX-IG due to MAX picking a VLAN tag using 'any' that MAX-IG can't handle, by
             # marking that tag unavailable and redoing the request, so MAX picks a different tag next time.
             if self.userRequested:
+                self.logger.debug(errMsg)
                 self.logger.debug("User requested AM had a failed hop that imports VLANs. Fail to SCS (with that tag excluded), in hopes of the upstream AM picking a new tag.")
             # Exit to SCS
             # If we've tried this AM a few times, set its hops to be excluded
