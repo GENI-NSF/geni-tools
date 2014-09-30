@@ -1411,7 +1411,12 @@ class Aggregate(object):
         self.allocateTries = self.allocateTries + 1
 
         # Write the request rspec to a string that we save to a file
-        requestString = self.requestDom.toxml(encoding="utf-8")
+        try:
+            requestString = self.requestDom.toxml(encoding="utf-8")
+        except Exception, xe:
+            self.logger.debug("Failed to XMLify requestDOM for sending to AM: %s", xe)
+            raise StitchingError("%s: Constructed request RSpec malformed? Failed to XMLify" % self)
+
         header = "<!-- Resource request for stitching for:\n\tSlice: %s\n\t at AM:\n\tURN: %s\n\tURL: %s\n -->" % (slicename, self.urn, self.url)
         if requestString and rspec_util.is_rspec_string( requestString, None, None, logger=self.logger ):
             content = stripBlankLines(string.replace(requestString, "\\n", '\n'))
