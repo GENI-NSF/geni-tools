@@ -714,7 +714,7 @@ class StitchingHandler(object):
                 xmlreq = requestDOM.toxml()
             except Exception, xe:
                 self.logger.debug("Failed to XMLify requestDOM for parsing: %s", xe)
-                self._raise_omni_error("Malformed request RSpec: %s", xe)
+                self._raise_omni_error("Malformed request RSpec: %s" % xe)
 
             self.parsedSCSRSpec = self.rspecParser.parse(xmlreq)
             workflow_parser = WorkflowParser(self.logger)
@@ -841,7 +841,7 @@ class StitchingHandler(object):
                 requestString = self.parsedSCSRSpec.dom.toxml(encoding="utf-8")
             except Exception, xe:
                 self.logger.debug("Failed to XMLify parsed SCS request RSpec for saving: %s", xe)
-                self._raise_omni_error("Malformed SCS expanded request RSpec: %s", xe)
+                self._raise_omni_error("Malformed SCS expanded request RSpec: %s" % xe)
 
             header = "<!-- Expanded Resource request for:\n\tSlice: %s -->" % (self.slicename)
             if requestString is not None:
@@ -1586,7 +1586,7 @@ class StitchingHandler(object):
             xmlreq = requestDOM.toprettyxml(encoding="utf-8")
         except Exception, xe:
             self.logger.debug("Failed to XMLify requestDOM for sending to SCS: %s", xe)
-            self._raise_omni_error("Malformed request RSpec: %s", xe)
+            self._raise_omni_error("Malformed request RSpec: %s" % xe)
 
         return xmlreq, options
         
@@ -2147,7 +2147,7 @@ class StitchingHandler(object):
             manString = combinedManifestDom.toprettyxml(encoding="utf-8")
         except Exception, xe:
             self.logger.debug("Failed to XMLify combined Manifest RSpec: %s", xe)
-            self._raise_omni_error("Malformed combined manifest RSpec: %s", xe)
+            self._raise_omni_error("Malformed combined manifest RSpec: %s" % xe)
 
         # set rspec to be UTF-8
         if isinstance(manString, unicode):
