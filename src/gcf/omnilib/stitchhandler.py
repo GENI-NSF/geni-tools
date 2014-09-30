@@ -710,7 +710,13 @@ class StitchingHandler(object):
             scsResponse = None # Just to note we are done with this here (keep no state)
         else:
             # FIXME: with the user rspec
-            self.parsedSCSRSpec = self.rspecParser.parse(requestDOM.toxml())
+            try:
+                xmlreq = requestDOM.toxml()
+            except Exception, xe:
+                self.logger.debug("Failed to XMLify requestDOM for parsing: %s", xe)
+                self._raise_omni_error("Malformed request RSpec: %s", xe)
+
+            self.parsedSCSRSpec = self.rspecParser.parse(xmlreq)
             workflow_parser = WorkflowParser(self.logger)
 
             # Parse the workflow, creating Path/Hop/etc objects
@@ -829,10 +835,20 @@ class StitchingHandler(object):
 
         if self.opts.noReservation:
             self.logger.info("Not reserving resources")
+
             # Write the request rspec to a string that we save to a file
-            requestString = self.parsedSCSRSpec.dom.toxml(encoding="utf-8")
+            try:
+                requestString = self.parsedSCSRSpec.dom.toxml(encoding="utf-8")
+            except Exception, xe:
+                self.logger.debug("Failed to XMLify parsed SCS request RSpec for saving: %s", xe)
+                self._raise_omni_error("Malformed SCS expanded request RSpec: %s", xe)
+
             header = "<!-- Expanded Resource request for:\n\tSlice: %s -->" % (self.slicename)
-            content = stripBlankLines(string.replace(requestString, "\\n", '\n'))
+            if requestString is not None:
+                content = stripBlankLines(string.replace(requestString, "\\n", '\n'))
+            else:
+                self.logger.debug("None expanded request RSpec?")
+                content = ""
             filename = None
 
             ot = self.opts.output
@@ -1566,7 +1582,13 @@ class StitchingHandler(object):
             options[scs.GENI_PROFILE_TAG] = profile
         self.logger.debug("Sending SCS options %s", options)
 
-        return requestDOM.toprettyxml(encoding="utf-8"), options
+        try:
+            xmlreq = requestDOM.toprettyxml(encoding="utf-8")
+        except Exception, xe:
+            self.logger.debug("Failed to XMLify requestDOM for sending to SCS: %s", xe)
+            self._raise_omni_error("Malformed request RSpec: %s", xe)
+
+        return xmlreq, options
         
     def parseSCSResponse(self, scsResponse):
 
@@ -2120,7 +2142,12 @@ class StitchingHandler(object):
         else:
             lastDom = lastAM.manifestDom
         combinedManifestDom = combineManifestRSpecs(ams, lastDom)
-        manString = combinedManifestDom.toprettyxml(encoding="utf-8")
+
+        try:
+            manString = combinedManifestDom.toprettyxml(encoding="utf-8")
+        except Exception, xe:
+            self.logger.debug("Failed to XMLify combined Manifest RSpec: %s", xe)
+            self._raise_omni_error("Malformed combined manifest RSpec: %s", xe)
 
         # set rspec to be UTF-8
         if isinstance(manString, unicode):

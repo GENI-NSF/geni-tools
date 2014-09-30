@@ -5075,11 +5075,16 @@ class AMCallHandler(object):
     def _maybeGetRSpecFromStruct(self, rspec):
         '''RSpec might be string of JSON, in which case extract the
         XML out of the struct.'''
+        if rspec is None:
+            self._raise_omni_error("RSpec is empty")
+
         if "'geni_rspec'" in rspec or "\"geni_rspec\"" in rspec or '"geni_rspec"' in rspec:
             try:
                 rspecStruct = json.loads(rspec, encoding='ascii', cls=DateTimeAwareJSONDecoder, strict=False)
                 if rspecStruct and isinstance(rspecStruct, dict) and rspecStruct.has_key('geni_rspec'):
                     rspec = rspecStruct['geni_rspec']
+                    if rspec is None:
+                        self._raise_omni_error("Malformed RSpec: 'geni_rspec' empty in JSON struct")
             except Exception, e:
                 import traceback
                 msg = "Failed to read RSpec from JSON text %s: %s" % (rspec[:min(60, len(rspec))], e)

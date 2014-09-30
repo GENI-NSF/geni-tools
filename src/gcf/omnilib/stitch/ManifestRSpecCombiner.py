@@ -98,7 +98,11 @@ class ManifestRSpecCombiner:
         for child in rspec_node.childNodes:
             if child.localName in (defs.NODE_TAG, defs.LINK_TAG, defs.STITCHING_TAG):
                 continue
-            cstr = child.toxml(encoding="utf-8").strip()
+            try:
+                cstr = child.toxml(encoding="utf-8").strip()
+            except Exception, xe:
+                self.logger.debug("Failed to XMLify top level child %s - skipping: %s", child.name, xe)
+                cstr = ""
             if cstr == "":
                 continue
             template_kids.append(cstr)
@@ -125,7 +129,11 @@ class ManifestRSpecCombiner:
             for child in am_rspec_node.childNodes:
                 if child.localName in (defs.NODE_TAG, defs.LINK_TAG, defs.STITCHING_TAG):
                     continue
-                cstr = child.toxml(encoding="utf-8").strip()
+                try:
+                    cstr = child.toxml(encoding="utf-8").strip()
+                except Exception, xe:
+                    self.logger.debug("Failed to XMLify top level child %s - skipping: %s", child.name, xe)
+                    cstr = ""
                 if cstr == "":
                     continue
                 self.logger.debug("%s manifest had new top level element: '%s'...", am, cstr[:min(len(cstr), 60)])
