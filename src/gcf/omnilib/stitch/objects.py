@@ -1835,11 +1835,14 @@ class Aggregate(object):
                                 isVlanAvailableIssue = True
                     except Exception, e:
                         self.logger.debug("Caught unexpected error dispatching on AM Error type: %s", e)
-#                        import traceback
-#                        self.logger.debug(traceback.format_exc())
+                        import traceback
+                        self.logger.debug(traceback.format_exc())
                         if isinstance(e, StitchingError):
                             raise e
-#                        self.logger.debug("Apparently not a vlan availability issue. Back to the SCS")
+                        # Error here generally means a typo in my code above.
+                        # Falling through here means we retry at the SCS
+                        # This is a gamble that the AM error we failed to check was something that will get better if we retry
+                        # Worst case is it takes a few more minutes before the attempt fully fails
 
                     if isVlanAvailableIssue:
                         if not didInfo:
