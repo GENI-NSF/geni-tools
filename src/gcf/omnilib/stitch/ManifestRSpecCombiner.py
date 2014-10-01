@@ -226,6 +226,13 @@ class ManifestRSpecCombiner:
         the corresponding node from the manifest of the Aggregate with a matching 
         component_manager URN'''
 
+        # FIXME: Ticket #712: Look at the auth in the sliver_id
+        # To see whose node this is, not component_manager_id.
+        # That better handles the ExoSM where the compnent_manager_id
+        # will be for a sub-AM / rack, but auth in the sliver_id
+        # will be the ExoSM.
+        # This also works now because I filled in all those URNs in am.urn_syns
+
         # Set up a dictionary mapping node by component_manager_id
         template_nodes_by_cmid={}
         template_node_cids=[]
@@ -312,6 +319,11 @@ class ManifestRSpecCombiner:
                 # If the manifest has this link, then we're good
                 if cid in template_link_cids:
                     continue
+
+                # FIXME: If the link lists an interface_ref that points to a node that
+                # belongs to this AM, then we should also treat this as myLink
+                # In this case this is OK cause stitcher forces the link to list all
+                # the component_managers
                 myLink = False
                 for cme in link.childNodes:
                     if cme.nodeType != Node.ELEMENT_NODE or cme.localName != COMP_MGR:
