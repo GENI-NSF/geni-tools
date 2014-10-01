@@ -100,6 +100,8 @@ gcf 2.7:
   * Replace `--noFallbackToStatusForPG` with `--fallbackToStatusForPG` with the opposite meaning (#393)
   * Handle the same client_ids at different aggregates (#669)
   * Handle errors from AMs getting the manifest using APIv3. (#707)
+   * Better error detection.
+   * Also, use cached !GetVersion information if available.
 
  * remote-execute
   * Allow `--host` to be specified multiple times (#668)

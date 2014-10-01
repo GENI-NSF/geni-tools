@@ -217,7 +217,7 @@ def getInfoFromSliceManifest( amUrl ) :
         print "ERROR: No value slot in return from %s from %s; review the logs."\
               % (apicall, amUrl)
         return []
-      if not apicallout[key].has_key('code') or apicallout[key]['code'] != 0:
+      if not apicallout[key].has_key('code') or not isinstance(apicallout[key]['code'], dict) or not apicallout[key]['code'].has_key('geni_code') or apicallout[key]['code']['geni_code'] != 0:
           msg = "ERROR: Failed to get manifest from %s call at %s; " % (apicall, amUrl)
           if apicallout[key].has_key('output') and str(apicallout[key]['output']).strip() != "":
               msg += apicallout[key]['output']
@@ -764,7 +764,7 @@ def main_no_print(argv=None, opts=None, slicen=None):
   options.useSliceAggregates = False
       
   # Run equivalent of 'omni.py getversion'
-  argv = ['getversion']
+  argv = ['--ForceUseGetVersionCache', 'getversion']
   try:
     text, getVersion = omni.call( argv, options )
   except (oe.AMAPIError, oe.OmniError) :
