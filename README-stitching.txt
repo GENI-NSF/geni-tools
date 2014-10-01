@@ -508,6 +508,10 @@ Cannot find the set of paths for the RequestTopology. '.
 `Duplicate node`
  - 2 of your nodes have the same client_id. Change one.
 
+`No stitching path to ` or `Malformed request? Wrong link type?`
+ - There is a problem with your request RSpec. Did you specify the
+ wrong link type?
+
 === Errors in the tool – you may need to report this as a bug ===
 
 ` … has request tag XXX that is already in use by …`

@@ -1695,7 +1695,7 @@ class Aggregate(object):
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Did you request sliver_type emulab-openvz when emulab-xen is required? %s..." % (self, str(ae)[:120])
                             elif amcode==25 or amcode==26 or ((code == 2 or code==26) and (amcode == 2 or amcode==25 or amcode==26) and \
-                                                                  (val.startswith("Could not map to resources") or msg.startswith("*** ERROR: mapper") or 'Could not verify topo' in msg or \
+                                                                  ((isinstance(val, str) and val.startswith("Could not map to resources")) or msg.startswith("*** ERROR: mapper") or 'Could not verify topo' in msg or \
                                                                        'Inconsistent ifacemap' in msg or "Not enough bandwidth to connect some nodes" in msg or \
                                                                        "Too many VMs requested on physical host" in msg or \
                                                                        "Not enough nodes with fast enough interfaces" in msg)):
@@ -1760,6 +1760,10 @@ class Aggregate(object):
                                 self.logger.debug("Fatal error from PG AM - 2 nodes same client_id")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. 2 of your nodes have the same client_id. %s..." % (self, str(ae)[:120])
+                            elif code == 2 and amcode == 2 and "No stitching path to " in msg:
+                                self.logger.debug("Fatal error from PG AM: no stitching extension? Wrong link type?")
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s. Malformed request? Wrong link type? %s..." % (self, str(ae)[:120])
                             else:
                                 self.logger.debug("Some other PG error: Code=%d, amcode=%d, msg=%s, val=%s", code, amcode, msg, str(val))
                         elif self.isEG:

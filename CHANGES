@@ -92,6 +92,8 @@ gcf 2.7:
     is required, for now fail to the SCS to handle it - even for user requested
     aggregates. (#708)
   * Catch errors XMLifying RSpecs - errors can happen from malformed requests. (#709)
+  * `No stitching path` is fatal at PG. (#710)
+  * Avoid treating `value` as a string - it is usually an int. (#711)
 
  * readyToLogin
   * Handle when omni switches AM API version number (#643)
