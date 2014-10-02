@@ -160,6 +160,10 @@ verbose=false
 # Default is false, so use v1
 #speakv2=true
 
+# You can specify the default project that you work in
+# and avoid specifying it on the commandline
+# default_project=MyProjectName
+
 [my_gcf]
 type=gcf
 
