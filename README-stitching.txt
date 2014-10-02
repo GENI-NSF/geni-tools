@@ -85,7 +85,8 @@ To use stitcher:
  did not specify in your original request RSpec. If you use
  `stitcher.py` to delete your resources and supply no `-a` argument,
  `stitcher` will delete from all aggregates at which it reserved
- resources. If you use `omni`, you must specify which aggregates to invoke. 
+ resources. If you use `omni`, you must specify which aggregates to
+ invoke (or use `--useSliceAggregates`).
 
 For example, to fully delete your reservation:
 {{{
@@ -131,8 +132,8 @@ all resources reserved as a result of this request.
 
 Resource expiration is determined by local aggregates. Some aggregates
 expires resources in 5 days unless renewed. stitcher attempts to
-minimize the number of different times that you resources expire
-at, which sometims means your initial expiration at a particular
+minimize the number of different times at which your resources expire,
+which sometims means your initial expiration at a particular
 aggregate will be sooner that it might otherwise have been. Always pay
 attention to the reported resource expiration when stitcher completes,
 and renew your resources (using `stitcher renewsliver`) when necessary.
@@ -229,7 +230,7 @@ Additionally, these options are used for some topologies:
  rack that specifies both the aggregate URN as well as the URL, EG:
 {{{
 eg-bbn=urn:publicid:IDN+exogeni.net:bbnvmsite+authority+am,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
-eg-renci=urn:publicid:IDN+exogeni.net:rencivmsite+authority+am,https://rci-hn.exogeni.net:11443/orca/xmlrpc
+eg-renci=urn:publicid:IDN+exogeni.net:rcivmsite+authority+am,https://rci-hn.exogeni.net:11443/orca/xmlrpc
 eg-fiu=urn:publicid:IDN+exogeni.net:fiuvmsite+authority+am,https://fiu-hn.exogeni.net:11443/orca/xmlrpc
 }}}
  - `--useExoSM`: Try to use the ExoGENI ExoSM for ExoGENI
@@ -517,6 +518,9 @@ Cannot find the set of paths for the RequestTopology. '.
 `No stitching path to ` or `Malformed request? Wrong link type?`
  - There is a problem with your request RSpec. Did you specify the
  wrong link type?
+
+`such a short life for a sliver` or `Renew your slice`
+ - Try renewing your slice. Your resources would expire too soon as requested.
 
 === Errors in the tool – you may need to report this as a bug ===
 
