@@ -72,11 +72,11 @@ gcf 2.7:
      many circuits will all expire in 5 days. Renew your reservation if needed.
    * New aggregate types or new local aggregate policies will require changes
      to the code.
-  * `Insufficient rights` error is fatal at SFA AMs. (#677)
-  * `Malformed arguments: *** verifygenicred` is fatal at PG AMs.
+  * "`Insufficient rights`" error is fatal at SFA AMs. (#677)
+  * "`Malformed arguments: *** verifygenicred`" is fatal at PG AMs.
     Perhaps the slice needs to be renewed? (#691)
-  * `Malformed rspec` error is fatal at SFA AMs. (#693)
-  * `Duplicate node` is fatal at PG/IG (2 nodes same client_id). (#701)
+  * "`Malformed rspec`" error is fatal at SFA AMs. (#693)
+  * `Duplicate node`" is fatal at PG/IG (2 nodes same `client_id`). (#701)
   * Avoid requesting VLAN tag 'any' at OESS and DCN AMs. (#644)
   * Be sure to avoid requesting 'any' from AMs that do not support it. 
     Copy the `isOESS` attribute across SCS calls. (#681)
@@ -97,21 +97,23 @@ gcf 2.7:
    * Handle odd namespace for `schemaLocation`. (#703)
    * Basic support for 2 rspecs with the same node client_id on different AMs. (#700)
    * Merge in any non node/link/stitching top level elements in the combined manifest. (#699)
-  * Fix up detection of error codes, specifically in the usual in `val`. (#702)
+  * Fix up detection of error codes, specifically when looking at
+    `value` in return triple. (#702)
   * If a VLAN was unavailable and another AM picked the tag and full negotiation
     is required, for now fail to the SCS to handle it - even for user requested
     aggregates. (#708)
   * Catch errors XMLifying RSpecs - errors can happen from malformed requests. (#709)
-  * `No stitching path` is fatal at PG. (#710)
+  * "`No stitching path`" is fatal at PG. (#710)
   * Avoid treating `value` as a string - it is usually an int. (#711)
   * Set SCS URL from the omni_config entry under `omni_defaults` named `scs_url`
     if present, but over-ride that with any commandline value for `--scsURL`.
     This allows changing the default SCS location without updating Omni. (#713)
+  * "`such a short life for a sliver`" is fatal at PG. (#714)
 
  * readyToLogin
   * Handle when omni switches AM API version number (#643)
   * Remove defunct code (#666)
-  * Remove reliance on 'pg_manifest' field of SliverStatus return.  Leave fallback code for now. (#665)
+  * Remove reliance on 'pg_manifest' field of !SliverStatus return.  Leave fallback code for now. (#665)
   * Replace `--noFallbackToStatusForPG` with `--fallbackToStatusForPG` with the opposite meaning (#393)
   * Handle the same client_ids at different aggregates (#669)
   * Handle errors from AMs getting the manifest using APIv3. (#707)

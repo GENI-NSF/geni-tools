@@ -1518,11 +1518,11 @@ class Aggregate(object):
                 self.inProcess = False
                 raise StitchingError(msg)
 
-            # For testing VLAN Unavailable code, for the right AM, raise an AM API Error with code=24
-#            if self.nick == "max-ig":
+#            # For testing VLAN Unavailable code, for the right AM, raise an AM API Error with code=24
+#            if self.nick == "gpo-ig":
 #                # FIXME: Could try other codes/messages for other way to detect the failed hop
-#                errStruct = {"code": {"geni_code": 2, "am_code": 24, "am_type": 'protogeni'}, "output": "vlan tag 9999 for 'link-ig-max-ig-gpo1' not available"}
-#                raise AMAPIError("*** Fake VLAN Unavailable error at %s" % self.nick, errStruct)
+#                errStruct = {"code": {"geni_code": 7, "am_code": 7, "am_type": 'protogeni'}, "output": "such a short life for a sliver?"}
+#                raise AMAPIError("*** Fake AM error at %s" % self.nick, errStruct)
 
             # May have changed URL versions - if so, save off the corrected URL?
             if result and self.api_version > 2:
@@ -1760,6 +1760,39 @@ class Aggregate(object):
                                 self.logger.debug("Fatal error from PG AM - 2 nodes same client_id")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. 2 of your nodes have the same client_id. %s..." % (self, str(ae)[:120])
+                            elif code == 7 and amcode == 7 and "such a short life" in msg:
+                                sliceexp = None
+                                sliceExpiring = False
+                                if self.slicecred:
+                                    sliceexp = get_cred_exp(self.logger, self.slicecred)
+                                    sliceExpFromNow = naiveUTC(sliceexp) - datetime.datetime.utcnow()
+                                    if sliceExpFromNow.days < 1:
+                                        sliceExpiring = True
+                                rspecs = self.requestDom.getElementsByTagName(defs.RSPEC_TAG)
+                                expires = None
+                                if rspecs and len(rspecs) > 0:
+                                    expires = rspecs[0].getAttribute(defs.EXPIRES_ATTRIBUTE)
+                                    if expires and expires.strip() == "":
+                                        expires = None
+                                logmsg = "Fatal error from PG AM: Requested expiration too short"
+                                if sliceexp is not None:
+                                    logmsg += " - slice expiring at %s" % sliceexp.isoformat()
+                                    if sliceExpiring:
+                                        logmsg += " - within 1 day"
+                                if expires:
+                                    logmsg += ". Requested expiration '%s'." % expires
+                                else:
+                                    logmsg += ". No explicit expiration requested."
+                                self.logger.debug(logmsg)
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s. " % self
+                                if sliceExpiring:
+                                    fatalMsg += "Renew your slice (expires soon)."
+                                elif expires:
+                                    fatalMsg += "Requested expiration too soon: %s. Renew your slice?" % expires
+                                else:
+                                    fatalMsg += "Renew your slice?"
+                                fatalMsg += " %s..." % (str(ae)[:120])
                             elif code == 2 and amcode == 2 and "No stitching path to " in msg:
                                 self.logger.debug("Fatal error from PG AM: no stitching extension? Wrong link type?")
                                 isFatal = True
