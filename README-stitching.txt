@@ -257,6 +257,8 @@ Other options you should not need to use:
  is 30 (seconds).
  - `--scsURL <url>`: URL at which the Stitching Computation Service
  runs. Use the default.
+  - The default may be updated over time via a new `omni_defaults`
+  entry in the `agg_nick_cache`.
  - `--noReservation`: Do not try to reserve at aggregates; instead,
    just save the expanded request RSpec.
  - `--fakeModeDir <directory>`: When supplied, does not make any
@@ -352,6 +354,10 @@ The Stitching Computation Service (SCS), also provides hints to the
 stitcher script on the order in which to make reservations at the
 various aggregates.
 
+The SCS URL is set by code, may be updated via a new value in the
+aggregate nickname cache, and may be over-ridden by developers or
+testers using the `--scsURL` option.
+
 Known issues with this service can be found on the
 [http://groups.geni.net/geni/query?status=new&status=assigned&status=reopened&component=MAXSCS GENI Trac]
 
@@ -383,7 +389,7 @@ translates those into calls to the Internet2 OESS system.
 This aggregate has no compute resources - it exists only to provision
 circuits between other aggregates. When you request a stitched link
 between 2 aggregates, often stitcher and the SCS will automatically
-add ION to your request to provide connectivity.
+add AL2S to your request to provide connectivity.
 
 Known issues with this aggregate can be found on the
 [http://groups.geni.net/geni/query?status=new&status=assigned&status=reopened&component=STITCHING GENI Trac]
