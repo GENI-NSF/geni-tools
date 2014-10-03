@@ -110,6 +110,10 @@ gcf 2.7:
     This allows changing the default SCS location without updating Omni. (#713)
   * "`such a short life for a sliver`" is fatal at PG. (#714)
   * "`Error encountered converting RSpec to NDL`" is fatal at EG. (#715)
+  * "`Embedding workflow ERROR` is fatal at EG. (#716)
+  * Fix copying attributes for later tries when the URN changed,
+    like switching from an EG rack to the ExoSM. (#718)
+   * This bug causes requesting VLAN `any` from EG AMs.
 
  * readyToLogin
   * Handle when omni switches AM API version number (#643)

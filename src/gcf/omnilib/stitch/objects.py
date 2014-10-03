@@ -1596,8 +1596,30 @@ class Aggregate(object):
                 else:
                     omniargs = ['--raise-error-on-v2-amapi-error', '-o', '-V%d' % self.api_version, '-a', self.url, opName2, slicename]
                 try:
+                    if not opts.debug:
+                        # Suppress most log messages on the console for deleting any EG reservation - including WARNING messages
+                        # For many errors there is no reservation there from before so it looks like an error but isn't.
+                        lvl = logging.INFO
+                        handlers = self.logger.handlers
+                        if len(handlers) == 0:
+                            handlers = logging.getLogger().handlers
+                        for handler in handlers:
+                            if isinstance(handler, logging.StreamHandler):
+                                lvl = handler.level
+                                handler.setLevel(logging.ERROR)
+                                break
+
                     # FIXME: right counter?
                     (text, delResult) = self.doAMAPICall(omniargs, opts, opName2, slicename, self.allocateTries, suppressLogs=True)
+                    if not opts.debug:
+                        handlers = self.logger.handlers
+                        if len(handlers) == 0:
+                            handlers = logging.getLogger().handlers
+                        for handler in handlers:
+                            if isinstance(handler, logging.StreamHandler):
+                                handler.setLevel(lvl)
+                                break
+
                     self.logger.debug("doAMAPICall on EG AM where res had AMAPIError: %s %s at %s got: %s", opName2, slicename, self, text)
                 except Exception, e:
                     self.logger.warn("Failed to delete failed (AMAPIError) reservation at EG AM %s: %s", self, e)

@@ -1212,7 +1212,7 @@ class StitchingHandler(object):
 
         # If there are no property elements
         if len(link.properties) == 0:
-            self.logger.debug("Link %s had no properties - must add them", link.id)
+            self.logger.debug("Link '%s' had no properties - must add them", link.id)
             # Then add them
             s_id = node1ID
             d_id = node2ID
@@ -1231,20 +1231,20 @@ class StitchingHandler(object):
             prop2S = props[1].source_id
             prop2D = props[1].dest_id
             if prop1S is None or prop1S == "":
-                raise StitchingError("Malformed property on link %s missing source_id attribute" % link.id)
+                raise StitchingError("Malformed property on link '%s' missing source_id attribute" % link.id)
             if prop1D is None or prop1D == "":
-                raise StitchingError("Malformed property on link %s missing dest_id attribute" % link.id)
+                raise StitchingError("Malformed property on link '%s' missing dest_id attribute" % link.id)
             if prop1D == prop1S:
-                raise StitchingError("Malformed property on link %s has matching source and dest_id: %s" % (link.id, prop1D))
+                raise StitchingError("Malformed property on link '%s' has matching source and dest_id: %s" % (link.id, prop1D))
             if prop2S is None or prop2S == "":
-                raise StitchingError("Malformed property on link %s missing source_id attribute" % link.id)
+                raise StitchingError("Malformed property on link '%s' missing source_id attribute" % link.id)
             if prop2D is None or prop2D == "":
-                raise StitchingError("Malformed property on link %s missing dest_id attribute" % link.id)
+                raise StitchingError("Malformed property on link '%s' missing dest_id attribute" % link.id)
             if prop2D == prop2S:
-                raise StitchingError("Malformed property on link %s has matching source and dest_id: %s" % (link.id, prop2D))
+                raise StitchingError("Malformed property on link '%s' has matching source and dest_id: %s" % (link.id, prop2D))
             # FIXME: Compare to the interface_refs
             if prop1S != prop2D or prop1D != prop2S:
-                raise StitchingError("Malformed properties on link %s: source and dest tags are not reversed" % link.id)
+                raise StitchingError("Malformed properties on link '%s': source and dest tags are not reversed" % link.id)
             if props[0].capacity and not props[1].capacity:
                 props[1].capacity = props[0].capacity
             if props[1].capacity and not props[0].capacity:
@@ -1258,11 +1258,11 @@ class StitchingHandler(object):
         # There is a single property tag
         prop = link.properties[0]
         if prop.source_id is None or prop.source_id == "":
-            raise StitchingError("Malformed property on link %s missing source_id attribute" % link.id)
+            raise StitchingError("Malformed property on link '%s' missing source_id attribute" % link.id)
         if prop.dest_id is None or prop.dest_id == "":
-            raise StitchingError("Malformed property on link %s missing dest_id attribute" % link.id)
+            raise StitchingError("Malformed property on link '%s' missing dest_id attribute" % link.id)
         if prop.dest_id == prop.source_id:
-            raise StitchingError("Malformed property on link %s has matching source and dest_id: %s" % (link.id, prop.dest_id))
+            raise StitchingError("Malformed property on link '%s' has matching source and dest_id: '%s'" % (link.id, prop.dest_id))
         # FIXME: Compare to the interface_refs
         if prop.capacity is None or prop.capacity == "":
             prop.capacity = self.opts.defaultCapacity
@@ -1270,7 +1270,7 @@ class StitchingHandler(object):
         # Create the 2nd property with the source and dest reversed
         prop2 = LinkProperty(prop.dest_id, prop.source_id, prop.latency, prop.packet_loss, prop.capacity)
         link.properties = [prop, prop2]
-        self.logger.debug("Link %s added missing reverse property")
+        self.logger.debug("Link '%s' added missing reverse property", link.id)
 
     # Ensure all implicit AMs (from interface_ref->node->component_manager_id) are explicit on the link
     def ensureLinkListsAMs(self, link, requestRSpecObject):
@@ -1285,16 +1285,16 @@ class StitchingHandler(object):
                     if node.amURN is not None and node.amURN not in ams:
                         ams.append(node.amURN)
                     found = True
-                    self.logger.debug("Link %s interface %s found on node %s", link.id, ifc.client_id, node.id)
+                    self.logger.debug("Link '%s' interface '%s' found on node '%s'", link.id, ifc.client_id, node.id)
                     break
             if not found:
-                self.logger.debug("Link %s interface %s not found on any node", link.id, ifc.client_id)
+                self.logger.debug("Link '%s' interface '%s' not found on any node", link.id, ifc.client_id)
                 # FIXME: What would this mean?
 
         for amURN in ams:
             am = Aggregate.find(amURN)
             if am not in link.aggregates:
-                self.logger.debug("Adding missing AM %s to link %s", amURN, link.id)
+                self.logger.debug("Adding missing AM %s to link '%s'", amURN, link.id)
                 link.aggregates.append(am)
 
     def hasGRELink(self, requestRSpecObject):
@@ -1313,10 +1313,10 @@ class StitchingHandler(object):
 #                    self.logger.debug("Link %s not GRE but %s", link.id, link.typeName)
                     continue
                 if len(link.aggregates) != 2:
-                    self.logger.warn("Link %s is a GRE link with %d AMs?", link.id, len(link.aggregates))
+                    self.logger.warn("Link '%s' is a GRE link with %d AMs?", link.id, len(link.aggregates))
                     continue
                 if len(link.interfaces) != 2:
-                    self.logger.warn("Link %s is a GRE link with %d interfaces?", link.id, len(link.interfaces))
+                    self.logger.warn("Link '%s' is a GRE link with %d interfaces?", link.id, len(link.interfaces))
                     continue
                 isGRE = True
                 for ifc in link.interfaces:
@@ -1337,9 +1337,9 @@ class StitchingHandler(object):
                             # We do not currently parse sliver-type off of nodes to validate that
                             break
                     if not found:
-                        self.logger.warn("GRE link %s has unknown interface_ref %s - assuming it is OK", link.id, ifc.client_id)
+                        self.logger.warn("GRE link '%s' has unknown interface_ref '%s' - assuming it is OK", link.id, ifc.client_id)
                 if isGRE:
-                    self.logger.debug("Link %s is GRE", link.id)
+                    self.logger.debug("Link '%s' is GRE", link.id)
 
         # Extra: ensure endpoints are xen for link type egre, openvz or rawpc for gre
 
@@ -1361,7 +1361,7 @@ class StitchingHandler(object):
                 if len(link.aggregates) > 1 and not link.hasSharedVlan and link.typeName == link.VLAN_LINK_TYPE:
                     # Ensure this link has 2 well formed property elements with explicity capacities
                     self.addCapacityOneLink(link)
-                    self.logger.debug("Requested link %s is stitching", link.id)
+                    self.logger.debug("Requested link '%s' is stitching", link.id)
 
                     # Links that are ExoGENI only use ExoGENI stitching, not the SCS
                     # So only if the link includes anything non-ExoGENI, we use the SCS
@@ -1375,7 +1375,7 @@ class StitchingHandler(object):
                             break
 
                     if egOnly:
-                        self.logger.debug("Link %s is only ExoGENI, so can use ExoGENI stitching.", link.id)
+                        self.logger.debug("Link '%s' is only ExoGENI, so can use ExoGENI stitching.", link.id)
                         if needSCS:
                             self.logger.debug("But we already decided we need the SCS.")
                         elif self.opts.noEGStitching and not needSCS:
@@ -1883,63 +1883,78 @@ class StitchingHandler(object):
                 omniargs = ['--ForceUseGetVersionCache', '-a', agg.url, 'getversion']
             else:
                 omniargs = ['--ForceUseGetVersionCache', '-o', '--warn', '-a', agg.url, 'getversion']
-                
+
             try:
                 self.logger.debug("Getting extra AM info from Omni for AM %s", agg)
                 (text, version) = omni.call(omniargs, options_copy)
-
-                if isinstance (version, dict) and version.has_key(agg.url) and isinstance(version[agg.url], dict) \
-                        and version[agg.url].has_key('value') and isinstance(version[agg.url]['value'], dict):
-                    if version[agg.url]['value'].has_key('geni_am_type') and isinstance(version[agg.url]['value']['geni_am_type'], list):
-                        if DCN_AM_TYPE in version[agg.url]['value']['geni_am_type']:
+                aggurl = agg.url
+                if isinstance (version, dict) and version.has_key(aggurl) and isinstance(version[aggurl], dict) \
+                        and version[aggurl].has_key('value') and isinstance(version[aggurl]['value'], dict):
+                    if version[aggurl]['value'].has_key('geni_am_type') and isinstance(version[aggurl]['value']['geni_am_type'], list):
+                        if DCN_AM_TYPE in version[aggurl]['value']['geni_am_type']:
                             self.logger.debug("AM %s is DCN", agg)
                             agg.dcn = True
-                        elif ORCA_AM_TYPE in version[agg.url]['value']['geni_am_type']:
+                        elif ORCA_AM_TYPE in version[aggurl]['value']['geni_am_type']:
                             self.logger.debug("AM %s is Orca", agg)
                             agg.isEG = True
-                        elif PG_AM_TYPE in version[agg.url]['value']['geni_am_type']:
+                        elif PG_AM_TYPE in version[aggurl]['value']['geni_am_type']:
                             self.logger.debug("AM %s is ProtoGENI", agg)
                             agg.isPG = True
-                        elif GRAM_AM_TYPE in version[agg.url]['value']['geni_am_type']:
+                        elif GRAM_AM_TYPE in version[aggurl]['value']['geni_am_type']:
                             self.logger.debug("AM %s is GRAM", agg)
                             agg.isGRAM = True
-                    elif version[agg.url]['value'].has_key('geni_am_type') and ORCA_AM_TYPE in version[agg.url]['value']['geni_am_type']:
+                    elif version[aggurl]['value'].has_key('geni_am_type') and ORCA_AM_TYPE in version[aggurl]['value']['geni_am_type']:
                             self.logger.debug("AM %s is Orca", agg)
                             agg.isEG = True
                     # This code block looks nice but doesn't work - the version object is not the full triple
-#                    elif version[agg.url].has_key['code'] and isinstance(version[agg.url]['code'], dict) and \
-#                            version[agg.url]['code'].has_key('am_type') and str(version[agg.url]['code']['am_type']).strip() != "":
-#                        if version[agg.url]['code']['am_type'] == PG_AM_TYPE:
+#                    elif version[aggurl].has_key['code'] and isinstance(version[aggurl]['code'], dict) and \
+#                            version[aggurl]['code'].has_key('am_type') and str(version[aggurl]['code']['am_type']).strip() != "":
+#                        if version[aggurl]['code']['am_type'] == PG_AM_TYPE:
 #                            self.logger.debug("AM %s is ProtoGENI", agg)
 #                            agg.isPG = True
-#                        elif version[agg.url]['code']['am_type'] == ORCA_AM_TYPE:
+#                        elif version[aggurl]['code']['am_type'] == ORCA_AM_TYPE:
 #                            self.logger.debug("AM %s is Orca", agg)
 #                            agg.isEG = True
-#                        elif version[agg.url]['code']['am_type'] == DCN_AM_TYPE:
+#                        elif version[aggurl]['code']['am_type'] == DCN_AM_TYPE:
 #                            self.logger.debug("AM %s is DCN", agg)
 #                            agg.dcn = True
-                    if version[agg.url]['value'].has_key('geni_api_versions') and isinstance(version[agg.url]['value']['geni_api_versions'], dict):
+                    if version[aggurl]['value'].has_key('geni_api_versions') and isinstance(version[aggurl]['value']['geni_api_versions'], dict):
                         maxVer = 1
                         hasV2 = False
-                        for key in version[agg.url]['value']['geni_api_versions'].keys():
+                        v2url = None
+                        for key in version[aggurl]['value']['geni_api_versions'].keys():
                             if int(key) == 2:
                                 hasV2 = True
+                                v2url = version[aggurl]['value']['geni_api_versions'][key]
                                 # Ugh. Why was I changing the URL based on the Ad? Not needed, Omni does this.
                                 # And if the AM says the current URL is the current opts.api_version OR the AM only lists 
                                 # one URL, then changing the URL makes no sense. So if I later decide I need this
                                 # for some reason, only do it if len(keys) > 1 and [value][geni_api] != opts.api_version
                                 # Or was I trying to change to the 'canonical' URL for some reason?
 #                                # Change the stored URL for this Agg to the URL the AM advertises if necessary
-#                                if agg.url != version[agg.url]['value']['geni_api_versions'][key]:
-#                                    agg.url = version[agg.url]['value']['geni_api_versions'][key]
+#                                if agg.url != version[aggurl]['value']['geni_api_versions'][key]:
+#                                    agg.url = version[aggurl]['value']['geni_api_versions'][key]
                                 # The reason to do this would be to
                                 # avoid errors like:
 #16:46:34 WARNING : Requested API version 2, but AM https://clemson-clemson-control-1.clemson.edu:5001 uses version 3. Same aggregate talks API v2 at a different URL: https://clemson-clemson-control-1.clemson.edu:5002
-#                                if len(version[agg.url]['value']['geni_api_versions'].keys()) > 1 and \
-#                                        agg.url != version[agg.url]['value']['geni_api_versions'][key]:
-#                                    agg.url = version[agg.url]['value']['geni_api_versions'][key]
+#                                if len(version[aggurl]['value']['geni_api_versions'].keys()) > 1 and \
+#                                        agg.url != version[aggurl]['value']['geni_api_versions'][key]:
+#                                    agg.url = version[aggurl]['value']['geni_api_versions'][key]
                             if int(key) > maxVer:
                                 maxVer = int(key)
+
+                        # This code is just to avoid ugly WARNs from Omni about changing URL to get the right API version.
+                        # Added it for GRAM. But GRAM is manually fixed at the SCS now, so no need.
+#                        if self.opts.api_version == 2 and hasV2 and agg.url != v2url:
+#                            if agg.isEG and "orca/xmlrpc" in agg.url and "orca/geni" in v2url:
+#                                # EGs ad lists the wrong v2 URL
+#                                #self.logger.debug("Don't swap at EG with the wrong URL")
+#                                pass
+#                            else:
+#                                self.logger.debug("%s: Swapping URL to v2 URL. Change from %s to %s", agg, agg.url, v2url)
+#                                if agg.alt_url is None:
+#                                    agg.alt_url = agg.url
+#                                agg.url = v2url
 
                         # Stitcher doesn't really know how to parse
                         # APIv1 return structs
@@ -1959,15 +1974,15 @@ class StitchingHandler(object):
 #                            self.logger.warn("Testing v3 support")
 #                            agg.api_version = 3
 #                        agg.api_version = maxVer
-                    if version[agg.url]['value'].has_key('GRAM_version'):
+                    if version[aggurl]['value'].has_key('GRAM_version'):
                         agg.isGRAM = True
                         self.logger.debug("AM %s is GRAM", agg)
-                    if version[agg.url]['value'].has_key('foam_version') and 'oess' in agg.url:
+                    if version[aggurl]['value'].has_key('foam_version') and 'oess' in agg.url:
                         agg.isOESS = True
                         self.logger.debug("AM %s is OESS", agg)
-                    if version[agg.url]['value'].has_key('geni_request_rspec_versions') and \
-                            isinstance(version[agg.url]['value']['geni_request_rspec_versions'], list):
-                        for rVer in version[agg.url]['value']['geni_request_rspec_versions']:
+                    if version[aggurl]['value'].has_key('geni_request_rspec_versions') and \
+                            isinstance(version[aggurl]['value']['geni_request_rspec_versions'], list):
+                        for rVer in version[aggurl]['value']['geni_request_rspec_versions']:
                             if isinstance(rVer, dict) and rVer.has_key('type') and rVer.has_key('version') and \
                                     rVer.has_key('extensions') and rVer['type'].lower() == 'geni' and str(rVer['version']) == '3' and \
                                     isinstance(rVer['extensions'], list):
@@ -1995,6 +2010,8 @@ class StitchingHandler(object):
                 raise
             except Exception, e:
                 self.logger.debug("Got error extracting extra AM info: %s", e)
+                import traceback
+                self.logger.debug(traceback.format_exc())
                 pass
 #            finally:
 #                logging.disable(logging.NOTSET)
@@ -2379,7 +2396,8 @@ class StitchingHandler(object):
         '''Save state from old aggregates for use with new aggregates from later SCS call'''
         for agg in newAggs:
             for oldAgg in oldAggs:
-                if agg.urn == oldAgg.urn:
+                # FIXME: Correct to compare urn_syns too?
+                if agg.urn == oldAgg.urn or agg.urn in oldAgg.urn_syns or oldAgg.urn in agg.urn_syns:
                     for hop in agg.hops:
                         for oldHop in oldAgg.hops:
                             if hop.urn == oldHop.urn:
@@ -2391,6 +2409,7 @@ class StitchingHandler(object):
                     # FIXME: agg.allocateTries?
                     agg.dcn = oldAgg.dcn
                     agg.isOESS = oldAgg.isOESS
+                    agg.isGRAM = oldAgg.isGRAM
                     agg.isPG = oldAgg.isPG
                     agg.isEG = oldAgg.isEG
                     agg.isExoSM = oldAgg.isExoSM
@@ -2398,6 +2417,13 @@ class StitchingHandler(object):
                     agg.alt_url = oldAgg.alt_url
                     agg.api_version = oldAgg.api_version
                     agg.nick = oldAgg.nick
+                    agg.doesSchemaV1 = oldAgg.doesSchemaV1
+                    agg.doesSchemaV2 = oldAgg.doesSchemaV2
+                    agg.slicecred = oldAgg.slicecred
+
+                    # FIXME: correct?
+                    agg.url = oldAgg.url
+                    agg.urn_syns = copy.deepcopy(oldAgg.urn_syns)
                     break
 
     # If we said this rspec needs a fake endpoint, add it here - so the SCS and other stuff
