@@ -1832,7 +1832,15 @@ class Aggregate(object):
                             elif 'Error encountered converting RSpec to NDL' in msg:
                                 isFatal = True
                                 self.logger.debug("EG Fatal error: NDL converter error")
+                                if 'vlan range any is invalid' in msg:
+                                    self.logger.info("Stitcher error: requested any VLAN at EG! Please report this.")
                                 fatalMsg = "Reservation request impossible at %s: Your RSpec contains something ExoGENI does not understand: %s..." % (self, msg)
+                            elif 'Embedding workflow ERROR' in msg:
+                                # FIXME: This may indicate we sent a request to an individual rack
+                                # When we meant to send it to the ExoSM. Could be a stitcher bug.
+                                isFatal = True
+                                self.logger.debug("EG Fatal error: Embedding workflow error")
+                                fatalMsg = "Reservation request impossible at %s: Did you request resources from the wrong ExoGENI AM? %s..." % (self, msg)
 
                         elif self.dcn:
                             # Really a 2nd time should be something else. But see http://groups.geni.net/geni/ticket/1207

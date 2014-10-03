@@ -525,6 +525,12 @@ Cannot find the set of paths for the RequestTopology. '.
 `Error encountered converting RSpec to NDL`
  - ExoGENI did not understand something in your request RSpec.
 
+`Embedding workflow ERROR`
+ - ExoGENI aggregates cannot handle requests that mention other
+   ExoGENI aggregates. Typically, stitcher sends such requests
+   to the ExoSM. Did you supply `--useExoSM` by mistake?
+   Alternatively, there may be an error in your request RSpec.
+
 === Errors in the tool – you may need to report this as a bug ===
 
 ` … has request tag XXX that is already in use by …`
