@@ -1630,6 +1630,10 @@ class Framework(Framework_Base):
             if not is_valid_urn(agg_urn):
                 self.logger.warn("Invalid aggregate URN '%s' for recording new sliver from sliver urn '%s'", agg_urn, sliver_urn)
                 return ""
+        elif sliver_urn.startswith(slice_urn) and ('al2s' in agg_urn or 'foam' in agg_urn):
+            # Work around a FOAM/AL2S bug producing bad sliver URNs
+            # See http://groups.geni.net/geni/ticket/1294
+            self.logger.debug("Malformed sliver URN '%s'. Assuming this is OK anyhow at this FOAM based am: %s. See http://groups.geni.net/geni/ticket/1294", sliver_urn, agg_urn)
         else:
             # The authority of the agg_urn should be the start of the authority of the sliver auth
             # this allows a sliver at exogeni.net:bbn to be recorded under the AM exogeni.net
@@ -1861,12 +1865,18 @@ class Framework(Framework_Base):
         if sliver_urn is None or sliver_urn.strip() == "":
             self.logger.warn("Empty sliver_urn to update record of sliver expiration")
             return
+
         # Just make sure this is a reasonable URN of type sliver,
         # without validating the name portion - since we really don't
         # care so much what names the AM uses
         if not self._weakSliverValidCheck(sliver_urn):
-            self.logger.warn("Cannot update sliver expiration record: Invalid sliver urn '%s'", sliver_urn)
-            return
+            if is_valid_urn(agg_urn) and sliver_urn.startswith(slice_urn) and ('al2s' in agg_urn or 'foam' in agg_urn):
+                # Work around a FOAM/AL2S bug producing bad sliver URNs
+                # See http://groups.geni.net/geni/ticket/1294
+                self.logger.debug("Malformed sliver URN '%s'. Assuming this is OK anyhow at this FOAM based am: %s. See http://groups.geni.net/geni/ticket/1294", sliver_urn, agg_urn)
+            else:
+                self.logger.warn("Cannot update sliver expiration record: Invalid sliver urn '%s'", sliver_urn)
+                return
         if not is_valid_urn(agg_urn):
             agg_urn = self._getAggFromSliverURN(sliver_urn)
 

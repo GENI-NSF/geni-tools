@@ -35,7 +35,9 @@ gcf 2.7:
      the user's `omni_config`: if a user should be able to over-ride the 
      default, use a different omni config setting (not in `omni_defaults`), or
      use a command line option.
-   * Stitcher uses this for the SCS URL. 
+   * Stitcher uses this for the SCS URL.
+  * Allow FOAM/AL2S AMs to submit sliver URNs that are the slice URN with an ID 
+    appended. This works around known bug http://groups.geni.net/geni/ticket/1294. (#719)
 
  * Stitcher
   * Stitcher can now process any multi aggregate bound request. Any request
@@ -114,6 +116,9 @@ gcf 2.7:
   * Fix copying attributes for later tries when the URN changed,
     like switching from an EG rack to the ExoSM. (#718)
    * This bug causes requesting VLAN `any` from EG AMs.
+  * For OESS/AL2S AM: Force a call to `sliverstatus` after reservations,
+    so slivers are reported to the Clearinghouse. Works around 
+    known AL2S issue http://groups.geni.net/geni/ticket/1295. (#717)
 
  * readyToLogin
   * Handle when omni switches AM API version number (#643)

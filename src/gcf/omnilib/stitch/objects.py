@@ -1530,6 +1530,8 @@ class Aggregate(object):
                 if str(url) != str(self.url):
                     self.logger.debug("%s found URL for API version is %s", self, url)
                     # FIXME: Safe to change the local URL to the corrected one?
+#                    if self.alt_url is None:
+#                        self.alt_url = self.url
 #                    self.url = url
 
             if self.api_version == 2 and result:
@@ -2011,6 +2013,29 @@ class Aggregate(object):
             # Specifically, if the link sliver is the only thing that fails, then it is
             # handleVlanUnavailable
             self.logger.debug("Got an EG AM: FIXME: It could still fail, and this manifest lacks some info.")
+
+        if self.isOESS:
+            # AL2S doesn't include a sliver urn in the manifest, so nothing is reported to the portal
+            # Force a call to sliverstatus here to ensure the reservation is listed
+            # Works around known AL2S issue http://groups.geni.net/geni/ticket/1295.
+
+            # generate args for sliverstatus
+            if self.api_version == 2:
+                opName = 'sliverstatus'
+            else:
+                opName = 'status'
+            if opts.warn:
+                omniargs = [ '-V%d' % self.api_version, '--raise-error-on-v2-amapi-error', '-a', self.url, opName, slicename]
+            else:
+                omniargs = ['-o', '-V%d' % self.api_version, '--raise-error-on-v2-amapi-error', '-a', self.url, opName, slicename]
+            try:
+                # FIXME: Big hack!!!
+                if not opts.fakeModeDir:
+                    (text2, result2) = self.doAMAPICall(omniargs, opts, opName, slicename, self.allocateTries, suppressLogs=True)
+                    self.logger.debug("For OESS %s %s at %s got: %s", opName, slicename, self, text2)
+            except Exception, e:
+                # For this purpose, we don't care if there is an error doing sliverstatus
+                self.logger.debug("Failed to get status at OESS AM %s: %s", self, e)
 
         # Caller handles saving the manifest, comparing man sug with request, etc
         # FIXME: Not returning text here. Correct?
