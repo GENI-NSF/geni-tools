@@ -109,6 +109,7 @@ gcf 2.7:
     if present, but over-ride that with any commandline value for `--scsURL`.
     This allows changing the default SCS location without updating Omni. (#713)
   * "`such a short life for a sliver`" is fatal at PG. (#714)
+  * "`Error encountered converting RSpec to NDL`" is fatal at EG. (#715)
 
  * readyToLogin
   * Handle when omni switches AM API version number (#643)

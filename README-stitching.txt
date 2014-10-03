@@ -522,6 +522,9 @@ Cannot find the set of paths for the RequestTopology. '.
 `such a short life for a sliver` or `Renew your slice`
  - Try renewing your slice. Your resources would expire too soon as requested.
 
+`Error encountered converting RSpec to NDL`
+ - ExoGENI did not understand something in your request RSpec.
+
 === Errors in the tool – you may need to report this as a bug ===
 
 ` … has request tag XXX that is already in use by …`

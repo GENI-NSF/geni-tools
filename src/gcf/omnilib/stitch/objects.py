@@ -1810,7 +1810,7 @@ class Aggregate(object):
 
                             # If the problem is resource allocation at ExoSM vs local and we have
                             # an alternative, try the alternative
-                            if "Insufficient numCPUCores" in msg:
+                            elif "Insufficient numCPUCores" in msg:
                                 if self.alt_url is not None and self.allocateTries < self.MAX_TRIES:
                                     msg = "Retrying reservation at %s at URL %s instead of %s to resolve error: %s" % (self, self.alt_url, self.url, msg)
                                     self.logger.info(msg)
@@ -1826,9 +1826,13 @@ class Aggregate(object):
                                     fatalMsg = "Reservation request impossible at %s: geni_sliver_info contained error: %s..." % (self, msg)
                                     self.logger.debug("Insuf numCPUCores EG fatal error")
                             # Ticket #606
-                            if 'Error in building the dependency tree, probably not available vlan path' in msg:
+                            elif 'Error in building the dependency tree, probably not available vlan path' in msg:
                                 isVlanAvailableIssue = True
                                 self.logger.debug("Assuming EG error meant VLAN unavailable: %s", msg)
+                            elif 'Error encountered converting RSpec to NDL' in msg:
+                                isFatal = True
+                                self.logger.debug("EG Fatal error: NDL converter error")
+                                fatalMsg = "Reservation request impossible at %s: Your RSpec contains something ExoGENI does not understand: %s..." % (self, msg)
 
                         elif self.dcn:
                             # Really a 2nd time should be something else. But see http://groups.geni.net/geni/ticket/1207
