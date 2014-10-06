@@ -105,6 +105,7 @@ gcf 2.7:
     is required, for now fail to the SCS to handle it - even for user requested
     aggregates. (#708)
   * Catch errors XMLifying RSpecs - errors can happen from malformed requests. (#709)
+   * When printing errors, print `nodeName` of the element, not `name`. (#723)
   * "`No stitching path`" is fatal at PG. (#710)
   * Avoid treating `value` as a string - it is usually an int. (#711)
   * Set SCS URL from the omni_config entry under `omni_defaults` named `scs_url`

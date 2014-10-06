@@ -99,9 +99,11 @@ class ManifestRSpecCombiner:
             if child.localName in (defs.NODE_TAG, defs.LINK_TAG, defs.STITCHING_TAG):
                 continue
             try:
-                cstr = child.toxml(encoding="utf-8").strip()
+                cstr = child.toxml(encoding="utf-8")
+                if cstr:
+                    cstr = cstr.strip()
             except Exception, xe:
-                self.logger.debug("Failed to XMLify top level child %s - skipping: %s", child.name, xe)
+                self.logger.debug("Failed to XMLify top level child '%s' - skipping: %s", child.nodeName, xe)
                 cstr = ""
             if cstr == "":
                 continue
@@ -130,9 +132,11 @@ class ManifestRSpecCombiner:
                 if child.localName in (defs.NODE_TAG, defs.LINK_TAG, defs.STITCHING_TAG):
                     continue
                 try:
-                    cstr = child.toxml(encoding="utf-8").strip()
+                    cstr = child.toxml(encoding="utf-8")
+                    if cstr:
+                        cstr = cstr.strip()
                 except Exception, xe:
-                    self.logger.debug("Failed to XMLify top level child %s - skipping: %s", child.name, xe)
+                    self.logger.debug("Failed to XMLify top level child '%s' - skipping: %s", child.nodeName, xe)
                     cstr = ""
                 if cstr == "":
                     continue
