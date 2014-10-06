@@ -63,6 +63,11 @@ class Launcher(object):
                     self.logger.info("Pausing for %d seconds for Aggregates to free up resources...\n\n", secs)
                     time.sleep(secs)
 
+                    # After this exception/retry, the list of ready aggregates may have changed
+                    # For example, when we locally work back a bit to handle vlan unavailable
+                    # So break out of this for loop, to make the while re-calculate the list of ready_aggs
+                    break
+
             # FIXME: Do we need to sleep?
 
         self.logger.info("All aggregates are complete.")

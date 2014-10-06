@@ -120,6 +120,7 @@ gcf 2.7:
   * For OESS/AL2S AM: Force a call to `sliverstatus` after reservations,
     so slivers are reported to the Clearinghouse. Works around 
     known AL2S issue http://groups.geni.net/geni/ticket/1295. (#717)
+  * Re-calculate ready aggregates when launcher catches an error. (#720)
 
  * readyToLogin
   * Handle when omni switches AM API version number (#643)

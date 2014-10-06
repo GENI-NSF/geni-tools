@@ -492,6 +492,8 @@ class Aggregate(object):
         '''Main workhorse function. Build the request rspec for this AM,
         and make the reservation. On error, delete and signal failure.'''
 
+        self.logger.debug("Starting allocate on %s", self)
+
         if self.inProcess:
             self.logger.warn("Called allocate on AM already in process: %s", self)
             return
