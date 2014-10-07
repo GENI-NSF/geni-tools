@@ -1665,7 +1665,7 @@ class Aggregate(object):
                     # a stitching error (go to SCS) vs will never work (go to user)?
                     # This is where we have to distinguish node unavailable vs VLAN unavailable vs something else
 
-                    isVlanAvailableIssue = False # FIXME: Any block that sets this true, copy in handleVlanUnavail()
+                    isVlanAvailableIssue = False # See handleVlanUnavail where blocks that set this must be copied
                     isFatal = False # Is this error fatal at this AM, so we should give up
                     fatalMsg = "" # Message to return if this is fatal
 
