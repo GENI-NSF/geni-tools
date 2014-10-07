@@ -1665,7 +1665,7 @@ class Aggregate(object):
                     # a stitching error (go to SCS) vs will never work (go to user)?
                     # This is where we have to distinguish node unavailable vs VLAN unavailable vs something else
 
-                    isVlanAvailableIssue = False
+                    isVlanAvailableIssue = False # See handleVlanUnavail where blocks that set this must be copied
                     isFatal = False # Is this error fatal at this AM, so we should give up
                     fatalMsg = "" # Message to return if this is fatal
 
@@ -2830,6 +2830,8 @@ class Aggregate(object):
                 # we have no exception struct
                 elif 'Error in building the dependency tree, probably not available vlan path' in msg and self.isEG:
 #                    self.logger.debug("Looks like an EG vlan avail issue")
+                    pass
+                elif "requested VLAN not available on this endpoint" in msg and self.isOESS:
                     pass
                 else:
                     self.logger.debug("handleVU says this isn't a vlan availability issue. Got error %d, amcode %s, %s", code, amcode, msg)
