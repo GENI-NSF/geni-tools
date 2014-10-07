@@ -2111,7 +2111,7 @@ class Aggregate(object):
                             if urn:
                                 circuitid = None
                                 import re
-                                match = re.match("^urn:publicid:IDN\+[^\+]+\+sliver\+.+_vlan_[^\-]+\-(\d+)$", urn)
+                                match = re.match("^urn:publicid:IDN\+[^\+]+\+sliver\+[^\-\+]+\-(\d+)$", urn)
                                 if match:
                                     circuitid = match.group(1).strip()
                                     self.logger.debug("Found circuit '%s'", circuitid)
