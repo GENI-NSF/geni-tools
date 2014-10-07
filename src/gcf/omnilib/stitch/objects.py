@@ -1665,7 +1665,7 @@ class Aggregate(object):
                     # a stitching error (go to SCS) vs will never work (go to user)?
                     # This is where we have to distinguish node unavailable vs VLAN unavailable vs something else
 
-                    isVlanAvailableIssue = False
+                    isVlanAvailableIssue = False # FIXME: Any block that sets this true, copy in handleVlanUnavail()
                     isFatal = False # Is this error fatal at this AM, so we should give up
                     fatalMsg = "" # Message to return if this is fatal
 
@@ -2678,9 +2678,48 @@ class Aggregate(object):
                 # Want that to be the range the SCS gave us, less any unavails
                 thisHop = failedHop
                 while thisHop is not None:
+                    thisHop.vlans_unavailable = thisHop.vlans_unavailable.union(failedHop._hop_link.vlan_suggested_request)
                     thisHop._hop_link.vlan_range_request = thisHop._hop_link.scs_vlan_range_request - thisHop.vlans_unavailable
                     self.logger.debug("Reset %s range request to %s", thisHop, thisHop._hop_link.vlan_range_request)
                     thisHop = thisHop.import_vlans_from
+
+                # Ticket 721
+                # At PG based AMs, the AM isn't smart enough to pick a tag that satisfies all avail ranges.
+                # So we have to make all the avail ranges that impinge on the AM match.
+                # Look at other hops on same path at lastHop.aggregate where there is no VLAN xlation
+                # Those hops must also be reset per the above while loop and have this tag added as unavail
+                # Also: For each of those hops, look where it imports from. If it is not lastHop, reset it too
+                # Else see who depends on that lastHop.aggregate and is on same path - reset their range too per above
+                # But FIXME: Is there somewhere not PCE specific where I must do this as well? See below
+                if not lastHop._hop_link.vlan_xlate:
+                    for phop in lastHop._path.hops:
+                        if phop == failedHop or phop == lastHop or phop._hop_link.vlan_xlate:
+                            continue
+                        if phop._aggregate == lastHop._aggregate:
+                            phop.vlans_unavailable = phop.vlans_unavailable.union(failedHop._hop_link.vlan_suggested_request)
+                            phop._hop_link.vlan_range_request = phop._hop_link.scs_vlan_range_request - phop.vlans_unavailable
+                            self.logger.debug("Reset %s range request to %s", phop, phop._hop_link.vlan_range_request)
+                            if phop.import_vlans_from != lastHop:
+                                phop2 = phop.import_vlans_from
+                                phop2.vlans_unavailable = phop2.vlans_unavailable.union(failedHop._hop_link.vlan_suggested_request)
+                                phop2._hop_link.vlan_range_request = phop2._hop_link.scs_vlan_range_request - phop2.vlans_unavailable
+                                self.logger.debug("Reset %s range request to %s", phop2, phop2._hop_link.vlan_range_request)
+                            elif phop._next_hop != lastHop and phop._next_hop != failedHop:
+                                phop2 = phop._next_hop
+                                phop2.vlans_unavailable = phop2.vlans_unavailable.union(failedHop._hop_link.vlan_suggested_request)
+                                phop2._hop_link.vlan_range_request = phop2._hop_link.scs_vlan_range_request - phop2.vlans_unavailable
+                                self.logger.debug("Reset %s range request to %s", phop2, phop2._hop_link.vlan_range_request)
+                            else:
+                                for hop3 in lastHop._path.hops:
+                                    if hop3.import_vlans_from == phop and hop3 != lastHop:
+                                        phop2 = hop3
+                                        phop2.vlans_unavailable = phop2.vlans_unavailable.union(failedHop._hop_link.vlan_suggested_request)
+                                        phop2._hop_link.vlan_range_request = phop2._hop_link.scs_vlan_range_request - phop2.vlans_unavailable
+                                        self.logger.debug("Reset %s range request to %s", phop2, phop2._hop_link.vlan_range_request)
+
+                # FIXME: What about the logic below that says other failed hops with the same URN should also avoid
+                # this failed tag!?
+                # Is that true for failedHop, lastHop, those in path to lastHop, and phop and phop2?
 
                 self.logger.info("Deleting some reservations to retry, avoiding failed VLAN...")
                 for am in toDelete:
@@ -2724,6 +2763,15 @@ class Aggregate(object):
                             hop2.vlans_unavailable = hop2.vlans_unavailable.union(hop._hop_link.vlan_range_request)
                             self.logger.debug("%s is same URN but diff than a failed hop. Sugg was 'any' so marked failed requested avail %s unavail here: %s", hop2, hop._hop_link.vlan_range_request, hop2.vlans_unavailable)
                         # Must also remove this from its range request - done below
+
+            # FIXME: Ticket 721
+            # Jon says that at PG, the facing hops (at diff AMs) must have vlan_range_request that matches
+            # those at the PG hops
+            # So find the hops that import from this hop and hops that this imports from and make sure those also
+            # now add to vlans_unavailable the failed tag and make vlan_range_request exclude the unavailable
+            # But FIXME: is this excluding too much? Is it weird/harmful to edit their vlan_range_request?
+            # How do I test this?
+            # Note that vlan_range_request will get set below for hops on this AM.
 
 # Now comes a large block of code trying to figure out if canRedoRequestHere.
 
@@ -2830,6 +2878,8 @@ class Aggregate(object):
                 # we have no exception struct
                 elif 'Error in building the dependency tree, probably not available vlan path' in msg and self.isEG:
 #                    self.logger.debug("Looks like an EG vlan avail issue")
+                    pass
+                elif "requested VLAN not available on this endpoint" in msg and self.isOESS:
                     pass
                 else:
                     self.logger.debug("handleVU says this isn't a vlan availability issue. Got error %d, amcode %s, %s", code, amcode, msg)
