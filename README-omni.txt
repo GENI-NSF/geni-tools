@@ -78,6 +78,13 @@ New in v2.7:
   * Stitcher uses this for the SCS URL. 
  * Allow FOAM/AL2S AMs to submit sliver URNs that are the slice URN with an ID 
    appended. This works around known bug http://groups.geni.net/geni/ticket/1294. (#719)
+ * Work around malformed ION sliver URNs: (#722)
+  * Allow submitting URNs that
+    use the slice authority as the sliver authority.
+  * If the sliver urn reported by sliverstatus is malformed, replace it
+    with the proper URN as the manifest returns, so sliver_info reporting
+    works without even deleting the existing entry.
+  * See http://groups.geni.net/geni/ticket/1292
 
 New in v2.6:
  * New function `removeslicemember <slice> <username>`: 
