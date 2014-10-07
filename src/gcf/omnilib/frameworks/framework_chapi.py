@@ -1634,16 +1634,28 @@ class Framework(Framework_Base):
             # Work around a FOAM/AL2S bug producing bad sliver URNs
             # See http://groups.geni.net/geni/ticket/1294
             self.logger.debug("Malformed sliver URN '%s'. Assuming this is OK anyhow at this FOAM based am: %s. See http://groups.geni.net/geni/ticket/1294", sliver_urn, agg_urn)
+        elif sliver_urn.startswith(slice_urn) and 'ion.internet2' in agg_urn:
+            # Ticket #722
+            # Work around an ION bug producing bad sliver URNs
+            # See http://groups.geni.net/geni/ticket/1292
+            self.logger.debug("Malformed sliver URN '%s'. Assuming this is OK anyhow at this ION am: %s. See http://groups.geni.net/geni/ticket/1292", sliver_urn, agg_urn)
         else:
             # The authority of the agg_urn should be the start of the authority of the sliver auth
             # this allows a sliver at exogeni.net:bbn to be recorded under the AM exogeni.net
             agg_auth = agg_urn[0 : agg_urn.find('authority+')]
             idx1 = sliver_urn.find('sliver+')
             auth = sliver_urn[0 : idx1]
+            slice_auth = slice_urn[0 : slice_urn.find('slice+')]
             if not auth.startswith(agg_auth):
-                self.logger.debug("Skipping sliver '%s' that doesn't appear to come from the specified AM '%s'", sliver_urn,
+                if "ion.internet2.edu" in agg_auth and "ion.internet2.edu" in sliver_urn and slice_auth == auth:
+                    # Ticket #722
+                    # Work around an ION bug producing bad sliver URNs
+                    # See http://groups.geni.net/geni/ticket/1292
+                    self.logger.debug("Malformed sliver URN '%s'. Assuming this is OK anyhow at this ION am: %s. See http://groups.geni.net/geni/ticket/1292", sliver_urn, agg_urn)
+                else:
+                    self.logger.debug("Skipping sliver '%s' that doesn't appear to come from the specified AM '%s'", sliver_urn,
                                   agg_urn)
-                return ""
+                    return ""
         # FIXME: This assumes the sliver was created now, which isn't strictly true on create,
         # and is certainly wrong if we are doing a create because the update failed
         fields = {"SLIVER_INFO_URN": sliver_urn,
@@ -1874,6 +1886,11 @@ class Framework(Framework_Base):
                 # Work around a FOAM/AL2S bug producing bad sliver URNs
                 # See http://groups.geni.net/geni/ticket/1294
                 self.logger.debug("Malformed sliver URN '%s'. Assuming this is OK anyhow at this FOAM based am: %s. See http://groups.geni.net/geni/ticket/1294", sliver_urn, agg_urn)
+            elif is_valid_urn(agg_urn) and "ion.internet2.edu" in sliver_urn and 'ion.internet2' in agg_urn:
+                # Ticket #722
+                # Work around a ION bug producing bad sliver URNs
+                # See http://groups.geni.net/geni/ticket/1292
+                self.logger.debug("Malformed sliver URN '%s'. Assuming this is OK anyhow at this ION am: %s. See http://groups.geni.net/geni/ticket/1292", sliver_urn, agg_urn)
             else:
                 self.logger.warn("Cannot update sliver expiration record: Invalid sliver urn '%s'", sliver_urn)
                 return
