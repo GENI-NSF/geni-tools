@@ -1827,7 +1827,7 @@ class AMCallHandler(object):
 #---
 
         msg = "Create Sliver %s at %s" % (urn, client.str)
-        self.logger.debug("Doing createsliver with urn %s, %d creds, rspec of length %d starting '%s...', users struct %s, options %r", urn, len(creds), len(rspec), rspec[:min(100, len(rspec))], slice_users, options)
+        self.logger.debug("Doing createsliver with urn %s, %d creds, rspec of length %d starting '%s...', users struct %s..., options %r", urn, len(creds), len(rspec), rspec[:min(100, len(rspec))], str(slice_users)[:min(180, len(str(slice_users)))], options)
         try:
             ((result, message), client) = self._api_call(client, msg, op,
                                                 args)
@@ -5269,7 +5269,7 @@ class AMCallHandler(object):
                     uStr = ""
                     if user.has_key('urn'):
                         uStr = "User %s " % user['urn']
-                    self.logger.debug("%sNewkeys: %r", uStr, newkeys)
+                    self.logger.debug("%sNewkeys: %r...", uStr, str(newkeys)[:min(160, len(str(newkeys)))])
 
                 # Now merge this into the list from above
                 found = False
