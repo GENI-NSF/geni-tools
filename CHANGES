@@ -128,6 +128,9 @@ gcf 2.7:
     so slivers are reported to the Clearinghouse. Works around 
     known AL2S issue http://groups.geni.net/geni/ticket/1295. (#717)
   * Re-calculate ready aggregates when launcher catches an error. (#720)
+  * ProtoGENI needs the available ranges to all exclude any failed tags
+    at all hops at the AM or that face the AM. In particular when a DCN aggregate
+    gives a VLAN PCE error. Work around this shortcoming. (#721)
 
  * readyToLogin
   * Handle when omni switches AM API version number (#643)
