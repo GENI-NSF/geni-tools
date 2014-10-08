@@ -569,6 +569,10 @@ class Aggregate(object):
 
         self.completed = False
 
+#        if "utah.geniracks" in self.urn:
+#            self.logger.warn("DO NOT ALLOC AT UTAH-IG")
+#            return
+
         # Mark AM is busy
         self.inProcess = True
 
@@ -1476,6 +1480,17 @@ class Aggregate(object):
         self.logger.debug("omniargs: %r", omniargs)
 
         result = None
+
+#        if "ion.internet2.edu" in self.urn:
+#            unavailHop = None
+#            for hop in self.hops:
+#                if "rtr.atla" in hop.urn:
+#                    unavailHop = hop
+#                    break
+#            msg = "%s reports selected VLAN is unavailable for %s: %s" % (self, unavailHop, "VLAN PCE(PCE_CREATE_FAILED): 'There are no VLANs available on link (" + unavailHop._path.id + ") on reservation")
+#            self.logger.warn("Forcing a VLAN PCE!")
+#            self.handleVlanUnavailable('createsliver', msg, unavailHop, False, opts, slicename)
+#            return result
 
         try:
             # FIXME: Is that the right counter there?
@@ -2655,11 +2670,13 @@ class Aggregate(object):
         # See ticket #622
         if failedHop and failedHop._hop_link.vlan_xlate and slicename and failedHop.import_vlans:
             self.logger.debug("Potential ION VLAN_PCE redo case")
-            toDelete = []
+            toDelete = [] # AMs walking up the import tree whose reservation must be deleted
             toDelete.append(self)
-            last = self
+            last = self # last AM
             lastHop = failedHop
-            parent = failedHop.import_vlans_from
+            parent = failedHop.import_vlans_from # Hop this hop imports from
+            hopsDone = [] # Hops whose unavail and range_request have been edited
+            failedTag = failedHop._hop_link.vlan_suggested_request
             while parent is not None:
                 if last != parent.aggregate:
                     last = parent.aggregate
@@ -2669,18 +2686,91 @@ class Aggregate(object):
 
             if lastHop._hop_link.vlan_suggested_request==VLANRange.fromString('any'):
                 self.logger.debug("A simple VLAN PCE case we handle quickly: Root of chain was %s. Chain had %d AMs including the failure at %s", lastHop.aggregate, len(toDelete), self)
-                self.logger.debug("Marking failed tag %s unavail at %s and %s", failedHop._hop_link.vlan_suggested_request, lastHop, failedHop)
-                lastHop.vlans_unavailable = lastHop.vlans_unavailable.union(failedHop._hop_link.vlan_suggested_request)
+                self.logger.debug("Marking failed tag %s unavail at %s and %s", failedTag, lastHop, failedHop)
+                lastHop.vlans_unavailable = lastHop.vlans_unavailable.union(failedTag)
                 lastHop._hop_link.vlan_range_request = lastHop._hop_link.vlan_range_request - lastHop.vlans_unavailable
-                failedHop.vlans_unavailable = failedHop.vlans_unavailable.union(failedHop._hop_link.vlan_suggested_request)
+                hopsDone.append(lastHop)
+                failedHop.vlans_unavailable = failedHop.vlans_unavailable.union(failedTag)
+                # the failedHop range must be reset to the one from the SCS, cause edited one is just a single tag
+                failedHop._hop_link.vlan_range_request = failedHop._hop_link.scs_vlan_range_request - failedHop.vlans_unavailable
+                self.logger.debug("New lastHop range: '%s'; New failedHop range: '%s'", lastHop._hop_link.vlan_range_request, failedHop._hop_link.vlan_range_request)
+                # To be safe, make sure the suggested is no longer illegal either
+                if failedHop._hop_link.vlan_suggested_request != VLANRange.fromString("any") and not failedHop._hop_link.vlan_suggested_request <= failedHop._hop_link.vlan_range_request:
+                    import random
+                    pick = random.choice(list(failedHop._hop_link.vlan_range_request))
+                    self.logger.debug("Resetting suggested tag at %s from %s to %s", failedHop, failedHop._hop_link.vlan_suggested_request, pick)
+                    failedHop._hop_link.vlan_suggested_request = VLANRange(pick)
+                hopsDone.append(failedHop)
 
                 # Reset the failedHop vlan_range_request and other intermediate hops
                 # Want that to be the range the SCS gave us, less any unavails
                 thisHop = failedHop
                 while thisHop is not None:
-                    thisHop._hop_link.vlan_range_request = thisHop._hop_link.scs_vlan_range_request - thisHop.vlans_unavailable
-                    self.logger.debug("Reset %s range request to %s", thisHop, thisHop._hop_link.vlan_range_request)
+                    if thisHop not in hopsDone:
+                        thisHop.vlans_unavailable = thisHop.vlans_unavailable.union(failedTag)
+                        thisHop._hop_link.vlan_range_request = thisHop._hop_link.scs_vlan_range_request - thisHop.vlans_unavailable
+                        hopsDone.append(lastHop)
+                        self.logger.debug("Reset %s range request to '%s'", thisHop, thisHop._hop_link.vlan_range_request)
+                        # To be safe, make sure the suggested is no longer illegal either
+                        if thisHop.import_vlans_from and not thisHop.import_vlans_from._hop_link.vlan_suggested_request <= thisHop.vlans_unavailable and thisHop.import_vlans_from._hop_link.vlan_suggested_request != VLANRange.fromString("any"):
+                            self.logger.debug("Resetting suggested tag at %s from %s to the suggested from import hop: %s", thisHop, thisHop._hop_link.vlan_suggested_request, thisHop.import_vlans_from._hop_link.vlan_suggested_request)
+                            thisHop._hop_link.vlan_suggested_request = thisHop.import_vlans_from._hop_link.vlan_suggested_request
+
+                        elif thisHop._hop_link.vlan_suggested_request != VLANRange.fromString("any") and not thisHop._hop_link.vlan_suggested_request <= thisHop._hop_link.vlan_range_request:
+                            import random
+                            pick = random.choice(list(thisHop._hop_link.vlan_range_request))
+                            self.logger.debug("Resetting suggested tag at %s from %s to %s", thisHop, thisHop._hop_link.vlan_suggested_request, pick)
+                            thisHop._hop_link.vlan_suggested_request = VLANRange(pick)
                     thisHop = thisHop.import_vlans_from
+
+                # Ticket 721
+                # At PG based AMs, the AM isn't smart enough to pick a tag that satisfies all avail ranges.
+                # So we have to make all the avail ranges that impinge on the AM match.
+                # First pass, lets see if it works simply excluding the failed tag from the range requests
+                # FIXME: Is there a non PCE case where I need to do similar logic to ensure PG AMs have the right ranges on both sides?
+                # - I think not...
+
+                # Keep looping over hops in this path while we find hops whose range_request to edit
+                madeChange = True
+                while madeChange:
+                    madeChange = False
+                    for hop in failedHop._path.hops:
+                        # If the hop is not done but imports from a hop that is done and the hop it imports from doesn't Xlate,
+                        # Then this hop must pick a matching tag, so must exclude the failed tag
+                        # OR
+                        # if this hop is not done and doesn't import vlans but is on same AM as the lastHop
+                        if hop not in hopsDone and ((hop.import_vlans_from is None and hop._aggregate == lastHop._aggregate) or \
+                                (hop.import_vlans_from is not None and hop.import_vlans_from in hopsDone and not hop.import_vlans_from._hop_link.vlan_xlate)):
+                            hop.vlans_unavailable = hop.vlans_unavailable.union(failedTag)
+                            hop._hop_link.vlan_range_request = hop._hop_link.scs_vlan_range_request - hop.vlans_unavailable
+                            self.logger.debug("%s will also exclude the failed hop's tag cause it imports from %s", hop, hop.import_vlans_from)
+
+                            # To be safe, make sure the suggested is no longer illegal either
+                            if hop.import_vlans_from and not hop.import_vlans_from._hop_link.vlan_suggested_request <= hop.vlans_unavailable and hop.import_vlans_from._hop_link.vlan_suggested_request != VLANRange.fromString("any"):
+                                self.logger.debug("Resetting suggested tag at %s from %s to suggested from import hop: %s", hop, hop._hop_link.vlan_suggested_request, hop.import_vlans_from._hop_link.vlan_suggested_request)
+                                hop._hop_link.vlan_suggested_request = hop.import_vlans_from._hop_link.vlan_suggested_request
+                            elif hop._hop_link.vlan_suggested_request != VLANRange.fromString("any") and not hop._hop_link.vlan_suggested_request <= hop._hop_link.vlan_range_request:
+                                import random
+                                pick = random.choice(list(hop._hop_link.vlan_range_request))
+                                self.logger.debug("Resetting suggested tag at %s from %s to %s", hop, hop._hop_link.vlan_suggested_request, pick)
+                                hop._hop_link.vlan_suggested_request = VLANRange(pick)
+
+                            madeChange = True
+                            hopsDone.append(hop)
+
+                # Find other hops with same URN as hops we're re-doing. Those should also avoid this failed tag
+                for hop in hopsDone:
+                    for hop2 in hop._aggregate.hops:
+                        # Used to only do this if the other hop also failed. Unless an AM says a hop failed cause you requested
+                        # it on another circuit, that seems wrong
+                        # FIXME: If I start having trouble consider removing this block
+                        if hop2 != hop and hop2.urn == hop.urn:
+                            if not failedHop._hop_link.vlan_suggested_request <= hop2.vlans_unavailable:
+                                hop2.vlans_unavailable = hop2.vlans_unavailable.union(failedTag)
+                                self.logger.debug("%s is same URN but diff than a redone hop. Marked failed suggested %s unavail here: %s", hop2, failedTag, hop2.vlans_unavailable)
+                                # Must also remove this from its range request - done below
+                                hop2._hop_link.vlan_range_request = hop2._hop_link.scs_vlan_range_request - hop2.vlans_unavailable
+                                self.logger.debug(" - new range request: %s", hop2._hop_link.vlan_range_request)
 
                 self.logger.info("Deleting some reservations to retry, avoiding failed VLAN...")
                 for am in toDelete:
@@ -2724,6 +2814,16 @@ class Aggregate(object):
                             hop2.vlans_unavailable = hop2.vlans_unavailable.union(hop._hop_link.vlan_range_request)
                             self.logger.debug("%s is same URN but diff than a failed hop. Sugg was 'any' so marked failed requested avail %s unavail here: %s", hop2, hop._hop_link.vlan_range_request, hop2.vlans_unavailable)
                         # Must also remove this from its range request - done below
+
+            # FIXME: Ticket 721
+            # Jon says that at PG, the facing hops (at diff AMs) must have vlan_range_request that matches
+            # those at the PG hops.
+            # So find the hops that import from this hop and hops that this imports from and make sure those also
+            # now add to vlans_unavailable the failed tag and make vlan_range_request exclude the unavailable
+            # But FIXME: is this excluding too much? Is it weird/harmful to edit their vlan_range_request?
+            # How do I test this?
+            # Note that vlan_range_request will get set below for hops on this AM.
+            # Is this necessary? Or is this just the usual stuff this routine does anyhow?
 
 # Now comes a large block of code trying to figure out if canRedoRequestHere.
 
