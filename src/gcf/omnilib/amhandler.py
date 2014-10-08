@@ -3349,7 +3349,7 @@ class AMCallHandler(object):
                                             if urn_util.is_valid_urn(gurn):
                                                 # Ticket #722: Fix malformed ION URNs
                                                 # Also update resource['geni_urn']
-                                                if "ion.internet2" in agg_urn and "ion.internet2" in gurn:
+                                                if "ion.internet2" in agg_urn and "ion.internet2" in gurn and not gurn.startswith("urn:publicid:IDN+ion.internet2.edu+sliver+"):
                                                     # Parse apart surn. It looks like this:
                                                     # <slice>_vlan_ion.internet2.edu-121251
                                                     # The proper sliver_urn is
