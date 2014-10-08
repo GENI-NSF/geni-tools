@@ -276,8 +276,8 @@ class Framework(Framework_Base):
     # Add new speaks for options and credentials based on provided opts 
     def _add_credentials_and_speaksfor(self, credentials, options):
         # FIXME: Tune log messages
-        self.logger.debug("add_c_n_spkfor start with self.opts.speaksfor = '%s'" % self.opts.speaksfor)
-        self.logger.debug("add_c_n_spkfor start with self.opts.cred = %s" % self.opts.cred)
+#        self.logger.debug("add_c_n_spkfor start with self.opts.speaksfor = '%s'" % self.opts.speaksfor)
+#        self.logger.debug("add_c_n_spkfor start with self.opts.cred = %s" % self.opts.cred)
         if credentials is None:
             credentials = []
         if options is None:
