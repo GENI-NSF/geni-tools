@@ -535,8 +535,11 @@ class StitchingHandler(object):
             # FIXME: Return anything different for stitching error?
             # Do we want to return a geni triple struct?
             if self.lastException:
-                self.logger.error("Root cause error: %s", self.lastException)
-                newError = StitchingError("%s which caused %s" % (str(self.lastException), str(se)))
+                msg = "Stitching Failed. %s" % str(se)
+                if str(self.lastException) not in str(se):
+                    msg += ". Root cause error: %s" % str(self.lastException)
+                self.logger.error(msg)
+                newError = StitchingError(msg)
                 se = newError
             if "Requested no reservation" in str(se):
                 print str(se)
