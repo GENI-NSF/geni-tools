@@ -45,6 +45,7 @@ gcf 2.7:
      with the proper URN as the manifest returns, so sliver_info reporting
      works without even deleting the existing entry.
    * See http://groups.geni.net/geni/ticket/1292
+  * Quiet down some debug logs when printing SSH keys and when talking to CHAPI. (#727)
 
  * Stitcher
   * Stitcher can now process any multi aggregate bound request. Any request
@@ -132,6 +133,28 @@ gcf 2.7:
     at all hops at the AM or that face the AM. In particular when a DCN aggregate
     gives a VLAN PCE error. Work around this shortcoming. (#721)
   * Generic `Exception` from OESS is fatal. (#728)
+  * If an upstream AM picked a tag that is unavailable locally: (#725)
+   * Mark local unavailable tags as unavailable upstream.
+   * Check all hops to make such corrections, and then retry at the SCS.
+   * Exclude local unavailable tags from the upstream request range, bail to the SCS,
+   * Before doing allocations, check hops that do not import VLANs for errors:
+    * Range requested must exclude unavailable tags.
+    * Hops that import from this hop must have their tags marked unavailable here, 
+      and the tag range here must exclude tags marked unavailable there.
+  * Fix regular expression for finding circuit IDs in sliver URNs to handle more variety.
+  * Rework logic for when a hop that imports vlans means we cannot
+    redo the request locally (#726)
+   * Logic comparing the hop to failedHop was buggy, causing the code
+     to try to handle locally cases that cannot be handled locally.
+     (Like a VLAN unavailable at AL2S.)
+   * Make sure the local hop's unavailable tags includes any failed tag.
+   * Make sure the hop this imports from's unavailable tags includes the failed
+     tag.
+   * AL2S style failure where no specific hop failed and hops import is still a case we
+     cannot redo locally.
+    * The tag selected on such hops should be marked unavailable where we
+      import from.
+  * Handle new VLAN unavailable error message from OESS. (#729)
 
  * readyToLogin
   * Handle when omni switches AM API version number (#643)
