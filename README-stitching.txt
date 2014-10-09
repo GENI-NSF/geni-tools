@@ -531,6 +531,9 @@ Cannot find the set of paths for the RequestTopology. '.
    to the ExoSM. Did you supply `--useExoSM` by mistake?
    Alternatively, there may be an error in your request RSpec.
 
+`Exception`
+ - A generic aggregate error. Perhaps try again?
+
 === Errors in the tool – you may need to report this as a bug ===
 
 ` … has request tag XXX that is already in use by …`
