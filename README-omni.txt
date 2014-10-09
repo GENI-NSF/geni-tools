@@ -85,6 +85,7 @@ New in v2.7:
     with the proper URN as the manifest returns, so sliver_info reporting
     works without even deleting the existing entry.
   * See http://groups.geni.net/geni/ticket/1292
+ * Quiet down some debug logs when printing SSH keys and when talking to CHAPI. (#727)
 
 New in v2.6:
  * New function `removeslicemember <slice> <username>`: 

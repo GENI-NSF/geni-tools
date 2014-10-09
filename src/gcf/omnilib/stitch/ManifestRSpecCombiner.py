@@ -189,7 +189,7 @@ class ManifestRSpecCombiner:
                 continue
             for i in range(attrCnt):
                 attr = am_rspec_node.attributes.item(i)
-                #self.logger.debug("AM Attr %d is %s=%s", i, attr.name, attr.value)
+                #self.logger.debug("AM Attr %d is '%s'='%s'", i, attr.name, attr.value)
                 matchingRAName = None
                 if rspec_node.hasAttribute(attr.name):
                     matchingRAName = attr.name
@@ -199,13 +199,13 @@ class ManifestRSpecCombiner:
                     for j in range(racnt):
                         ra = rspec_node.attributes.item(j)
                         if ra.localName == attr.localName:
-                            self.logger.debug("%s has attribute %s whose localName matches template attribute %s", am, attr.name, ra.name)
+                            self.logger.debug("%s has attribute '%s' whose localName matches template attribute '%s'", am, attr.name, ra.name)
                             matchingRAName = ra.name
                             break
                 if matchingRAName is not None:
                     #self.logger.debug("Template already had attr %s. Had val %s (%s had val %s)", matchingRAName, rspec_node.getAttribute(matchingRAName), am, attr.value)
                     if str(rspec_node.getAttribute(matchingRAName)) == str(attr.value):
-#                        self.logger.debug("Template had attr with same name as %s: %s. And same value: %s", am, attr.name, attr.value)
+#                        self.logger.debug("Template had attr with same name as %s: '%s'. And same value: '%s'", am, attr.name, attr.value)
                         continue
                     if "schemaLocation" == str(attr.localName):
                         # Split both old and new by space
@@ -219,10 +219,10 @@ class ManifestRSpecCombiner:
                         for val in toAdd:
                             oldVals.append(val)
                         newSL = " ".join(oldVals)
-                        self.logger.debug("%s was %s. AM had %s. Setting SL to %s", matchingRAName, rspec_node.getAttribute(matchingRAName), attr.value, newSL)
+                        self.logger.debug("'%s' was '%s'. AM had '%s'. Setting SL to '%s'", matchingRAName, rspec_node.getAttribute(matchingRAName), attr.value, newSL)
                         rspec_node.setAttribute(matchingRAName, newSL)
                     continue
-                self.logger.debug("Adding to Template attr %s (val %s) from %s", attr.name, attr.value, am)
+                self.logger.debug("Adding to Template attr '%s' (val '%s') from %s", attr.name, attr.value, am)
                 rspec_node.setAttribute(attr.name, attr.value)
 
     def combineNodes(self, ams_list, dom_template):
