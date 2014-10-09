@@ -193,7 +193,7 @@ class ManifestRSpecCombiner:
                 matchingRAName = None
                 if rspec_node.hasAttribute(attr.name):
                     matchingRAName = attr.name
-                    self.logger.debug("Template had attr with exact same name")
+#                    self.logger.debug("Template had attr with exact same name")
                 else:
                     racnt = rspec_node.attributes.length
                     for j in range(racnt):
@@ -205,7 +205,7 @@ class ManifestRSpecCombiner:
                 if matchingRAName is not None:
                     #self.logger.debug("Template already had attr %s. Had val %s (%s had val %s)", matchingRAName, rspec_node.getAttribute(matchingRAName), am, attr.value)
                     if str(rspec_node.getAttribute(matchingRAName)) == str(attr.value):
-                        self.logger.debug("Template had attr with same name as %s: %s. But same value: %s", am, attr.name, attr.value)
+#                        self.logger.debug("Template had attr with same name as %s: %s. And same value: %s", am, attr.name, attr.value)
                         continue
                     if "schemaLocation" == str(attr.localName):
                         # Split both old and new by space
