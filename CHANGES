@@ -131,6 +131,7 @@ gcf 2.7:
   * ProtoGENI needs the available ranges to all exclude any failed tags
     at all hops at the AM or that face the AM. In particular when a DCN aggregate
     gives a VLAN PCE error. Work around this shortcoming. (#721)
+  * Generic `Exception` from OESS is fatal. (#728)
 
  * readyToLogin
   * Handle when omni switches AM API version number (#643)

@@ -1919,6 +1919,12 @@ class Aggregate(object):
                             if "requested VLAN not available on this endpoint" in msg or (isinstance(val, str) and "requested VLAN not available on this endpoint" in val):
                                 self.logger.debug("Assuming this OESS message means this particular VLAN tag is not available")
                                 isVlanAvailableIssue = True
+                            elif msg=="Exception":
+                                # Ticket 728
+                                # What does this really mean?
+                                self.logger.debug("Generic Exception code 2 from OESS - fatal")
+                                isFatal = True
+                                fatalMsg = "Reservation failed at %s. Aggregate had an internal error. Try again? %s..." % (self, str(ae)[:120])
                     except Exception, e:
                         self.logger.debug("Caught unexpected error dispatching on AM Error type: %s", e)
                         import traceback
