@@ -1641,8 +1641,12 @@ class StitchingHandler(object):
                 suggestedStart = content.find("suggestedVLANRange>", hopIdEnd) + len("suggestedVLANRange>")
                 suggestedEnd = content.find("</suggested", suggestedStart)
                 suggested = content[suggestedStart:suggestedEnd]
+                # find vlanRangeAvailability
+                availStart = content.find("vlanRangeAvailability>", hopIdEnd) + len("vlanRangeAvailability>")
+                availEnd = content.find("</vlanRange", availStart)
+                avail = content[availStart:availEnd]
                 # print that
-                self.logger.debug("SCS gave hop %s suggested VLAN %s", hop, suggested)
+                self.logger.debug("SCS gave hop %s suggested VLAN %s, avail: '%s'", hop, suggested, avail)
                 start = suggestedEnd
 
        # parseRequest
@@ -1657,7 +1661,7 @@ class StitchingHandler(object):
         # Dump the formatted workflow at debug level
         import pprint
         pp = pprint.PrettyPrinter(indent=2)
-        self.logger.debug(pp.pformat(workflow))
+        self.logger.debug("SCS workflow:\n" + pp.pformat(workflow))
 
         workflow_parser = WorkflowParser(self.logger)
 
