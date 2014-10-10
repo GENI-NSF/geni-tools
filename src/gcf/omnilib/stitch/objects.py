@@ -848,7 +848,7 @@ class Aggregate(object):
                         self.logger.debug("Resetting suggested tag at %s from %s to %s", hop, hop._hop_link.vlan_suggested_request, pick)
                         hop._hop_link.vlan_suggested_request = VLANRange(pick)
                         sug = hop._hop_link.vlan_suggested_request
-                    if sug == VLANRange.fromString("any") and self.isEG or self.isGRAM or self.isOESS or self.dcn:
+                    if sug == VLANRange.fromString("any") and (self.isEG or self.isGRAM or self.isOESS or self.dcn):
                         self.logger.debug("%s marked with suggested of 'any' but %s doesn't support 'any'", hop, self)
                         raise StitchingError("Trying to request 'any' VLAN at an unsupported aggregate (%s)" % self)
                     if sug <= unavail:
@@ -2812,7 +2812,7 @@ class Aggregate(object):
                 lastHop = parent
                 parent = parent.import_vlans_from
 
-            if lastHop._hop_link.vlan_suggested_request==VLANRange.fromString('any'):
+            if lastHop._hop_link.vlan_suggested_request == VLANRange.fromString('any'):
                 self.logger.debug("A simple VLAN PCE case we handle quickly: Root of chain was %s. Chain had %d AMs including the failure at %s", lastHop.aggregate, len(toDelete), self)
                 self.logger.debug("Marking failed tag %s unavail at %s and %s", failedTag, lastHop, failedHop)
                 lastHop.vlans_unavailable = lastHop.vlans_unavailable.union(failedTag)
