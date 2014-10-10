@@ -2237,6 +2237,10 @@ class Aggregate(object):
                                 if resource.has_key("geni_status"):
                                     statuses[urn] = resource["geni_status"]
                                     self.logger.debug("Found status '%s' for sliver %s (circuit %s)", statuses[urn], urn, circuitid)
+                                    # Ticket #731
+                                    if str(statuses[urn]).strip().lower() != 'ready' and str(status).strip().lower() == 'ready':
+                                        self.logger.debug("Resetting global status from '%s' to '%s' because of sliver %s", status, statuses[urn], urn)
+                                        status = str(statuses[urn])
                                 else:
                                     self.logger.debug("Malformed sliverstatus missing geni_status: %s", str(resource))
                                     statuses[urn] = status
@@ -2275,7 +2279,7 @@ class Aggregate(object):
                                         import re
                                         statuses[urn] = status
                                         circuitid = None
-                                        match = re.match("^urn:publicid:IDN\+[^\+]+\+sliver\+.+_vlan_[^\-]+\-(\d+)$", urn)
+                                        match = re.match("^urn:publicid:IDN\+[^\+]+\+sliver\+[^\+]+\-(\d+)$", urn)
                                         if match:
                                             circuitid = match.group(1).strip()
                                             self.logger.debug("Found circuit '%s'", circuitid)

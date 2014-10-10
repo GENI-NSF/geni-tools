@@ -155,6 +155,7 @@ gcf 2.7:
     * The tag selected on such hops should be marked unavailable where we
       import from.
   * Handle new VLAN unavailable error message from OESS. (#729)
+  * Handle malformed status from ION where 1 circuit failed but overall status is ready. (#731)
 
  * readyToLogin
   * Handle when omni switches AM API version number (#643)
