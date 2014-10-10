@@ -141,6 +141,7 @@ gcf 2.7:
     * Range requested must exclude unavailable tags.
     * Hops that import from this hop must have their tags marked unavailable here, 
       and the tag range here must exclude tags marked unavailable there.
+    * Bug fix in this logic to handle hops at AMs that don't support 'any'. (#732)
   * Fix regular expression for finding circuit IDs in sliver URNs to handle more variety.
   * Rework logic for when a hop that imports vlans means we cannot
     redo the request locally (#726)
