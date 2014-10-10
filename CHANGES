@@ -157,6 +157,7 @@ gcf 2.7:
       import from.
   * Handle new VLAN unavailable error message from OESS. (#729)
   * Handle malformed status from ION where 1 circuit failed but overall status is ready. (#731)
+  * When editing down the available range, exit if the range is now empty. (#733)
 
  * readyToLogin
   * Handle when omni switches AM API version number (#643)

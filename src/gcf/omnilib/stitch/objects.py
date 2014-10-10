@@ -838,10 +838,10 @@ class Aggregate(object):
                         self.logger.debug("%s has some unavail in range request. Unavail: '%s'. Range: '%s'. Will modify range request.", hop, unavail, avail)
                         hop._hop_link.vlan_range_request = hop._hop_link.vlan_range_request - hop.vlans_unavailable
                         avail = hop._hop_link.vlan_range_request
+                    if len(avail) == 0:
+                        raise StitchingError("Interface has 0 VLAN tags available! (At %s)" % hop)
                     if not (sug == VLANRange.fromString("any") or sug <= avail):
                         self.logger.debug("%s has sug not marked avail. Sug: %s; Avail: '%s'", hop, sug, avail)
-                        if len(avail) == 0:
-                            raise StitchingError("Interface has 0 VLAN tags available! (At %s)" % hop)
                         # Reset suggested to something in avail
                         import random
                         pick = random.choice(list(avail))
@@ -866,6 +866,9 @@ class Aggregate(object):
                             if not unavail2.isdisjoint(avail):
                                 self.logger.debug("%s's avail ('%s') includes tags unavail at dependent hop %s: '%s'. Will modify range request.", hop, avail, hop2, unavail2)
                                 hop._hop_link.vlan_range_request = hop._hop_link.vlan_range_request - hop2.vlans_unavailable
+                                if len(hop._hop_link.vlan_range_request) == 0:
+                                    self.logger.debug("That made the avail range empty!")
+                                    raise StitchingCircuitFailedError("Reservation impossible as configured - Try again from the SCS. Interface has 0 VLAN tags that work! (At %s)" % hop)
                             if not avail <= avail2:
                                 # FIXME: Did SCS give me bad avail ranges?
                                 # Should I make avail be the intersection of avail and avail2?
@@ -927,7 +930,7 @@ class Aggregate(object):
             if hop.import_vlans_from._hop_link.vlan_range_manifest:
                 # FIXME: vlan_range_manifest on EG AMs is junk and we should use the vlan_range_request maybe? Or maybe the Ad?
                 if hop.import_vlans_from._aggregate.isEG:
-                    self.logger.debug("Hop %s imports from %s on an EG AM. It lists manifest vlan_range %s, request vlan_range %s, request vlan suggested %s", hop, hop.import_vlans_from, hop.import_vlans_from._hop_link.vlan_range_manifest, hop.import_vlans_from._hop_link.vlan_range_request, hop.import_vlans_from._hop_link.vlan_suggested_request)
+                    self.logger.debug("Hop %s imports from %s on an EG AM. It lists manifest vlan_range '%s', request vlan_range '%s', request vlan suggested %s", hop, hop.import_vlans_from, hop.import_vlans_from._hop_link.vlan_range_manifest, hop.import_vlans_from._hop_link.vlan_range_request, hop.import_vlans_from._hop_link.vlan_suggested_request)
 #                    int1 = hop.import_vlans_from._hop_link.vlan_range_request
 #                else:
 #                    int1 = hop.import_vlans_from._hop_link.vlan_range_manifest
@@ -948,7 +951,7 @@ class Aggregate(object):
             # an error - gracefully exit, either to SCS excluding this hop or to user
             new_avail2 = new_avail - hop.vlans_unavailable
             if new_avail2 != new_avail:
-                self.logger.debug("%s computed vlanRange %s smaller due to excluding known unavailable VLANs. Was otherwise %s", hop, new_avail2, new_avail)
+                self.logger.debug("%s computed vlanRange '%s' smaller due to excluding known unavailable VLANs. Was otherwise '%s'", hop, new_avail2, new_avail)
                 new_avail = new_avail2
             if len(new_avail) == 0:
                 # FIXME: Do I go to SCS? treat as VLAN Unavailable? I don't think this should happen.
@@ -958,8 +961,8 @@ class Aggregate(object):
 
             if not (new_suggested <= new_avail or new_suggested == VLANRange.fromString("any")):
                 # We're somehow asking for something not in the avail range we're asking for.
-                self.logger.error("%s Calculated suggested %s not in available range %s", hop, new_suggested, new_avail)
-                raise StitchingError("%s could not be processed: calculated a suggested VLAN of %s that is not in the calculated available range %s" % (hop, new_suggested, new_avail))
+                self.logger.error("%s Calculated suggested %s not in available range '%s'", hop, new_suggested, new_avail)
+                raise StitchingError("%s could not be processed: calculated a suggested VLAN of %s that is not in the calculated available range '%s'" % (hop, new_suggested, new_avail))
 
             # If we have a previous manifest, we might be done or might need to delete a previous reservation
             if hop._hop_link.vlan_suggested_manifest:
@@ -1003,7 +1006,7 @@ class Aggregate(object):
                         # using the suggested we picked before. So we have to redo
                         mustDelete = True
                         alreadyDone = False
-                        self.logger.warn("%s previous availRange %s not same as new, and previous manifest suggested %s not in new avail %s - redo this AM", hop, hop._hop_link.vlan_range_request, hop._hop_link.vlan_suggested_manifest, new_avail)
+                        self.logger.warn("%s previous availRange '%s' not same as new, and previous manifest suggested %s not in new avail '%s' - redo this AM", hop, hop._hop_link.vlan_range_request, hop._hop_link.vlan_suggested_manifest, new_avail)
                     else:
                         # what we picked before still works, so leave it alone
                         self.logger.info("%s had manifest suggested %s that works with new/different availRange %s - don't redo", hop, hop._hop_link.vlan_suggested_manifest, new_avail)
@@ -1013,17 +1016,17 @@ class Aggregate(object):
                     hop._hop_link.vlan_range_request = new_avail
                 else:
                     # FIXME: move to debug?
-                    self.logger.info("%s had previous manifest range and used same avail VLAN range request %s - no redo", hop, hop._hop_link.vlan_range_request)
+                    self.logger.info("%s had previous manifest range and used same avail VLAN range request '%s' - no redo", hop, hop._hop_link.vlan_range_request)
             else:
                 alreadydone = False
                 # No previous result
                 if hadPreviousManifest:
                     raise StitchingError("%s had a previous manifest but hop %s did not" % (self, hop))
                 if hop._hop_link.vlan_range_request != new_avail:
-                    self.logger.debug("%s changing avail VLAN from %s to %s", hop, hop._hop_link.vlan_range_request, new_avail)
+                    self.logger.debug("%s changing avail VLAN from '%s' to '%s'", hop, hop._hop_link.vlan_range_request, new_avail)
                     hop._hop_link.vlan_range_request = new_avail
                 else:
-                    self.logger.debug("%s already had avail VLAN %s", hop, hop._hop_link.vlan_range_request)
+                    self.logger.debug("%s already had avail VLAN '%s'", hop, hop._hop_link.vlan_range_request)
         # End of loop over hops to copy VLAN tags over and see if this is a redo or we need to delete
         return mustDelete, alreadyDone
 
@@ -2821,11 +2824,21 @@ class Aggregate(object):
                 self.logger.debug("Marking failed tag %s unavail at %s and %s", failedTag, lastHop, failedHop)
                 lastHop.vlans_unavailable = lastHop.vlans_unavailable.union(failedTag)
                 lastHop._hop_link.vlan_range_request = lastHop._hop_link.vlan_range_request - lastHop.vlans_unavailable
+                if len(lastHop._hop_link.vlan_range_request) == 0:
+                    self.logger.debug("After excluding that tag from lastHop %s's range_request, no tags left!", lastHop)
+                    if lastHop in self.hops:
+                        self.inProcess = False
+                        raise StitchingCircuitFailedError("VLAN was unavailable at %s and not enough available VLAN tags at %s to try again locally. Try again from the SCS" % (self, lastHop))
                 hopsDone.append(lastHop)
                 failedHop.vlans_unavailable = failedHop.vlans_unavailable.union(failedTag)
                 # the failedHop range must be reset to the one from the SCS, cause edited one is just a single tag
                 failedHop._hop_link.vlan_range_request = failedHop._hop_link.scs_vlan_range_request - failedHop.vlans_unavailable
                 self.logger.debug("New lastHop range: '%s'; New failedHop range: '%s'", lastHop._hop_link.vlan_range_request, failedHop._hop_link.vlan_range_request)
+                if len(failedHop._hop_link.vlan_range_request) == 0:
+                    self.logger.debug("After excluding that tag from failedHop %s's range_request, no tags left!", failedHop)
+                    self.inProcess = False
+                    raise StitchingCircuitFailedError("VLAN was unavailable at %s and not enough available VLAN tags at %s to try again locally. Try again from the SCS" % (self, failedHop))
+
                 # To be safe, make sure the suggested is no longer illegal either
                 if failedHop._hop_link.vlan_suggested_request != VLANRange.fromString("any") and not failedHop._hop_link.vlan_suggested_request <= failedHop._hop_link.vlan_range_request:
                     import random
@@ -2843,16 +2856,23 @@ class Aggregate(object):
                         thisHop._hop_link.vlan_range_request = thisHop._hop_link.scs_vlan_range_request - thisHop.vlans_unavailable
                         hopsDone.append(lastHop)
                         self.logger.debug("Reset %s range request to '%s'", thisHop, thisHop._hop_link.vlan_range_request)
+
                         # To be safe, make sure the suggested is no longer illegal either
                         if thisHop.import_vlans_from and not thisHop.import_vlans_from._hop_link.vlan_suggested_request <= thisHop.vlans_unavailable and thisHop.import_vlans_from._hop_link.vlan_suggested_request != VLANRange.fromString("any"):
                             self.logger.debug("Resetting suggested tag at %s from %s to the suggested from import hop: %s", thisHop, thisHop._hop_link.vlan_suggested_request, thisHop.import_vlans_from._hop_link.vlan_suggested_request)
                             thisHop._hop_link.vlan_suggested_request = thisHop.import_vlans_from._hop_link.vlan_suggested_request
 
                         elif thisHop._hop_link.vlan_suggested_request != VLANRange.fromString("any") and not thisHop._hop_link.vlan_suggested_request <= thisHop._hop_link.vlan_range_request:
-                            import random
-                            pick = random.choice(list(thisHop._hop_link.vlan_range_request))
-                            self.logger.debug("Resetting suggested tag at %s from %s to %s", thisHop, thisHop._hop_link.vlan_suggested_request, pick)
-                            thisHop._hop_link.vlan_suggested_request = VLANRange(pick)
+                            if len(thisHop._hop_link.vlan_range_request) == 0:
+                                self.logger.debug("After excluding that tag from thisHop %s's range_request, no tags left!", thisHop)
+                                if thisHop in self.hops:
+                                    self.inProcess = False
+                                    raise StitchingCircuitFailedError("VLAN was unavailable at %s and not enough available VLAN tags at %s to try again locally. Try again from the SCS" % (self, thisHop))
+                            else:
+                                import random
+                                pick = random.choice(list(thisHop._hop_link.vlan_range_request))
+                                self.logger.debug("Resetting suggested tag at %s from %s to %s", thisHop, thisHop._hop_link.vlan_suggested_request, pick)
+                                thisHop._hop_link.vlan_suggested_request = VLANRange(pick)
                     thisHop = thisHop.import_vlans_from
 
                 # Ticket 721
@@ -2882,10 +2902,16 @@ class Aggregate(object):
                                 self.logger.debug("Resetting suggested tag at %s from %s to suggested from import hop: %s", hop, hop._hop_link.vlan_suggested_request, hop.import_vlans_from._hop_link.vlan_suggested_request)
                                 hop._hop_link.vlan_suggested_request = hop.import_vlans_from._hop_link.vlan_suggested_request
                             elif hop._hop_link.vlan_suggested_request != VLANRange.fromString("any") and not hop._hop_link.vlan_suggested_request <= hop._hop_link.vlan_range_request:
-                                import random
-                                pick = random.choice(list(hop._hop_link.vlan_range_request))
-                                self.logger.debug("Resetting suggested tag at %s from %s to %s", hop, hop._hop_link.vlan_suggested_request, pick)
-                                hop._hop_link.vlan_suggested_request = VLANRange(pick)
+                                if len(hop._hop_link.vlan_range_request) == 0:
+                                    self.logger.debug("After excluding that tag from hop on path %s's range_request, no tags left!", hop)
+                                    if hop in self.hops:
+                                        self.inProcess = False
+                                        raise StitchingCircuitFailedError("VLAN was unavailable at %s and not enough available VLAN tags at %s to try again locally. Try again from the SCS" % (self, hop))
+                                else:
+                                    import random
+                                    pick = random.choice(list(hop._hop_link.vlan_range_request))
+                                    self.logger.debug("Resetting suggested tag at %s from %s to %s", hop, hop._hop_link.vlan_suggested_request, pick)
+                                    hop._hop_link.vlan_suggested_request = VLANRange(pick)
 
                             madeChange = True
                             hopsDone.append(hop)
@@ -2903,6 +2929,10 @@ class Aggregate(object):
                                 # Must also remove this from its range request - done below
                                 hop2._hop_link.vlan_range_request = hop2._hop_link.scs_vlan_range_request - hop2.vlans_unavailable
                                 self.logger.debug(" - new range request: %s", hop2._hop_link.vlan_range_request)
+                                if len(hop2._hop_link.vlan_range_request) == 0:
+                                    self.logger.debug("Other hop with same URN on path's availRange is now empty!")
+                                    self.inProcess = False
+                                    raise StitchingCircuitFailedError("VLAN was unavailable at %s and not enough available VLAN tags at %s to try again locally. Try again from the SCS" % (self, hop2))
 
                 self.logger.info("Deleting some reservations to retry, avoiding failed VLAN...")
                 for am in toDelete:
@@ -3321,7 +3351,7 @@ class Aggregate(object):
                     newRange = nextRequestRangeByHop[hop].intersection(hop2._hop_link.vlan_range_request)
 #                    newRange = nextRequestRangeByHop[hop].intersection(nextRequestRangeByHop[hop2])
                     if newRange < nextRequestRangeByHop[hop]:
-                        self.logger.debug("%s next range being limited by intersection with %s avail range %s. Was %s, now %s", hop, hop2, hop2._hop_link.vlan_range_request, nextRequestRangeByHop[hop], newRange)
+                        self.logger.debug("%s next range being limited by intersection with %s avail range '%s'. Was '%s', now '%s'", hop, hop2, hop2._hop_link.vlan_range_request, nextRequestRangeByHop[hop], newRange)
 #                        self.logger.debug("%s next range being limited by intersection with %s next range %s. Was %s, now %s", hop, hop2, nextRequestRangeByHop[hop2], nextRequestRangeByHop[hop], newRange)
                         nextRequestRangeByHop[hop] = newRange
             # End of loop over failed hops to intersect avail ranges
@@ -3363,7 +3393,7 @@ class Aggregate(object):
                         import random
                         pick = random.choice(list(nextRequestRangeByHop[hop]))
                         newSugByPath[hop.path]=VLANRange(pick)
-                        self.logger.debug("%s picked new tag %s from range %s", hop, pick, nextRequestRangeByHop[hop])
+                        self.logger.debug("%s picked new tag %s from range '%s'", hop, pick, nextRequestRangeByHop[hop])
 
                 for hop2 in failedHops:
                     # For other failed hops with the same URN, make sure they cannot pick the tag we just picked
