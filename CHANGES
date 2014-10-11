@@ -63,6 +63,7 @@ gcf 2.7:
     the request to the ExoSM. Automatically do this. (#689)
   * If multiple aggregates claim to be the ExoSM (due to `--useExoSM` or the above
     work), then merge these together so we only call the ExoSM once. (#688)
+   * When doing so, merge `dependsOn` and `isDependencyFor`. (#734)
   * If a link only includes aggregates whose name contains 'exogeni',
     then don't mark the RSpec as needing the SCS. We can use ExoGENI stitching.
     However, if you supply the new option `--noEGStitching` then call the
@@ -158,6 +159,8 @@ gcf 2.7:
   * Handle new VLAN unavailable error message from OESS. (#729)
   * Handle malformed status from ION where 1 circuit failed but overall status is ready. (#731)
   * When editing down the available range, exit if the range is now empty. (#733)
+  * Exit from launcher if 0 ready aggregates but not done - that's a bug. (#735)
+  * Ensure `inProcess` is false when we retry. (#736)
 
  * readyToLogin
   * Handle when omni switches AM API version number (#643)

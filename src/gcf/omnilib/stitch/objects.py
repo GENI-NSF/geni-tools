@@ -691,11 +691,10 @@ class Aggregate(object):
         # Mark AM not busy
         self.inProcess = False
 
-        self.logger.info("... Allocation at %s complete.", self)
-
         if not hadSuggestedNotRequest:
             # mark self complete
             self.completed = True
+            self.logger.info("... Allocation at %s complete.", self)
 
     def getExpiresForRequest(self, opts):
         # Set the expires attribute to try to ensure all AMs expire at the same time.
@@ -868,6 +867,7 @@ class Aggregate(object):
                                 hop._hop_link.vlan_range_request = hop._hop_link.vlan_range_request - hop2.vlans_unavailable
                                 if len(hop._hop_link.vlan_range_request) == 0:
                                     self.logger.debug("That made the avail range empty!")
+                                    self.inProcess = False
                                     raise StitchingCircuitFailedError("Reservation impossible as configured - Try again from the SCS. Interface has 0 VLAN tags that work! (At %s)" % hop)
                             if not avail <= avail2:
                                 # FIXME: Did SCS give me bad avail ranges?
@@ -916,6 +916,7 @@ class Aggregate(object):
 
             # If we've checked all hops and found we need to raise an error, raise it now. Else we keep checking.
             if mustRaise and hopsDone == hopCnt:
+                self.inProcess = False
                 raise StitchingCircuitFailedError("Circuit reservation impossible at %s using VLANs others picked. Try again from the SCS" % self)
 
             if new_suggested == VLANRange.fromString("any"):

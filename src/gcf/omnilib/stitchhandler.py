@@ -1759,6 +1759,27 @@ class StitchingHandler(object):
                 am._dependsOn.discard(exoSM)
             exoSM._dependsOn.update(am._dependsOn)
 
+            # If both am and exoSM are in dependsOn or isDependencyFor for some other AM, then remove am
+            for am2 in self.ams_to_process:
+                if am2 in exoSMs:
+                    continue
+                if am2 == am:
+                    continue
+                if am2 == exoSM:
+                    continue
+                if am in am2.dependsOn:
+                    self.logger.debug("Removing dup ExoSM %s from %s.dependsOn", am, am2)
+                    am2._dependsOn.discard(am)
+                    if not exoSM in am2.dependsOn:
+                        self.logger.debug("Adding real ExoSM %s to %s.dependsOn", exoSM, am2)
+                        am2._dependsOn.add(exoSM)
+                if am in am2.isDependencyFor:
+                    self.logger.debug("Removing dup ExoSM %s from %s.isDependencyFor", am, am2)
+                    am2.isDependencyFor.discard(am)
+                    if not exosM in am2.isDependencyFor:
+                        self.logger.debug("Adding real ExosM %s to %s.isDependencyFor", exoSM, am2)
+                        am2.isDependencyFor.add(exoSM)
+
             # merge isDependencyFor
             if am in exoSM.isDependencyFor:
                 exoSM.isDependencyFor.discard(am)
