@@ -264,7 +264,7 @@ def removeSSHPassphrase(key):
     # Check if this is a cert file
     if fileIsSSLCert(key) :
       logger.debug("File appears to be a cert and key despite what user said")
-      clearCert2(key)
+      clearCert(key)
     else :
      clearSSHKey(key)
 
@@ -277,7 +277,7 @@ def removeSSLPassphrase(prcertkey):
     logger.info("\n\tTHIS SCRIPT WILL REPLACE '%s' WITH AN UNENCRYPTED CERT KEY. A BACKUP OF THE ORIGINAL CERT WILL BE CREATED.\n" % prcertkey)
     # Check if this is a cert file
     if fileIsSSLCert(prcertkey) :
-      clearCert2(prcertkey)
+      clearCert(prcertkey)
     else :
       clearSSHKey(prcertkey)
        

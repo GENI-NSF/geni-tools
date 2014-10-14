@@ -66,6 +66,26 @@ New in v2.7:
  * Fix URL to URN lookups to better handle names that differ by a prefix. (#683)
  * Increase the sleep between busy SSL call retries from 15 to 20 seconds. (#697)
  * Rename `addAliases.sh` to `addAliases.command` for Mac install. (#647)
+ * Add new section `omni_defaults` to the Omni config file. (#713)
+  * This should set system defaults. Where these overlap in meaning with other 
+    omni_config or commandline options, let those take precedence.
+  * Allow these `omni_defaults` to be specified in the `agg_nick_cache`. These
+    are read before those in the per-user omni config. If a default is set
+    in the `agg_nick_cache`, that takes precedence over any value in 
+    the user's `omni_config`: if a user should be able to over-ride the 
+    default, use a different omni config setting (not in `omni_defaults`), or
+    use a command line option.
+  * Stitcher uses this for the SCS URL. 
+ * Allow FOAM/AL2S AMs to submit sliver URNs that are the slice URN with an ID 
+   appended. 
+  * This works around known bug http://groups.geni.net/geni/ticket/1294. (#719)
+ * Work around malformed ION sliver URNs: (#722)
+  * Allow submitting URNs that use the slice authority as the sliver authority.
+  * If the sliver urn reported by sliverstatus is malformed, replace it
+    with the proper URN as the manifest returns, so sliver_info reporting
+    works without even deleting the existing entry.
+  * See http://groups.geni.net/geni/ticket/1292
+ * Quiet down some debug logs when printing SSH keys and when talking to CHAPI. (#727)
 
 New in v2.6:
  * New function `removeslicemember <slice> <username>`: 
