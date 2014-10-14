@@ -16,6 +16,15 @@
 # to your allocated resources (e.g., virtual machines)
 
 
+[omni_defaults]
+# This section is for updating Omni defaults without updating Omni.
+# Values in agg_nick_cache take precedence over values in the
+# user's omni_config.
+
+# URL for the SCS server
+# May be over-ridden using the commandline option --scsURL
+# scs_url=http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc
+
 [omni]
 # The default control framework for omni to use.
 # Override on the commandline with -f argument.
@@ -150,6 +159,10 @@ verbose=false
 # Does this Clearinghouse speak the Common Federation API v2?
 # Default is false, so use v1
 #speakv2=true
+
+# You can specify the default project that you work in
+# and avoid specifying it on the commandline
+# default_project=MyProjectName
 
 [my_gcf]
 type=gcf

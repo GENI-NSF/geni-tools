@@ -98,7 +98,13 @@ class ManifestRSpecCombiner:
         for child in rspec_node.childNodes:
             if child.localName in (defs.NODE_TAG, defs.LINK_TAG, defs.STITCHING_TAG):
                 continue
-            cstr = child.toxml(encoding="utf-8").strip()
+            try:
+                cstr = child.toxml(encoding="utf-8")
+                if cstr:
+                    cstr = cstr.strip()
+            except Exception, xe:
+                self.logger.debug("Failed to XMLify top level child '%s' - skipping: %s", child.nodeName, xe)
+                cstr = ""
             if cstr == "":
                 continue
             template_kids.append(cstr)
@@ -125,7 +131,13 @@ class ManifestRSpecCombiner:
             for child in am_rspec_node.childNodes:
                 if child.localName in (defs.NODE_TAG, defs.LINK_TAG, defs.STITCHING_TAG):
                     continue
-                cstr = child.toxml(encoding="utf-8").strip()
+                try:
+                    cstr = child.toxml(encoding="utf-8")
+                    if cstr:
+                        cstr = cstr.strip()
+                except Exception, xe:
+                    self.logger.debug("Failed to XMLify top level child '%s' - skipping: %s", child.nodeName, xe)
+                    cstr = ""
                 if cstr == "":
                     continue
                 self.logger.debug("%s manifest had new top level element: '%s'...", am, cstr[:min(len(cstr), 60)])
@@ -177,12 +189,27 @@ class ManifestRSpecCombiner:
                 continue
             for i in range(attrCnt):
                 attr = am_rspec_node.attributes.item(i)
-                #self.logger.debug("AM Attr %d is %s=%s", i, attr.name, attr.value)
+                #self.logger.debug("AM Attr %d is '%s'='%s'", i, attr.name, attr.value)
+                matchingRAName = None
                 if rspec_node.hasAttribute(attr.name):
-                    #self.logger.debug("Template already had attr %s. Had val %s (%s had val %s)", attr.name, rspec_node.getAttribute(attr.name), am, attr.value)
-                    if "xsi:schemaLocation" == str(attr.name):
+                    matchingRAName = attr.name
+#                    self.logger.debug("Template had attr with exact same name")
+                else:
+                    racnt = rspec_node.attributes.length
+                    for j in range(racnt):
+                        ra = rspec_node.attributes.item(j)
+                        if ra.localName == attr.localName:
+                            self.logger.debug("%s has attribute '%s' whose localName matches template attribute '%s'", am, attr.name, ra.name)
+                            matchingRAName = ra.name
+                            break
+                if matchingRAName is not None:
+                    #self.logger.debug("Template already had attr %s. Had val %s (%s had val %s)", matchingRAName, rspec_node.getAttribute(matchingRAName), am, attr.value)
+                    if str(rspec_node.getAttribute(matchingRAName)) == str(attr.value):
+#                        self.logger.debug("Template had attr with same name as %s: '%s'. And same value: '%s'", am, attr.name, attr.value)
+                        continue
+                    if "schemaLocation" == str(attr.localName):
                         # Split both old and new by space
-                        oldVals = rspec_node.getAttribute(attr.name).split()
+                        oldVals = rspec_node.getAttribute(matchingRAName).split()
                         newVals = attr.value.split()
                         toAdd = []
                         for val in newVals:
@@ -192,16 +219,23 @@ class ManifestRSpecCombiner:
                         for val in toAdd:
                             oldVals.append(val)
                         newSL = " ".join(oldVals)
-                        self.logger.debug("%s was %s. AM had %s. Setting SL to %s", attr.name, rspec_node.getAttribute(attr.name), attr.value, newSL)
-                        rspec_node.setAttribute(attr.name, newSL)
+                        self.logger.debug("'%s' was '%s'. AM had '%s'. Setting SL to '%s'", matchingRAName, rspec_node.getAttribute(matchingRAName), attr.value, newSL)
+                        rspec_node.setAttribute(matchingRAName, newSL)
                     continue
-                self.logger.debug("Adding to Template attr %s (val %s) from %s", attr.name, attr.value, am)
+                self.logger.debug("Adding to Template attr '%s' (val '%s') from %s", attr.name, attr.value, am)
                 rspec_node.setAttribute(attr.name, attr.value)
 
     def combineNodes(self, ams_list, dom_template):
         '''Replace the 'node' section of the dom_template with 
         the corresponding node from the manifest of the Aggregate with a matching 
         component_manager URN'''
+
+        # FIXME: Ticket #712: Look at the auth in the sliver_id
+        # To see whose node this is, not component_manager_id.
+        # That better handles the ExoSM where the compnent_manager_id
+        # will be for a sub-AM / rack, but auth in the sliver_id
+        # will be the ExoSM.
+        # This also works now because I filled in all those URNs in am.urn_syns
 
         # Set up a dictionary mapping node by component_manager_id
         template_nodes_by_cmid={}
@@ -289,6 +323,11 @@ class ManifestRSpecCombiner:
                 # If the manifest has this link, then we're good
                 if cid in template_link_cids:
                     continue
+
+                # FIXME: If the link lists an interface_ref that points to a node that
+                # belongs to this AM, then we should also treat this as myLink
+                # In this case this is OK cause stitcher forces the link to list all
+                # the component_managers
                 myLink = False
                 for cme in link.childNodes:
                     if cme.nodeType != Node.ELEMENT_NODE or cme.localName != COMP_MGR:
@@ -618,7 +657,7 @@ class ManifestRSpecCombiner:
             return
 
         if am_hop is not None and template_hop is not None:
-            self.logger.debug("Replacing " + template_hop.toxml(encoding="utf-8") + " with " + am_hop.toxml(encoding="utf-8"))
+#            self.logger.debug("Replacing " + template_hop.toxml(encoding="utf-8") + " with " + am_hop.toxml(encoding="utf-8"))
             template_path.replaceChild(am_hop, template_hop)
         else:
             self.logger.error ("Can't replace hop %s from path %s in template: AM HOP %s TEMPLATE HOP %s" % (hop_id, path_id, am_hop, template_hop))
@@ -670,11 +709,12 @@ class ManifestRSpecCombiner:
             self.logger.warn("Did not find path %s in AM's Man RSpec to replace HopLink %s", path_id, link_id)
 
         if am_link is not None and template_link is not None and template_hop is not None:
-            self.logger.debug("Replacing " + template_link.toxml(encoding="utf-8") + " with " + am_link.toxml(encoding="utf-8"))
+#            self.logger.debug("Replacing " + template_link.toxml(encoding="utf-8") + " with " + am_link.toxml(encoding="utf-8"))
             template_hop.replaceChild(am_link, template_link)
         else:
             # This error happens at EG AMs and is harmless. See ticket #321
-            self.logger.debug("Can't replace hop link %s in path %s in template: AM HOP LINK %s; TEMPLATE HOP %s; TEMPLATE HOP LINK %s" % (link_id, path_id, am_link, template_hop, template_link))
+#            self.logger.debug("Can't replace hop link %s in path %s in template: AM HOP LINK %s; TEMPLATE HOP %s; TEMPLATE HOP LINK %s" % (link_id, path_id, am_link, template_hop, template_link))
+            pass
 
     def findPathByID(self, stitching, path_id):
         path = None

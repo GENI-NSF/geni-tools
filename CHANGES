@@ -26,6 +26,26 @@ gcf 2.7:
   * Fix URL to URN lookups to better handle names that differ by a prefix. (#683)
   * Increase the sleep between busy SSL call retries from 15 to 20 seconds. (#697)
   * Rename `addAliases.sh` to `addAliases.command` for Mac install. (#647)
+  * Add new section `omni_defaults` to the Omni config file. (#713)
+   * This should set system defaults. Where these overlap in meaning with other 
+     omni_config or commandline options, let those take precedence.
+   * Allow these `omni_defaults` to be specified in the `agg_nick_cache`. These
+     are read before those in the per-user omni config. If a default is set
+     in the `agg_nick_cache`, that takes precedence over any value in 
+     the user's `omni_config`: if a user should be able to over-ride the 
+     default, use a different omni config setting (not in `omni_defaults`), or
+     use a command line option.
+   * Stitcher uses this for the SCS URL.
+  * Allow FOAM/AL2S AMs to submit sliver URNs that are the slice URN with an ID 
+    appended. 
+   * This works around known bug http://groups.geni.net/geni/ticket/1294. (#719)
+  * Work around malformed ION sliver URNs: (#722)
+   * Allow submitting URNs that use the slice authority as the sliver authority.
+   * If the sliver urn reported by sliverstatus is malformed, replace it
+     with the proper URN as the manifest returns, so sliver_info reporting
+     works without even deleting the existing entry.
+   * See http://groups.geni.net/geni/ticket/1292
+  * Quiet down some debug logs when printing SSH keys and when talking to CHAPI. (#727)
 
  * Stitcher
   * Stitcher can now process any multi aggregate bound request. Any request
@@ -35,12 +55,15 @@ gcf 2.7:
    * Combined manifest is now named: `<slicename>-manifest-rspec-multiam-combined.xml`
   * Added new option `--useSCSSugg` to always use VLAN tags picked
     by the SCS, not letting the AM pick. (#675)
+   * Refactor the picking 'any' VLAN tag code into another method,
+     and print the INFO message only once. (#705)
   * Add new option `--includehoponpath <hop> <path>` for requiring
     a particular hop only on a particular path, not all paths. (#654)
   * If you have multiple ExoGENI AMs in your request, you must submit
     the request to the ExoSM. Automatically do this. (#689)
   * If multiple aggregates claim to be the ExoSM (due to `--useExoSM` or the above
     work), then merge these together so we only call the ExoSM once. (#688)
+   * When doing so, merge `dependsOn` and `isDependencyFor`. (#734)
   * If a link only includes aggregates whose name contains 'exogeni',
     then don't mark the RSpec as needing the SCS. We can use ExoGENI stitching.
     However, if you supply the new option `--noEGStitching` then call the
@@ -60,11 +83,11 @@ gcf 2.7:
      many circuits will all expire in 5 days. Renew your reservation if needed.
    * New aggregate types or new local aggregate policies will require changes
      to the code.
-  * `Insufficient rights` error is fatal at SFA AMs. (#677)
-  * `Malformed arguments: *** verifygenicred` is fatal at PG AMs.
+  * "`Insufficient rights`" error is fatal at SFA AMs. (#677)
+  * "`Malformed arguments: *** verifygenicred`" is fatal at PG AMs.
     Perhaps the slice needs to be renewed? (#691)
-  * `Malformed rspec` error is fatal at SFA AMs. (#693)
-  * `Duplicate node` is fatal at PG/IG (2 nodes same client_id). (#701)
+  * "`Malformed rspec`" error is fatal at SFA AMs. (#693)
+  * `Duplicate node`" is fatal at PG/IG (2 nodes same `client_id`). (#701)
   * Avoid requesting VLAN tag 'any' at OESS and DCN AMs. (#644)
   * Be sure to avoid requesting 'any' from AMs that do not support it. 
     Copy the `isOESS` attribute across SCS calls. (#681)
@@ -82,15 +105,79 @@ gcf 2.7:
   * Fix up combining manifests: (#612)
    * Fix bug in finding links to avoid adding stitching links as regular links.
    * Combine all top-level attributes so all namespaces are declared.
+   * Handle odd namespace for `schemaLocation`. (#703)
    * Basic support for 2 rspecs with the same node client_id on different AMs. (#700)
    * Merge in any non node/link/stitching top level elements in the combined manifest. (#699)
+  * Fix up detection of error codes, specifically when looking at
+    `value` in return triple. (#702)
+  * If a VLAN was unavailable and another AM picked the tag and full negotiation
+    is required, for now fail to the SCS to handle it - even for user requested
+    aggregates. (#708)
+  * Catch errors XMLifying RSpecs - errors can happen from malformed requests. (#709)
+   * When printing errors, print `nodeName` of the element, not `name`. (#723)
+  * "`No stitching path`" is fatal at PG. (#710)
+  * Avoid treating `value` as a string - it is usually an int. (#711)
+  * Set SCS URL from the omni_config entry under `omni_defaults` named `scs_url`
+    if present, but over-ride that with any commandline value for `--scsURL`.
+    This allows changing the default SCS location without updating Omni. (#713)
+  * "`such a short life for a sliver`" is fatal at PG. (#714)
+  * "`Error encountered converting RSpec to NDL`" is fatal at EG. (#715)
+  * "`Embedding workflow ERROR` is fatal at EG. (#716)
+  * Fix copying attributes for later tries when the URN changed,
+    like switching from an EG rack to the ExoSM. (#718)
+   * This bug causes requesting VLAN `any` from EG AMs.
+  * For OESS/AL2S AM: Force a call to `sliverstatus` after reservations,
+    so slivers are reported to the Clearinghouse. Works around 
+    known AL2S issue http://groups.geni.net/geni/ticket/1295. (#717)
+  * Re-calculate ready aggregates when launcher catches an error. (#720)
+  * ProtoGENI needs the available ranges to all exclude any failed tags
+    at all hops at the AM or that face the AM. In particular when a DCN aggregate
+    gives a VLAN PCE error. Work around this shortcoming. (#721)
+  * Generic `Exception` from OESS is fatal. (#728)
+  * If an upstream AM picked a tag that is unavailable locally: (#725)
+   * Mark local unavailable tags as unavailable upstream.
+   * Check all hops to make such corrections, and then retry at the SCS.
+   * Exclude local unavailable tags from the upstream request range, bail to the SCS,
+   * Before doing allocations, check hops that do not import VLANs for errors:
+    * Range requested must exclude unavailable tags.
+    * Hops that import from this hop must have their tags marked unavailable here, 
+      and the tag range here must exclude tags marked unavailable there.
+    * Bug fix in this logic to handle hops at AMs that don't support 'any'. (#732)
+  * Fix regular expression for finding circuit IDs in sliver URNs to handle more variety.
+  * Rework logic for when a hop that imports vlans means we cannot
+    redo the request locally (#726)
+   * Logic comparing the hop to failedHop was buggy, causing the code
+     to try to handle locally cases that cannot be handled locally.
+     (Like a VLAN unavailable at AL2S.)
+   * Make sure the local hop's unavailable tags includes any failed tag.
+   * Make sure the hop this imports from's unavailable tags includes the failed
+     tag.
+   * AL2S style failure where no specific hop failed and hops import is still a case we
+     cannot redo locally.
+    * The tag selected on such hops should be marked unavailable where we
+      import from.
+  * Handle new VLAN unavailable error message from OESS. (#729)
+   * And properly parse it. (#737)
+  * Handle malformed status from ION where 1 circuit failed but overall status is ready. (#731)
+  * When editing down the available range, exit if the range is now empty. (#733)
+  * Exit from launcher if 0 ready aggregates but not done - that's a bug. (#735)
+  * Ensure `inProcess` is false when we retry. (#736)
+  * Clarify some error messages: (#741)
+   * `Topology too complex` means we need to go to the SCS to find a VLAN, but will retry.
+   * ExoGENI `Embedding workflow ERROR` can mean no more VLAN tags. 
+  * When reading an alternate URL using the agg_nick_cache, use the proper URL not the 
+    version without the http/https prefix used for matching. (#740)
+  * Exit if an EG AM is in maintenance (#742)
 
  * readyToLogin
   * Handle when omni switches AM API version number (#643)
   * Remove defunct code (#666)
-  * Remove reliance on 'pg_manifest' field of SliverStatus return.  Leave fallback code for now. (#665)
+  * Remove reliance on 'pg_manifest' field of !SliverStatus return.  Leave fallback code for now. (#665)
   * Replace `--noFallbackToStatusForPG` with `--fallbackToStatusForPG` with the opposite meaning (#393)
   * Handle the same client_ids at different aggregates (#669)
+  * Handle errors from AMs getting the manifest using APIv3. (#707)
+   * Better error detection.
+   * Also, use cached !GetVersion information if available.
 
  * remote-execute
   * Allow `--host` to be specified multiple times (#668)

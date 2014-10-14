@@ -1827,7 +1827,7 @@ class AMCallHandler(object):
 #---
 
         msg = "Create Sliver %s at %s" % (urn, client.str)
-        self.logger.debug("Doing createsliver with urn %s, %d creds, rspec of length %d starting '%s...', users struct %s, options %r", urn, len(creds), len(rspec), rspec[:min(100, len(rspec))], slice_users, options)
+        self.logger.debug("Doing createsliver with urn %s, %d creds, rspec of length %d starting '%s...', users struct %s..., options %r", urn, len(creds), len(rspec), rspec[:min(100, len(rspec))], str(slice_users)[:min(180, len(str(slice_users)))], options)
         try:
             ((result, message), client) = self._api_call(client, msg, op,
                                                 args)
@@ -2852,8 +2852,61 @@ class AMCallHandler(object):
                                     for s in streal['geni_resources']:
                                         #self.logger.debug("Got s %s", s)
                                         if s.has_key('geni_urn') and urn_util.is_valid_urn_bytype(s['geni_urn'], 'sliver'):
-                                            if not s['geni_urn'] in sliver_urns:
-                                                sliver_urns.append(s['geni_urn'])
+                                            slice_auth = slice_urn[0 : slice_urn.find('slice+')]
+                                            surn = s['geni_urn']
+                                            if "ion.internet2" in surn and "ion.internet2" in agg_urn and surn.startswith(slice_auth):
+                                                # Ticket #722 workaround for http://groups.geni.net/geni/ticket/1292
+                                                # Parse apart surn. It looks like this:
+                                                # <slice>_vlan_ion.internet2.edu-121251
+                                                # The proper sliver_urn is
+                                                # urn:publicid:IDN+ion.internet2.edu+sliver+ion.internet2.edu-121251
+                                                # or possibly urn:publicid:IDN+ion.internet2.edu+sliver+vlan_slicename_ion.internet2.edu-121251
+                                                gid = surn[surn.index('ion.internet2.edu')+len('ion.internet2.edu')+1:]
+                                                proper_surn = 'urn:publicid:IDN+ion.internet2.edu+sliver+ion.internet2.edu-' + gid # manifest
+                                                proper_surn2 = 'urn:publicid:IDN+ion.internet2.edu+sliver+vlan_' + name + '_ion.internet2.edu-' + gid # status
+                                                if surn in sliver_urns:
+                                                    self.logger.debug("Malformed sliver_urn from sliverstatus '%s' from ION was really '%s'. The proper URN is not in our list from sliverstatus but the malformed URN is, so not reporting proper urn. See ticket #722 workaround for http://groups.geni.net/geni/ticket/1292", surn, proper_surn)
+                                                elif proper_surn in sliver_urns:
+                                                    self.logger.debug("Malformed sliver_urn from sliverstatus '%s' from ION was really '%s'. The proper URN is already there, so not reporting proper urn. See ticket #722 workaround for http://groups.geni.net/geni/ticket/1292", surn, proper_surn)
+                                                elif proper_surn2 in sliver_urns:
+                                                    self.logger.debug("Malformed sliver_urn from sliverstatus '%s' from ION was really '%s'. The proper URN is already there, so not reporting proper urn. See ticket #722 workaround for http://groups.geni.net/geni/ticket/1292", surn, proper_surn2)
+                                                else:
+                                                    sliver_urns.append(proper_surn)
+                                                    self.logger.debug("Malformed sliver_urn from sliverstatus '%s' from ION was really '%s'. Reporting it. See ticket #722 workaround for http://groups.geni.net/geni/ticket/1292", surn, proper_surn)
+                                            elif not surn in sliver_urns:
+                                                sliver_urns.append(surn)
+                                        elif s.has_key('geni_urn'):
+                                            surn = s['geni_urn']
+                                            if surn is None:
+                                                surn = ""
+                                            surn = surn.strip()
+                                            if "ion.internet2" in surn and urn_util.is_valid_urn(surn) and surn.startswith(urn):
+                                                # Ticket #722 workaround for http://groups.geni.net/geni/ticket/1292
+                                                # Parse apart surn. It looks like this:
+                                                # <slice>_vlan_ion.internet2.edu-121251
+                                                # The proper sliver_urn is
+                                                # urn:publicid:IDN+ion.internet2.edu+sliver+ion.internet2.edu-121251
+                                                # or possibly urn:publicid:IDN+ion.internet2.edu+sliver+vlan_slicename_ion.internet2.edu-121251
+                                                gid = surn[surn.index('ion.internet2.edu')+len('ion.internet2.edu')+1:]
+                                                proper_surn = 'urn:publicid:IDN+ion.internet2.edu+sliver+ion.internet2.edu-' + gid
+                                                proper_surn2 = 'urn:publicid:IDN+ion.internet2.edu+sliver+vlan_' + name + '_ion.internet2.edu-' + gid
+                                                if surn in sliver_urns:
+                                                    self.logger.debug("Malformed sliver_urn from sliverstatus '%s' from ION was really '%s'. The proper URN is not in our list from sliverstatus but the malformed URN is, so not reporting proper urn. See ticket #722 workaround for http://groups.geni.net/geni/ticket/1292", surn, proper_surn)
+                                                elif proper_surn in sliver_urns:
+                                                    self.logger.debug("Malformed sliver_urn from sliverstatus '%s' from ION was really '%s'. The proper URN is already there, so not reporting proper urn. See ticket #722 workaround for http://groups.geni.net/geni/ticket/1292", surn, proper_surn)
+                                                elif proper_surn2 in sliver_urns:
+                                                    self.logger.debug("Malformed sliver_urn from sliverstatus '%s' from ION was really '%s'. The proper URN is already there, so not reporting proper urn. See ticket #722 workaround for http://groups.geni.net/geni/ticket/1292", surn, proper_surn2)
+                                                else:
+                                                    sliver_urns.append(proper_surn)
+                                                    self.logger.debug("Malformed sliver_urn from sliverstatus '%s' from ION was really '%s'. Reporting it. See ticket #722 workaround for http://groups.geni.net/geni/ticket/1292", surn, proper_surn)
+                                            # End of block to handle ION bug
+                                            elif surn.startswith(urn) and agg_urn is not None and agg_urn != "" and ("foam" in agg_urn or "al2s" in agg_urn):
+                                                # Work around a FOAM/AL2S bug producing bad sliver URNs
+                                                # See http://groups.geni.net/geni/ticket/1294
+                                                if not surn in sliver_urns:
+                                                    sliver_urns.append(surn)
+                                                    self.logger.debug("Malformed sliver URN '%s'. Assuming this is OK anyhow at this FOAM based am: %s. See http://groups.geni.net/geni/ticket/1294", surn, agg_urn)
+                                    # End of loop over status return elems
 
                             for sliver_urn in sliver_urns:
                                 self.framework.update_sliver_info(agg_urn, urn, sliver_urn,
@@ -3294,6 +3347,20 @@ class AMCallHandler(object):
                                         if resource and isinstance(resource, dict) and resource.has_key('geni_urn'):
                                             gurn = resource['geni_urn']
                                             if urn_util.is_valid_urn(gurn):
+                                                # Ticket #722: Fix malformed ION URNs
+                                                # Also update resource['geni_urn']
+                                                if "ion.internet2" in agg_urn and "ion.internet2" in gurn and not gurn.startswith("urn:publicid:IDN+ion.internet2.edu+sliver+"):
+                                                    # Parse apart surn. It looks like this:
+                                                    # <slice>_vlan_ion.internet2.edu-121251
+                                                    # The proper sliver_urn is
+                                                    # urn:publicid:IDN+ion.internet2.edu+sliver+ion.internet2.edu-121251
+                                                    # or possibly urn:publicid:IDN+ion.internet2.edu+sliver+vlan_slicename_ion.internet2.edu-121251
+                                                    gid = gurn[gurn.index('ion.internet2.edu')+len('ion.internet2.edu')+1:]
+                                                    proper_surn = 'urn:publicid:IDN+ion.internet2.edu+sliver+ion.internet2.edu-' + gid # manifest
+                                                    #proper_surn2 = 'urn:publicid:IDN+ion.internet2.edu+sliver+vlan_' + name + '_ion.internet2.edu-' + gid # status
+                                                    self.logger.debug("Work-around #722. ION AM reported malformed sliver URN '%s'. Replacing with '%s'. See http://groups.geni.net/geni/ticket/1292", gurn, proper_surn)
+                                                    gurn = proper_surn
+                                                    resource['geni_urn'] = gurn
                                                 poss_slivers.append(gurn.strip())
 #                                self.logger.debug("AM poss_slivers: %s", str(poss_slivers))
 
@@ -3781,11 +3848,12 @@ class AMCallHandler(object):
                                         expO = self._datetimeFromString(expirations[sliver])[1]
                                     if not status_structs.has_key(sliver):
                                         self.logger.debug("status_structs missing %s: %s", sliver, status_structs)
+                                    else:
                                     # self.logger.debug("Will create sliver. slice: %s, AMURL: %s, expiration: %s, status_struct: %s, AMURN: %s", urn, client.url, expO, status_structs[sliver], agg_urn)
-                                    self.framework.create_sliver_info(None, urn, 
-                                                                      client.url,
-                                                                      expO,
-                                                                      [status_structs[sliver]], agg_urn)
+                                        self.framework.create_sliver_info(None, urn, 
+                                                                          client.url,
+                                                                          expO,
+                                                                          [status_structs[sliver]], agg_urn)
                                 # else this sliver should not (yet) be recorded at the CH
                         else:
                             # Need to reconcile the CH list and the AM list
@@ -5075,11 +5143,16 @@ class AMCallHandler(object):
     def _maybeGetRSpecFromStruct(self, rspec):
         '''RSpec might be string of JSON, in which case extract the
         XML out of the struct.'''
+        if rspec is None:
+            self._raise_omni_error("RSpec is empty")
+
         if "'geni_rspec'" in rspec or "\"geni_rspec\"" in rspec or '"geni_rspec"' in rspec:
             try:
                 rspecStruct = json.loads(rspec, encoding='ascii', cls=DateTimeAwareJSONDecoder, strict=False)
                 if rspecStruct and isinstance(rspecStruct, dict) and rspecStruct.has_key('geni_rspec'):
                     rspec = rspecStruct['geni_rspec']
+                    if rspec is None:
+                        self._raise_omni_error("Malformed RSpec: 'geni_rspec' empty in JSON struct")
             except Exception, e:
                 import traceback
                 msg = "Failed to read RSpec from JSON text %s: %s" % (rspec[:min(60, len(rspec))], e)
@@ -5196,7 +5269,7 @@ class AMCallHandler(object):
                     uStr = ""
                     if user.has_key('urn'):
                         uStr = "User %s " % user['urn']
-                    self.logger.debug("%sNewkeys: %r", uStr, newkeys)
+                    self.logger.debug("%sNewkeys: %r...", uStr, str(newkeys)[:min(160, len(str(newkeys)))])
 
                 # Now merge this into the list from above
                 found = False

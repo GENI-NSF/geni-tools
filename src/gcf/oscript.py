@@ -211,6 +211,7 @@ def load_agg_nick_config(opts, logger):
         raise OmniError, "Failed to read any possible agg_nick_cache file."
 
     config = load_aggregate_nicknames( config, confparser, filename, logger, opts )
+    config = load_omni_defaults( config, confparser, filename, logger, opts )
     return config
 
 def locate_config( opts, logger, config={}):
@@ -262,14 +263,14 @@ def load_config(opts, logger, config={}, filename=None):
     if filename is None:
         filename = locate_config(opts, logger, config)
 
-    logger.info("Loading config file %s", filename)
+    logger.info("Loading config file '%s'", filename)
     
     confparser = ConfigParser.RawConfigParser()
     try:
         confparser.read(filename)
     except ConfigParser.Error as exc:
-        logger.error("Config file %s could not be parsed: %s"% (filename, str(exc)))
-        raise OmniError, "Config file %s could not be parsed: %s"% (filename, str(exc))
+        logger.error("Config file '%s' could not be parsed: %s"% (filename, str(exc)))
+        raise OmniError, "Config file '%s' could not be parsed: %s"% (filename, str(exc))
 
     # Load up the omni options
     config['logger'] = logger
@@ -289,6 +290,7 @@ def load_config(opts, logger, config={}, filename=None):
                     config['users'].append(d)
 
     config = load_aggregate_nicknames( config, confparser, filename, logger, opts )
+    config = load_omni_defaults( config, confparser, filename, logger, opts )
 
     # Find rspec nicknames
     config['rspec_nicknames'] = {}
@@ -309,7 +311,11 @@ def load_config(opts, logger, config={}, filename=None):
 
     # Load up the framework section
     if not opts.framework:
-        opts.framework = config['omni']['default_cf']
+        if config['omni'].has_key('default_cf'):
+            opts.framework = config['omni']['default_cf']
+        else:
+            logger.info("No 'default_cf' defined in omni_config. Using 'portal'")
+            opts.framework = "portal"
 
     # Fill in the project if it is configured
     if hasattr(opts,'project') and not opts.project:
@@ -322,12 +328,12 @@ def load_config(opts, logger, config={}, filename=None):
         if usm in ('t', 'true', 'y', 'yes', '1', 'on'):
             usm = True
             if not opts.useSliceMembers:
-                logger.info("Setting option useSliceMembers True based on omni_config setting")
+                logger.info("Setting option 'useSliceMembers' True based on omni_config setting")
                 opts.useSliceMembers = True
         elif usm in ('f', 'false', 'n', 'no', '0', 'off'):
             usm = False
             if opts.useSliceMembers:
-                logger.info("Un-Setting option useSliceMembers (set False) based on omni_config setting")
+                logger.info("Un-Setting option 'useSliceMembers' (set False) based on omni_config setting")
                 opts.useSliceMembers = False
 
     # Config of ignoreconfigusers some value of true sets the option
@@ -336,7 +342,7 @@ def load_config(opts, logger, config={}, filename=None):
         if usm in ('t', 'true', 'y', 'yes', '1', 'on'):
             usm = True
             if not opts.ignoreConfigUsers:
-                logger.info("Setting option ignoreConfigUsers based on omni_config setting")
+                logger.info("Setting option 'ignoreConfigUsers' based on omni_config setting")
                 opts.ignoreConfigUsers = True
 
     logger.info("Using control framework %s" % opts.framework)
@@ -344,8 +350,8 @@ def load_config(opts, logger, config={}, filename=None):
     # Find the control framework
     cf = opts.framework.strip()
     if not confparser.has_section(cf):
-        logger.error( 'Missing framework %s in configuration file' % cf )
-        raise OmniError, 'Missing framework %s in configuration file' % cf
+        logger.error("Missing framework '%s' in configuration file" % cf )
+        raise OmniError, "Missing framework '%s' in configuration file" % cf
     
     # Copy the control framework into a dictionary
     config['selected_framework'] = {}
@@ -382,7 +388,7 @@ def load_aggregate_nicknames( config, confparser, filename, logger, opts ):
             for i in range(len(temp)):
                 temp[i] = temp[i].strip()
             if len(temp) != 2:
-                logger.warn("Malformed definition of aggregate nickname %s. Should be <URN>,<URL> where URN may be empty. Got: %s", key, val)
+                logger.warn("Malformed definition of aggregate nickname '%s'. Should be <URN>,<URL> where URN may be empty. Got: %s", key, val)
             if len(temp) == 0:
                 continue
             if len(temp) == 1:
@@ -393,7 +399,7 @@ def load_aggregate_nicknames( config, confparser, filename, logger, opts ):
                     temp = ["",t]
                 else:
                     # not a valid URL. Skip it
-                    logger.warn("Skipping aggregate nickname %s: %s doesn't look like a URL", key, temp[0])
+                    logger.warn("Skipping aggregate nickname '%s': '%s' doesn't look like a URL", key, temp[0])
                     continue
 
             # If temp len > 2: try to use it as is
@@ -410,6 +416,34 @@ def load_aggregate_nicknames( config, confparser, filename, logger, opts ):
 #            else:
 #                logger.debug("Loaded aggregate nickname '%s' from file '%s'." % (key, filename))
             config['aggregate_nicknames'][key] = temp
+    return config
+
+def load_omni_defaults( config, confparser, filename, logger, opts ):
+    # Find Omni defaults in the omni_config
+    # These are values that should over-ride any hard coded defaults
+    # But if the incoming config already has a value for this, don't replace that.
+    # In practice this should mean that values in the agg_nick_cache
+    # over-ride values in a user's custom omni_config.
+    # So this should only be used for setup values
+    # That can be over-ridden with other omni_config settings
+    # or commandline options.
+    if not config.has_key('omni_defaults'):
+        config['omni_defaults'] = {}
+    if confparser.has_section('omni_defaults'):
+        for (key,val) in confparser.items('omni_defaults'):
+            val = val.strip()
+            key = key.strip()
+            if config['omni_defaults'].has_key(key):
+                if config['omni_defaults'][key] == val:
+ #                   logger.debug("Ignoring omni_default '%s' from '%s': using earlier identical config setting", key, filename)
+                    continue
+                else:
+                    logger.debug("Ignoring omni_default '%s' from '%s': using earlier different config setting", key, filename)
+                    logger.debug("     Current: %s=%s. Ignored: %s", key, config['omni_defaults'][key], val)
+                    continue
+#            else:
+#                logger.debug("Loaded omni default '%s' from file '%s'." % (key, filename))
+            config['omni_defaults'][key] = val
     return config
 
 def load_framework(config, opts):
@@ -492,6 +526,8 @@ def initialize(argv, options=None ):
     if "--useSliceMembers" in argv:
         logger.info("Option --useSliceMembers is no longer necessary and is now deprecated, as that behavior is now the default. This option will be removed in a future release.")
     config = load_agg_nick_config(opts, logger)
+    # Load custom config _after_ system agg_nick_cache,
+    # which also sets omni_defaults
     config = load_config(opts, logger, config)
     framework = load_framework(config, opts)
     logger.debug('User Cert File: %s', framework.cert)

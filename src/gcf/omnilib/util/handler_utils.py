@@ -103,11 +103,12 @@ def _isBetterNick(retNick, nick, logger=None):
         return False
     if not retNick or len(nick) < len(retNick) or \
             (retNick.startswith('ig-') and nick.endswith('-ig')) or \
+            (retNick.startswith('og-') and nick.endswith('-og')) or \
             (retNick.startswith('pg-') and nick.endswith('-pg')) or \
             (retNick.startswith('eg-') and nick.endswith('-eg')):
         # Don't flip back to type-site to get something shorter
-        if retNick and retNick.split('-')[-1] in ['ig', 'pg', 'eg'] and \
-                nick.split('-')[-1] not in ['ig', 'pg', 'eg']:
+        if retNick and retNick.split('-')[-1] in ['ig', 'pg', 'eg', 'og'] and \
+                nick.split('-')[-1] not in ['ig', 'pg', 'eg', 'og']:
 #            if logger:
 #                logger.debug(" .. but this nickname flips site/type")
             return False
@@ -238,6 +239,8 @@ def _lookupAggNickURLFromURNInNicknames(logger, config, agg_urn):
                         (len(amURL) < len(url)) or \
                         (len(amNick) < len(nick)) or \
                         (nick.startswith('ig-') and amNick.endswith('-ig')) or \
+                        (nick.startswith('pg-') and amNick.endswith('-pg')) or \
+                        (nick.startswith('og-') and amNick.endswith('-og')) or \
                         (nick.startswith('eg-') and amNick.endswith('-eg')):
                     url = amURL.strip()
                     nick = amNick.strip()

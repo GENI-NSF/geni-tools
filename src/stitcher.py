@@ -132,8 +132,8 @@ def call(argv, options=None):
     parser.add_option("--noReservation", default=False, action="store_true",
                       help="Do no reservations: just generate the expanded request RSpec (default %default)")
     parser.add_option("--scsURL",
-                      help="URL to the SCS service. Default: %default",
-                      default=SCS_URL)
+                      help="URL to the SCS service. Default: Value of 'scs_url' in omni_config or " + SCS_URL,
+                      default=None)
     parser.add_option("--fakeModeDir",
                       help="If supplied, use canned server responses from this directory",
                       default=None)
@@ -325,7 +325,21 @@ def call(argv, options=None):
                 break
 
     config = omni.load_agg_nick_config(options, logger)
+    # Load custom config _after_ system agg_nick_cache,
+    # which also sets omni_defaults
     config = omni.load_config(options, logger, config)
+    if config.has_key('omni_defaults') and config['omni_defaults'].has_key('scs_url'):
+        if options.scsURL is not None:
+            logger.debug("Ignoring omni_config default SCS URL of '%s' because commandline specified '%s'", config['omni_defaults']['scs_url'], options.scsURL)
+        else:
+            options.scsURL = config['omni_defaults']['scs_url']
+            logger.debug("Using SCS URL from omni_config: %s", options.scsURL)
+    else:
+        if options.scsURL is None:
+            options.scsURL = SCS_URL
+            logger.debug("Using SCS URL default: %s", SCS_URL)
+        else:
+            logger.debug("Using SCS URL from commandline: %s", options.scsURL)
 
     if not options.debug:
         handlers = logger.handlers
