@@ -8,7 +8,8 @@ N.B. This page is formatted for a Trac Wiki.
 
 = Stitcher: The Omni GENI Experimenter-Defined Cross-Aggregate Topologies Client =
 
-'''stitcher''' is an Omni based script for instantiating experimenter
+'''stitcher''' is an Omni based script for instantiating multi
+aggregate topologies, including in particular experimenter
 defined topologies that cross multiple aggregates, aka 'network
 stitching' or just 'stitching'. Experimenters specify their desired
 network topology, and this client expands that request using the
@@ -37,15 +38,17 @@ time, this restriction will be lifted.
 == Usage ==
 stitcher is a simple extension of Omni. Use stitcher just as you would
 use Omni. If you try to allocate (using `CreateSliver` or `Allocate`)
-resources that include a link that requires stitching, then the new
-code will be exercised (otherwise you are just running Omni).
+resources at multiple aggregates, and specifically if you request a
+link that requires stitching, then the new 
+code will be exercised (otherwise you are running Omni as usual).
 
 To use stitcher:
 
  1. Be sure you can run Omni.
 
  2. Design a topology. Write a standard GENI v3 RSpec or build one
- with a graphical tool like Flack. Include 1 or more `<link>`s
+ with a graphical tool like Flack, jFed, or Jacks. For a stitched
+ topology, include 1 or more `<link>`s
  between interfaces on 2 compute nodes. E.G.
 {{{
 #!xml
@@ -72,6 +75,8 @@ To use stitcher:
  combined manifest RSpec, covering all the resources just
  reserved. XML comments at the top of the RSpec summarize the
  aggregates at which reservations were made and the circuits reserved.
+ Also be sure to notice in the stitcher output when your resources
+ expire - particularly if they expire at different times.
 
  7. Use your resources.
 
@@ -80,7 +85,8 @@ To use stitcher:
  did not specify in your original request RSpec. If you use
  `stitcher.py` to delete your resources and supply no `-a` argument,
  `stitcher` will delete from all aggregates at which it reserved
- resources. If you use `omni`, you must specify which aggregates to invoke. 
+ resources. If you use `omni`, you must specify which aggregates to
+ invoke (or use `--useSliceAggregates`).
 
 For example, to fully delete your reservation:
 {{{
@@ -94,19 +100,20 @@ To delete from only 1 aggregate:
 
 === Notes ===
 
-`createsliver` or `allocate` commands with an RSpec that requires
-stitching or GRE links will be processed by the stitcher code. All other calls will
-be passed directly to Omni.
+`createsliver` or `allocate` commands with an RSpec that is bound to
+multiple aggregates (one that requires allocations at multiple aggregates),
+including those with stitched links and GRE links, will be processed
+by the stitcher code. All other calls will be passed directly to Omni.
 
 The same request RSpec will be submitted to every aggregate required
 for your topology. Stitcher will create reservations at each of these
-aggregates for you. ''Note'' however that in general stitcher only knows how to
-contact aggregates that are involved in the circuits you request -
-nodes you are trying to reserve in the RSpec that are not linked with
+aggregates for you. ''Note'' however that stitcher only knows how to
+contact aggregates that are either listed in the aggregate nickname
+cache (as most production aggregates are), or are in involved in the
+circuits you request - nodes at new or non GENI aggregates that you
+are trying to reserve in the RSpec that are not linked with 
 a stitching link may not be reserved, because stitcher may not know
-the URL to contact that aggregate. HOWEVER, if there is an aggregate nickname
-for the component manager URN in your RSpec with a matching URL,
-stitcher should find it.
+the URL to contact that aggregate. 
 
 All calls use AM APIv2 (hard-coded) currently, due to aggregate
 limitations. If an aggregate does not speak AM API v2, `stitcher`
@@ -123,11 +130,20 @@ aggregates, that all nodes must be bound to specific aggregates.
 The result of stitcher is a single combined GENI v3 manifest RSpec, showing
 all resources reserved as a result of this request.
 
+Resource expiration is determined by local aggregates. Some aggregates
+expires resources in 5 days unless renewed. stitcher attempts to
+minimize the number of different times at which your resources expire,
+which sometims means your initial expiration at a particular
+aggregate will be sooner that it might otherwise have been. Always pay
+attention to the reported resource expiration when stitcher completes,
+and renew your resources (using `stitcher renewsliver`) when necessary.
+
 stitcher output is controlled using the same options as Omni,
 including `-o` to send RSpecs to files, and `--WARN` to turn down most
 logging. However, stitcher always saves your combined result manifest
 RSpec to a file (named
-'`<slicename>-manifest-rspec-stitching-combined.xml`'), unless you specify the `--tostdout` option.
+'`<slicename>-manifest-rspec-multiam-combined.xml`'), unless you
+specify the `--tostdout` option. 
 Currently, stitcher will (at least temporarily) write several files to the current
 working directory (results from `GetVersion` and `SliverStatus`, plus
 several manifest RSpecs) (change this directory using the option `--fileDir`).
@@ -183,7 +199,14 @@ options as Omni. `stitcher` however adds several options:
  - `--includehop <hop URN>`: When supplied, the Stitching Computation
  Service will insist on including the specified switch/port on ANY computed
  stitching paths. You can supply this argument many times. Use this
- with caution, particularly if your request has multiple `<link>`s.
+ with caution, particularly if your request has multiple
+ `<link>`s. For many cases, see the following option instead.
+ - `--includehoponpath <hop URN> <path id or link client_id>`: When supplied, the Stitching Computation
+ Service will insist on including the specified switch/port on only
+ the named computed stitching path. You can supply this argument many times. Use this
+ with caution. Note that this only includes the hop on the named link,
+ in contrast to `--includehop`. Note also that a hop cannot both be
+ excluded (via `--excludehop`) and included (via `--includehop` or `--includehoponpath`).
 
 Together, the above options should allow you some control over the
 paths used for your circuits, without requiring that you construct the
@@ -207,7 +230,7 @@ Additionally, these options are used for some topologies:
  rack that specifies both the aggregate URN as well as the URL, EG:
 {{{
 eg-bbn=urn:publicid:IDN+exogeni.net:bbnvmsite+authority+am,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
-eg-renci=urn:publicid:IDN+exogeni.net:rencivmsite+authority+am,https://rci-hn.exogeni.net:11443/orca/xmlrpc
+eg-renci=urn:publicid:IDN+exogeni.net:rcivmsite+authority+am,https://rci-hn.exogeni.net:11443/orca/xmlrpc
 eg-fiu=urn:publicid:IDN+exogeni.net:fiuvmsite+authority+am,https://fiu-hn.exogeni.net:11443/orca/xmlrpc
 }}}
  - `--useExoSM`: Try to use the ExoGENI ExoSM for ExoGENI
@@ -216,6 +239,8 @@ eg-fiu=urn:publicid:IDN+exogeni.net:fiuvmsite+authority+am,https://fiu-hn.exogen
  `omni_config`  or the base aggregate nicknames must have an entry for
  the ExoGENI rack that specifies the URN and URL, as well as an entry
  for the ExoSM.
+ - `--noEGStitching`: Force use of GENI stitching (send the request to
+ the SCS), and not ExoGENI stitching between EG aggregates.
 
 Other options you should not need to use:
  - `--fileDir`: Save _all_ files to this directory, and not the usual
@@ -233,6 +258,8 @@ Other options you should not need to use:
  is 30 (seconds).
  - `--scsURL <url>`: URL at which the Stitching Computation Service
  runs. Use the default.
+  - The default may be updated over time via a new `omni_defaults`
+  entry in the `agg_nick_cache`.
  - `--noReservation`: Do not try to reserve at aggregates; instead,
    just save the expanded request RSpec.
  - `--fakeModeDir <directory>`: When supplied, does not make any
@@ -242,16 +269,18 @@ Other options you should not need to use:
  - `--logconfig` to use a non standard logging configuration. Stitcher
  expects one `StreamHandler` for the console. Default configuration is
  in `gcf\stitcher_logging.conf`.
+ - `--useSCSugg`: Always use the VLAN tag suggested by the
+ SCS. Usually stitcher asks the aggregate to pick, despite what the
+ SCS suggested.
 
 == Tips and Details ==
 
 In running stitcher, follow these various tips:
- - Create a single GENI v3 request RSpec for all aggregates you want linked.
+ - Create a single GENI v3 request RSpec for all resources at all
+ aggregates you want linked. 
  Stitcher sends the same request RSpec to all aggregates involved in
  your request.
- - Be sure all nodes in the request are bound to specific nodes.
- - Include the necessary 2 `<component_manager>` elements for the 2
- different AMs in each `<link>`
+ - Be sure all nodes in the request are bound to specific aggregates.
  - This script can take a while - it must make reservations at all the
  aggregates, and keeps retrying at aggregates that can't provide
  matching VLAN tags. Stitcher must pause 30 seconds or more between
@@ -265,20 +294,20 @@ In running stitcher, follow these various tips:
  retry that up to 5 times. After that or on other kinds of errors,
  stitcher will delete any existing reservations and exit.
  - When the script completes, you will have reservations at each of the
- aggregates involved in stitched links in your request RSpec, plus any intermediate
- aggregates required to complete your circuit (e.g. ION) - or none, if
- your request failed.
+ aggregates where you requested nodes in your request RSpec, plus any
+ intermediate aggregates required to complete your circuit (e.g. ION)
+  - or none, if your request failed.
  - Stitcher makes reservations at ''all'' aggregates involved in your
- stitching circuits. Note however that stitcher generally only knows how to
- contact aggregates that are involved in the circuits you request -
- nodes you are trying to reserve in the RSpec that are not linked with
+ stitching circuits. Note however that stitcher only knows how to
+ contact aggregates that are either listed in the aggregate nickname
+ cache (as most production aggregates are), or are in involved in the
+ circuits you request - nodes at new or non GENI aggregates that you
+ are trying to reserve in the RSpec that are not linked with 
  a stitching link may not be reserved, because stitcher may not know
- the URL to contact that aggregate. If there is an aggregate nickname
- for the component manager URN in your RSpec with a matching URL,
- stitcher should find it.
+ the URL to contact that aggregate. 
  - The script return is a single GENI v3 manifest RSpec for all the aggregates
  where you have reservations for this request, saved to a file named
- '<slicename>-manifest-rspec-stitching-combined.xml'
+ '<slicename>-manifest-rspec-multiam-combined.xml'
  - Stitcher remembers the aggregates where it made reservations. If
  you use `stitcher.py` for later `renewsliver` or `sliverstatus` or
  `deletesliver` or other calls, stitcher will invoke the command at
@@ -294,7 +323,7 @@ cd <omni install directory>
 export PYTHONPATH=$PYTHONPATH:.
 python src/gcf/omnilib/stitch/scs.py --listaggregates
 }}}
- - Stitching to fixed endpoints
+ - Stitching to fixed endpoints:
   - A fixed endpoint is any switch/port that happens to connect to
   other things but not an explicit node. Use the `--fixedEndpoint`
   option to be sure aggregates can handle this.
@@ -304,6 +333,8 @@ python src/gcf/omnilib/stitch/scs.py --listaggregates
   ExoSM's allocation of resources at that rack. You can control in
   stitcher whether you use the local racks or the ExoSM, by using the
   `--useExoSM` or `--noExoSM` options.
+  - If your request uses multiple ExoGENI sites, stitcher will get
+    those resources from the ExoSM (an ExoGENI requirement).
  - Be sure to see the list of Known Issues below.
 
 === Stitching Computation Service ===
@@ -323,6 +354,10 @@ Experimenters can of course specify this information themselves, using
 The Stitching Computation Service (SCS), also provides hints to the
 stitcher script on the order in which to make reservations at the
 various aggregates.
+
+The SCS URL is set by code, may be updated via a new value in the
+aggregate nickname cache, and may be over-ridden by developers or
+testers using the `--scsURL` option.
 
 Known issues with this service can be found on the
 [http://groups.geni.net/geni/query?status=new&status=assigned&status=reopened&component=MAXSCS GENI Trac]
@@ -345,10 +380,25 @@ specifically the MAX aggregate.
 Known issues with this aggregate can be found on the
 [http://groups.geni.net/geni/query?status=new&status=assigned&status=reopened&component=I2AM GENI Trac]
 
+=== AL2S Aggregate ===
+
+Increasingly, connections will cross Internet2's AL2S network. To
+support this, Internet2 has developed an AL2S / OESS aggregate. This
+aggregate accepts calls using the GENI Aggregate Manager API, and
+translates those into calls to the Internet2 OESS system.
+
+This aggregate has no compute resources - it exists only to provision
+circuits between other aggregates. When you request a stitched link
+between 2 aggregates, often stitcher and the SCS will automatically
+add AL2S to your request to provide connectivity.
+
+Known issues with this aggregate can be found on the
+[http://groups.geni.net/geni/query?status=new&status=assigned&status=reopened&component=STITCHING GENI Trac]
+
 == Troubleshooting ==
 
 Stitching is relatively new to GENI, and uses several prototype services (this
-client, the Stitching Computation Service, the ION aggregate, as well
+client, the Stitching Computation Service, the ION and AL2S aggregates, as well
 as stitching implementations at aggregates). Therefore, bugs and rough
 edges are expected. Please note failure conditions, expect occasional
 failures, and report any apparent bugs to [mailto:omni-help@geni.net omni-help@geni.net].
@@ -456,6 +506,44 @@ Cannot find the set of paths for the RequestTopology. '.
  - Check your RSpec does not have a typo in the
  `component_manager`. You asked for resources at an unknown aggregate.
 
+`Malformed arguments: *** verifygenicred`
+ - There was a problem with your credentials. Try renewing your slice?
+
+`Malformed rspec`
+ - There was a problem with your request RSpec. Do you have a typo?
+
+`Duplicate node`
+ - 2 of your nodes have the same client_id. Change one.
+
+`No stitching path to ` or `Malformed request? Wrong link type?`
+ - There is a problem with your request RSpec. Did you specify the
+ wrong link type?
+
+`such a short life for a sliver` or `Renew your slice`
+ - Try renewing your slice. Your resources would expire too soon as requested.
+
+`Error encountered converting RSpec to NDL`
+ - ExoGENI did not understand something in your request RSpec.
+
+`Embedding workflow ERROR: 1:Insufficient resources or Unknown domain`
+ - This ExoGENI error may mean the aggregate ran out of VLAN tags or
+ some other resource. Alternately, it may mean you sent your request
+ to the wrong ExoGENI aggregate (included an incorrect URN in your
+ request RSpec or used the `--noExoSM` option mistakenly.
+
+`Embedding workflow ERROR`
+ - ExoGENI aggregates cannot handle requests that mention other
+   ExoGENI aggregates. Typically, stitcher sends such requests
+   to the ExoSM. Did you supply `--noExoSM` by mistake?
+   Alternatively, there may be an error in your request RSpec.
+
+`Exception`
+ - A generic aggregate error. Perhaps try again?
+
+`this user is not on the controller's whitelist`
+ - The ExoGENI aggregate is in maintenance. Try a different aggregate
+ or try again later. Monitor the mailing list: https://groups.google.com/forum/#!forum/geni-orca-users
+
 === Errors in the tool – you may need to report this as a bug ===
 
 ` … has request tag XXX that is already in use by …`
@@ -475,6 +563,7 @@ Cannot find the set of paths for the RequestTopology. '.
 `vlan tag … not available` OR
 `Could not find a free vlan tag` OR
 `Could not reserve a vlan tag for` OR
+`Exception: requested VLAN unavailable` OR
 `Error in building the dependency tree, probably not available vlan path`
  - Some VLAN tag you requested is not available. Stitcher will try to
  find another and try again.
@@ -483,6 +572,10 @@ Cannot find the set of paths for the RequestTopology. '.
  - This is the first time this aggregate has seen your
  project. Stitcher will retry and the error should go away. If not,
  try again.
+
+`Topology too complex`
+ - Stitcher cannot find a new VLAN tag to try itself, but will retry
+ your request at the SCS if possible.
 
 === After too many transient errors, stitcher gives up ===
 
@@ -500,6 +593,9 @@ Cannot find the set of paths for the RequestTopology. '.
  current aggregates, and VLAN translation support is limited. VLAN
  tags available at each aggregate are limited, and may run out.
  - Stitching to ExoGENI is limited:
+  - Reservations at ExoGENI AMs work. If you request resources at
+  multiple ExoGENI AMs, you must use the ExoSM. Stitcher will ensure
+  this.
   - Stitching within ExoGENI, by submitting a request to the ExoSM
   with only ExoGENI resources, works fine.
   - Stitching between ExoGENI and non ExoGENI resources only works at
@@ -522,6 +618,10 @@ Cannot find the set of paths for the RequestTopology. '.
  an existing reservation.
  - Some fatal errors at aggregates are not recognized, so the script keeps trying longer
  than it should.
+ - In order to make resources expire at rougly the same time, stitcher
+ currently hard-codes expected new sliver expiration times as of
+ September, 2014. This should be retrieved dynamically somehow
+ instead. New aggregate types or local policies may cause problems.
  - [http://trac.gpolab.bbn.com/gcf/query?status=accepted&status=assigned&status=new&status=reopened&component=stitcher&order=priority&col=id&col=summary&col=status&col=type&col=priority&col=milestone&col=component Known stitcher defects] 
  are listed on the gcf trac.
 
@@ -532,8 +632,9 @@ Cannot find the set of paths for the RequestTopology. '.
  - Add Aggregate specific top level RSpec elements in combined
  manifest
  - Summarize errors at the end of the run.
- - Support stitch-to-aggregate at ProtoGENI based aggregates
+ - Support stitch-to-aggregate at ProtoGENI based aggregates if supported
  - Support recreating the combined manifest RSpec
+ - Clean up hard-coded aggregate-specific sliver expiration policy handling
  - Support AM API v3
  - Consolidate constants
  - Fully handle negotiating among AMs for a VLAN tag to use

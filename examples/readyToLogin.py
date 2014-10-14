@@ -202,9 +202,13 @@ def getInfoFromSliceManifest( amUrl ) :
       key = ("unspecified_AM_URN", amUrl)
 
     if not apicallout.has_key(key):
-      print "ERROR: No manifest found from %s at %s; review the logs." % \
-            (apicall, amUrl)
-      return []
+      if len(apicallout.keys()) == 1 :
+        newkey = apicallout.keys()[0]
+        print "WARN: Got result for AM URL %s instead of %s - did Omni redirect you?" % (newkey, key)
+        key = newkey
+      else:
+        print "ERROR: No manifest found from %s at %s; review the logs." % \
+        sys.exit(-1)
 
     if tmpoptions.api_version == 1:
       manifest = apicallout[key]
@@ -213,13 +217,24 @@ def getInfoFromSliceManifest( amUrl ) :
         print "ERROR: No value slot in return from %s from %s; review the logs."\
               % (apicall, amUrl)
         return []
+      if not apicallout[key].has_key('code') or not isinstance(apicallout[key]['code'], dict) or not apicallout[key]['code'].has_key('geni_code') or apicallout[key]['code']['geni_code'] != 0:
+          msg = "ERROR: Failed to get manifest from %s call at %s; " % (apicall, amUrl)
+          if apicallout[key].has_key('output') and str(apicallout[key]['output']).strip() != "":
+              msg += apicallout[key]['output']
+          else:
+              msg += "review the logs"
+          print msg
+          return []
       value = apicallout[key]["value"]
 
       if tmpoptions.api_version == 2:
         manifest = value
       else:
         if tmpoptions.api_version == 3:
-          manifest = value['geni_rspec']
+            if not (isinstance(value, dict) and value.has_key('geni_rspec')):
+                print "ERROR: Malformed return from %s at %s - no rspec found" % (apicall, amUrl)
+                return []
+            manifest = value['geni_rspec']
         else:
           print "ERROR: API v%s not yet supported" %tmpoptions.api_version
           return []          
@@ -227,83 +242,7 @@ def getInfoFromSliceManifest( amUrl ) :
     maniInfo = getInfoFromManifest(manifest)
     return maniInfo 
 
-def getInfoFromSliverStatusPG( sliverStat ):
 
-    loginInfo = []
-    pgKeyList = {}
-    if not sliverStat:
-      print "ERROR: empty sliver status!"
-      return loginInfo
-
-    if not sliverStat.has_key("users"):
-      print "ERROR: No 'users' key in sliver status!"
-      return loginInfo
-
-    if not sliverStat.has_key('geni_resources'):
-      print "ERROR: Sliver Status lists no resources"
-      return loginInfo
-
-    for userDict in sliverStat['users'] :
-      if not userDict.has_key('login'):
-        print "User entry had no 'login' key"
-        continue
-      pgKeyList[userDict['login']] = [] 
-      if not userDict.has_key("keys"):
-        print "User entry for %s had no keys" % userDict['login']
-        continue
-      for k in userDict['keys']:
-          #XXX nriga Keep track of keys, in the future we can verify what key goes with
-          # which private key
-          pgKeyList[userDict['login']].append(k['key'])
-
-    for resourceDict in sliverStat['geni_resources']: 
-      if not resourceDict.has_key("pg_manifest"):
-        print "No pg_manifest in this entry"
-        continue
-      if not resourceDict['pg_manifest'].has_key('children'):
-        print "pg_manifest entry has no children"
-        continue
-      for children1 in resourceDict['pg_manifest']['children']:
-        if not children1.has_key('children'):
-          #print "No child in resource[pg_man][children]"
-          continue
-        for children2 in children1['children']:
-          if not children2.has_key("attributes"):
-            #print "No attributes on child under pg_man/children"
-            continue
-          child = children2['attributes']
-          port = ""
-          hostname = ""
-          if child.has_key("hostname"):
-            hostname = child["hostname"]
-          else:
-            #print "No hostname"
-            continue
-          if child.has_key("port"):
-            port = child["port"]
-          client_id = ""
-          if resourceDict["pg_manifest"].has_key("attributes") and resourceDict["pg_manifest"]["attributes"].has_key("client_id"):
-            client_id = resourceDict["pg_manifest"]["attributes"]["client_id"]
-          #else:
-          #    print "Got no client_id from pg_man/attribs"
-          geni_status = ""
-          if resourceDict.has_key("geni_status"):
-            geni_status = resourceDict["geni_status"]
-          am_status = ""
-          if resourceDict.has_key("pg_status"):
-            am_status = resourceDict["pg_status"]
-          for user, keys in pgKeyList.items():
-            loginInfo.append({'authentication':'ssh-keys', 
-                              'hostname':hostname,
-                              'client_id': client_id,
-                              'port':port,
-                              'username':user,
-                              'keys' : keys,
-                              'geni_status':geni_status,
-                              'am_status':am_status
-                             })
-    return loginInfo
-     
 
 def getInfoFromSliverStatusPL( sliverStat ):
 
@@ -323,23 +262,6 @@ def getInfoFromSliverStatusPL( sliverStat ):
                           'geni_status':resourceDict['geni_status'],
                           'am_status':resourceDict['pl_boot_state']
                        })
-    return loginInfo
-
-def getInfoFromSliverStatusOrca( sliverStat ):
-    # NOTE: not currently used
-    loginInfo = []
-    if not sliverStat or not sliverStat.has_key('geni_resources'):
-      print "ERROR: Empty Sliver Status, or no geni_resources listed"
-      return loginInfo
-
-    for resourceDict in sliverStat['geni_resources']:
-      if not resourceDict.has_key("geni_urn") or not resourceDict.has_key("geni_status"):
-          continue
-      urn = resourceDict['geni_urn']
-      client_id = urn.split(':')[-1]
-      loginInfo.append({'client_id':client_id, 'geni_status':resourceDict['geni_status']})
-      print "Orca SliverStatus for URN %s got client_id %s, status %s" % (urn, client_id, resourceDict['geni_status'])
-
     return loginInfo
 
 def getSliverStatus( amUrl, amType ) :
@@ -374,16 +296,12 @@ def getSliverStatus( amUrl, amType ) :
       else:
         print "ERROR: Got no SliverStatus for AM %s; check the logs." % (amUrl)
         sys.exit(-1)
-    return sliverStatus
+    return sliverStatus[amUrl]
+
 def getInfoFromSliverStatus( amUrl, amType ) :
     sliverStatus = getSliverStatus( amUrl, amType )
     if amType == 'sfa' : 
-      loginInfo = getInfoFromSliverStatusPL(sliverStatus[amUrl])
-    if amType == 'protogeni' : 
-      loginInfo = getInfoFromSliverStatusPG(sliverStatus[amUrl])
-#    if amType == 'orca' : 
-#      loginInfo = getInfoFromSliverStatusOrca(sliverStatus[amUrl])
-      
+      loginInfo = getInfoFromSliverStatusPL(sliverStatus)
     return loginInfo
 
 def getAMTypeFromGetVersionOut(amUrl, amOutput) :
@@ -430,10 +348,10 @@ def getParser() :
                     dest="include_keys",
                     help="Do not include ssh keys in output",
                     action="store_false", default=True)
-  parser.add_option("--noFallbackToStatusForPG", 
+  parser.add_option("--fallbackToStatusForPG",
                     dest="fallback_status_PG",
-                    help="For ProtoGENI/InstaGENI nodes, do not fallback to querying login info from SliverStatus if it contains login info not found in the manifest.",
-                    action="store_false", default=True)
+                    help="For ProtoGENI/InstaGENI nodes, fallback to querying login info from SliverStatus if it contains login info not found in the manifest.",
+                    action="store_true", default=False)
   return parser
 
 
@@ -469,7 +387,7 @@ def addNodeStatus(amUrl, amType, amLoginInfo):
       print "ERROR: empty sliver status!"
       return amLoginInfo
   try:
-      amSliverStat = sliverStatus[ amUrl ]
+      amSliverStat = sliverStatus
   except:
       print "ERROR: empty aggregate sliver status!"
       return amLoginInfo      
@@ -481,6 +399,7 @@ def addNodeStatus(amUrl, amType, amLoginInfo):
     # 10/9/13 PG code is switching to include login info in manifest
     # a future release should remove the following line so that we don't fall back to SliverStatus
     if options.fallback_status_PG:
+        print "Looking for information in the result of SliverStatus/Status"
         amLoginInfo = addNodeStatusCheckForPGFallback( amLoginInfo, amSliverStat )
   elif amType == "GRAM":
       amLoginInfo = addNodeStatusGRAM( amLoginInfo, amSliverStat )
@@ -490,12 +409,9 @@ def addNodeStatus(amUrl, amType, amLoginInfo):
 
 def addNodeStatusPG( amLoginInfo, amSliverStat ):
     for resourceDict in amSliverStat['geni_resources']:
-      if not resourceDict.has_key("pg_manifest"):
-        print "No pg_manifest in this entry"
-        continue
-      client_id = ""
-      if resourceDict["pg_manifest"].has_key("attributes") and resourceDict["pg_manifest"]["attributes"].has_key("client_id"):
-         client_id = resourceDict["pg_manifest"]["attributes"]["client_id"]
+      sliver_urn = ""
+      if resourceDict.has_key("geni_urn"):
+         sliver_urn = resourceDict["geni_urn"]
       geni_status = ""
       if resourceDict.has_key("geni_status"):
          geni_status = resourceDict["geni_status"]
@@ -503,7 +419,7 @@ def addNodeStatusPG( amLoginInfo, amSliverStat ):
       if resourceDict.has_key("pg_status"):
          am_status = resourceDict["pg_status"]
       for userLoginInfo in amLoginInfo:
-         if userLoginInfo['client_id'] != client_id:
+         if userLoginInfo['sliver_urn'] != sliver_urn:
             continue
          userLoginInfo['geni_status'] = geni_status
          userLoginInfo['am_status'] = am_status
@@ -555,10 +471,14 @@ def addNodeStatusCheckForPGFallback( userLoginInfo, sliverStat ):
           #XXX nriga Keep track of keys, in the future we can verify what key goes with
           # which private key
           pgKeyList[userDict['login']].append(k['key'])  
-    for resourceDict in sliverStat['geni_resources']: 
+    for resourceDict in sliverStat['geni_resources']:
       if not resourceDict.has_key("pg_manifest"):
         print "No pg_manifest in this entry"
         continue
+      sliver_urn = ""
+      if resourceDict.has_key("geni_urn"):
+         sliver_urn = resourceDict["geni_urn"]
+
       if not resourceDict['pg_manifest'].has_key('children'):
         print "pg_manifest entry has no children"
         continue
@@ -605,16 +525,17 @@ def addNodeStatusCheckForPGFallback( userLoginInfo, sliverStat ):
                 # skip users for whom we already have login info
                 continue
             # add info for users not listed in the manifest
-            userLoginInfo.append({'authentication':'ssh-keys', 
+            userLoginInfo.append({'authentication':'ssh-keys',
                               'hostname':hostname,
                               'client_id': client_id,
+                              'sliver_urn': sliver_urn,
                               'port':port,
                               'username':user,
                               'keys' : keys,
                               'geni_status':geni_status,
                               'am_status':am_status
                              })
-    return userLoginInfo  
+    return userLoginInfo
   
 
 def getKeysForUser( amType, username, keyList ):
@@ -671,8 +592,10 @@ def printLoginInfo( loginInfoDict, keyList ) :
 
     for client_id, itemList in sortedAMInfo.items():
       for item in itemList:
-          if not firstTime.has_key( item['client_id'] ):
-              firstTime[ item['client_id'] ] = True
+          if not firstTime.has_key( amUrl ):
+              firstTime[amUrl] = {}
+          if not firstTime[amUrl].has_key( item['client_id'] ):
+              firstTime[amUrl][item['client_id'] ] = True
           #    print "This is first time for %s" % item['client_id']
           output = ""
           if options.readyonly :
@@ -684,7 +607,7 @@ def printLoginInfo( loginInfoDict, keyList ) :
               sys.stderr.write("There is no status information for node %s. Print login info." % item['client_id'])
           # If there are status info print it, if not just skip it
           try:
-            if firstTime[ item['client_id'] ]:
+            if firstTime[amUrl][item['client_id'] ]:
                 gsOut = ""
                 amsOut = ""
                 if item.has_key('geni_status') and item['geni_status'].strip()!="":
@@ -692,16 +615,16 @@ def printLoginInfo( loginInfoDict, keyList ) :
                 if item.has_key('am_status') and item['am_status'].strip()!="":
                     amsOut = "am_status: %s" % item['am_status']
                 if gsOut:
-                    if amsOut:
-                        output += "\n%s's geni_status is: %s (am_status:%s) \n" % (item['client_id'], item['geni_status'], item['am_status'])
-                    else:
-                        output += "\n%s's geni_status is: %s \n" % (item['client_id'], item['geni_status'])
+                    # if amsOut:
+                    #    output += "\n%s's geni_status is: %s (am_status:%s) \n" % (item['client_id'], item['geni_status'], item['am_status'])
+                    #else:
+                    output += "\n%s's geni_status is: %s \n" % (item['client_id'], item['geni_status'])
                 elif amsOut:
                         output += "\n%s's am_status is: %s \n" % (item['client_id'], item['am_status'])
                 else:
                         output += "\n%s's geni_status is: unknown \n" % (item['client_id'])
                 # Check if node is in ready state
-            firstTime[ item['client_id'] ]=False
+            firstTime[amUrl][ item['client_id'] ]=False
           except KeyError as ke:
               #print "Got error looking in firstTime for %s: %s" % (item['client_id'], ke)
               pass
@@ -841,7 +764,7 @@ def main_no_print(argv=None, opts=None, slicen=None):
   options.useSliceAggregates = False
       
   # Run equivalent of 'omni.py getversion'
-  argv = ['getversion']
+  argv = ['--ForceUseGetVersionCache', 'getversion']
   try:
     text, getVersion = omni.call( argv, options )
   except (oe.AMAPIError, oe.OmniError) :

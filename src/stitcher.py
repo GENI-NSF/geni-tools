@@ -98,7 +98,7 @@ def call(argv, options=None):
     omni_usage = parser.get_usage()
     parser.set_usage("\n" + "GENI Omni Stitching Tool\n" + "Copyright (c) 2014 Raytheon BBN Technologies\n" + 
                      omni_usage+
-                     "\nstitcher.py does stitching if the call is createsliver or allocate, else it just calls Omni.\n")
+                     "\nstitcher.py reserves multi-aggregate fully bound topologies, including stitching, if the call is createsliver or allocate; else it just calls Omni.\n")
 
    ##############################################################################
     # Add additional optparse.OptionParser style options
@@ -111,6 +111,8 @@ def call(argv, options=None):
                       help="Hop URN to exclude from any path")
     parser.add_option("--includehop", metavar="HOP_INCLUDE", action="append",
                       help="Hop URN to include on every path - use with caution")
+    parser.add_option("--includehoponpath", metavar="HOP_INCLUDE PATH", action="append", nargs=2,
+                      help="Hop URN to include and then path (link client_id) to include it on")
     parser.add_option("--fixedEndpoint", default=False, action="store_true",
                       help="RSpec uses a static endpoint - add a fake node with an interface on every link")
     parser.add_option("--noExoSM", default=False, action="store_true",
@@ -130,13 +132,17 @@ def call(argv, options=None):
     parser.add_option("--noReservation", default=False, action="store_true",
                       help="Do no reservations: just generate the expanded request RSpec (default %default)")
     parser.add_option("--scsURL",
-                      help="URL to the SCS service. Default: %default",
-                      default=SCS_URL)
+                      help="URL to the SCS service. Default: Value of 'scs_url' in omni_config or " + SCS_URL,
+                      default=None)
     parser.add_option("--fakeModeDir",
                       help="If supplied, use canned server responses from this directory",
                       default=None)
     parser.add_option("--savedSCSResults", default=None,
                       help="Developers only: Use this saved file of SCS results instead of calling SCS (saved previously using --debug)")
+    parser.add_option("--useSCSSugg", default=False, action="store_true",
+                      help="Developers only: Always use the VLAN tags the SCS suggests, not 'any'.")
+    parser.add_option("--noEGStitching", default=False, action="store_true",
+                      help="Developers only: Use GENI stitching, not ExoGENI stitching.")
     #  parser.add_option("--script",
     #                    help="If supplied, a script is calling this",
     #                    action="store_true", default=False)
@@ -319,7 +325,21 @@ def call(argv, options=None):
                 break
 
     config = omni.load_agg_nick_config(options, logger)
+    # Load custom config _after_ system agg_nick_cache,
+    # which also sets omni_defaults
     config = omni.load_config(options, logger, config)
+    if config.has_key('omni_defaults') and config['omni_defaults'].has_key('scs_url'):
+        if options.scsURL is not None:
+            logger.debug("Ignoring omni_config default SCS URL of '%s' because commandline specified '%s'", config['omni_defaults']['scs_url'], options.scsURL)
+        else:
+            options.scsURL = config['omni_defaults']['scs_url']
+            logger.debug("Using SCS URL from omni_config: %s", options.scsURL)
+    else:
+        if options.scsURL is None:
+            options.scsURL = SCS_URL
+            logger.debug("Using SCS URL default: %s", SCS_URL)
+        else:
+            logger.debug("Using SCS URL from commandline: %s", options.scsURL)
 
     if not options.debug:
         handlers = logger.handlers

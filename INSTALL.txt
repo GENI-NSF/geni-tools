@@ -22,22 +22,22 @@ Section that is different is Section 3
 
       * If you have downloaded the software from the git repository, you can skip this step.
       {{{
-      tar xvfz gcf-2.6.tar.gz
+      tar xvfz gcf-2.7.tar.gz
       }}}
       * Move the gcf directory to the directory where you want to permanently keep gcf. This might be your home directory. [[BR]]If you have `sudo` privileges in your host, you might want to consider moving the gcf package under `/usr/local/bin/` for a cleaner setup. 
       {{{
-      [sudo] mv gcf-2.6 <install-dir>
+      [sudo] mv gcf-2.7 <install-dir>
       }}}
       * Create a symbolic link  called `gcf` to your installation directory. This will make the process of upgrading omni easier.
          - If this is your first time installing gcf, do:
       {{{
       cd <install-dir>
-      rm gcf; ln -s gcf-2.6 gcf
+      rm gcf; ln -s gcf-2.7 gcf
       }}}
          - If you are upgrading your gcf, do:
       {{{
       cd <install-dir>
-      ln -s gcf-2.6 gcf
+      ln -s gcf-2.7 gcf
       }}}
 ==  2. Add GCF to your path == 
 

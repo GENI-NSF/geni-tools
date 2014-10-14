@@ -348,6 +348,7 @@ class Framework_Base():
 
     # Find all slivers the SA lists for the given slice
     # Return a struct by AM URN containing a struct: sliver_urn = sliver info struct
+    # Compare with list_sliverinfo_urns which only returns the sliver URNs
     def list_sliver_infos_for_slice(self, slice_urn):
         return {}
         

@@ -44,6 +44,18 @@ LAST_UPDATE_TIME_TAG = "lastUpdateTime"
 # Need the ExoSM URL, as ugly as that is
 EXOSM_URL = "https://geni.renci.org:11443/orca/xmlrpc"
 
+# Need to be able to ID Utah AMs for default sliver expirations (see below)
+PGU_URN = "urn:publicid:IDN+emulab.net+authority+cm"
+IGUDDC_URN = "urn:publicid:IDN+utahddc.geniracks.net+authority+cm"
+
+# Default sliver expirations by AM type in days as of September, 2014
+# Utah is Utah DDC and ProtoGENI Utah
+# See ticket #577
+DEF_SLIVER_EXPIRATION_UTAH = 5
+DEF_SLIVER_EXPIRATION_IG = 90
+DEF_SLIVER_EXPIRATION_GRAM = 7
+DEF_SLIVER_EXPIRATION_EG = 14
+
 # schema paths for switching between v1 and v2
 STITCH_V1_BASE = "hpn.east.isi.edu/rspec/ext/stitch/0.1"
 STITCH_V2_BASE = "geni.net/resources/rspec/ext/stitch/2"

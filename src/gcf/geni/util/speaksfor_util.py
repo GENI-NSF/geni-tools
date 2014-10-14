@@ -33,11 +33,18 @@ import tempfile
 from xml.dom.minidom import *
 from StringIO import StringIO
 
-from gcf.sfa.trust.abac_credential import ABACCredential, ABACElement
-from gcf.sfa.trust.certificate import Certificate
-from gcf.sfa.trust.credential import Credential, signature_template, HAVELXML
-from gcf.sfa.trust.credential_factory import CredentialFactory
-from gcf.sfa.trust.gid import GID
+try:
+    from ...sfa.trust.abac_credential import ABACCredential, ABACElement
+    from ...sfa.trust.certificate import Certificate
+    from ...sfa.trust.credential import Credential, signature_template, HAVELXML
+    from ...sfa.trust.credential_factory import CredentialFactory
+    from ...sfa.trust.gid import GID
+except:
+    from gcf.sfa.trust.abac_credential import ABACCredential, ABACElement
+    from gcf.sfa.trust.certificate import Certificate
+    from gcf.sfa.trust.credential import Credential, signature_template, HAVELXML
+    from gcf.sfa.trust.credential_factory import CredentialFactory
+    from gcf.sfa.trust.gid import GID
 
 # Routine to validate that a speaks-for credential 
 # says what it claims to say:

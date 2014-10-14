@@ -84,7 +84,7 @@ class SfaNotImplemented(SfaFault):
 
 class SfaAPIError(SfaFault):
     def __init__(self, extra = None):
-        faultString = "Internal API error"
+        faultString = "Internal SFA API error"
         SfaFault.__init__(self, GENICODE.SERVERERROR, faultString, extra)
 
 class MalformedHrnException(SfaFault):

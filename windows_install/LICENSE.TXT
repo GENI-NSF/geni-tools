@@ -97,8 +97,8 @@ http://bazaar.launchpad.net/~dateutil/dateutil/trunk/revision/62/LICENSE
 
 VI. Slice Federation Architecture (SFA) 
 
-This code is based on revision 3c41ad8f19f9d9d29a0157d36330671062a39c00
-(Apr. 3rd, 2013, tag sfa-2.1-25 ).
+This code is based on revision 2947b0cb620ce8beb4c8c9bfe25adeadcbf1829f
+(May 23rd, 2014, tag sfa-3.1-9 ).
 Source code distributed in this bundle as retrieved from git.planet-lab.org/git/sfa.git
 Distributed under the license found at
 http://git.planet-lab.org/?p=sfa.git;a=blob_plain;f=LICENSE.txt;hb=HEAD 
@@ -1468,16 +1468,16 @@ PlanetLab license (see "License" below). There are a small number of
 modifications to the code. These modifications are documented in the
 "Modifications" section below.
 
-This code is based on revision 3c41ad8f19f9d9d29a0157d36330671062a39c00
-(Apr. 3rd, 2013, tag sfa-2.1-25 ) of the master branch of the
+This code is based on revision 2947b0cb620ce8beb4c8c9bfe25adeadcbf1829f 
+(May 23rd, 2014, tag sfa-3.1-9 ) of the master branch of the
 PlanetLab Git repository (git.planet-lab.org/git/sfa.git).
 
 License
 =======
 http://git.planet-lab.org/?p=sfa.git;a=blob_plain;f=LICENSE.txt;hb=HEAD 
 
-Copyright (c) 2008-2013 Board of Trustees, Princeton University
-Copyright (c) 2010-2013 INRIA, Institut National d'Informatique et Automatique 
+Copyright (c) 2008-2014 Board of Trustees, Princeton University
+Copyright (c) 2010-2014 INRIA, Institut National d'Informatique et Automatique 
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and/or hardware specification (the "Work") to

@@ -276,8 +276,8 @@ class Framework(Framework_Base):
     # Add new speaks for options and credentials based on provided opts 
     def _add_credentials_and_speaksfor(self, credentials, options):
         # FIXME: Tune log messages
-        self.logger.debug("add_c_n_spkfor start with self.opts.speaksfor = '%s'" % self.opts.speaksfor)
-        self.logger.debug("add_c_n_spkfor start with self.opts.cred = %s" % self.opts.cred)
+#        self.logger.debug("add_c_n_spkfor start with self.opts.speaksfor = '%s'" % self.opts.speaksfor)
+#        self.logger.debug("add_c_n_spkfor start with self.opts.cred = %s" % self.opts.cred)
         if credentials is None:
             credentials = []
         if options is None:
@@ -367,7 +367,7 @@ class Framework(Framework_Base):
                         msg = msg + ". %s" % message
                     if res.has_key('protogeni_error_url'):
                         msg += " (Log url - look here for details on any failures: %s)" % res['protogeni_error_url']
-                    self.logger.error(msg)
+                    self.logger.error("Failed to get user credential. Server says: %s", msg)
             else:
                 msg = message
 
@@ -387,6 +387,12 @@ class Framework(Framework_Base):
                    {'SLICE_URN': slice_urn,
                     'SLICE_EXPIRED': 'f',
                     }}
+
+        # PG implementation needs a user cred
+        if self.needcred:
+            uc, msg = self.get_user_cred(True)
+            if uc is not None:
+                scred.append(uc)
 
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
@@ -453,6 +459,12 @@ class Framework(Framework_Base):
 
         options = {'match': {'KEY_MEMBER': fetch_urn}, 'filter': ['KEY_PUBLIC','KEY_PRIVATE']}
 
+        # PG implementation requires a user cred
+        if self.needcred:
+            uc, msg = self.get_user_cred(True)
+            if uc is not None:
+                scred.append(uc)
+
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
         self.logger.debug("Getting %s SSH keys from %s MA %s",
@@ -471,7 +483,7 @@ class Framework(Framework_Base):
             # In V1, we get a dictionary of KEY_MEMBER => KEY_PUBLIC, KEY_PRIVATE
             # In V2, we get a dictionary of KEY_ID => KEY_MEMBER, KEY_PUBLIC, KEY_PRIVATE
             # We only asked for one person so flip back to V1 format
-            if res['code'] == 0:
+            if res and res['code'] == 0:
                 res['value'] = {fetch_urn : res['value'].values()}
 
         keys = []
@@ -526,6 +538,8 @@ class Framework(Framework_Base):
 
     def create_slice(self, urn):
         scred = []
+
+        # PG implementation needs a user cred
         if self.needcred:
             uc, msg = self.get_user_cred(True)
             if uc is not None:
@@ -673,6 +687,7 @@ class Framework(Framework_Base):
             return "%s does not support deleting slices. (And no slice name was specified)" % self.fwtype
 
         scred = []
+        # PG implemenation needs a user cred
         if self.needcred:
             uc, msg = self.get_user_cred(True)
             if uc is not None:
@@ -770,7 +785,7 @@ class Framework(Framework_Base):
             msg = "%s does not support deleting slices - delete your resources and let slice %s expire instead" % (self.fwtype,
                                                                                                                    slice_name)
             if slice_expiration is not None:
-                msg = msg + " at %s UTC." % slice_expiration
+                msg = msg + " at %s (UTC)." % slice_expiration
             else:
                 msg = msg + "."
         return msg
@@ -810,10 +825,13 @@ class Framework(Framework_Base):
         '''List slices owned by the user (name or URN) provided, returning a list of slice URNs.'''
 
         scred = []
+        # PG implementation needs a user cred
         if self.needcred:
             uc, msg = self.get_user_cred(True)
             if uc is not None:
                 scred.append(uc)
+            else:
+                self.logger.debug("Failed to get user credential: %s", msg)
 
         userurn = self.member_name_to_urn(user)
 
@@ -875,6 +893,7 @@ class Framework(Framework_Base):
             return (None, msg)
 
         scred = []
+        # If PG supported projects, it would likely need a user cred
         if self.needcred:
             uc, msg = self.get_user_cred(True)
             if uc is not None:
@@ -1063,6 +1082,7 @@ class Framework(Framework_Base):
 
     def get_slice_expiration(self, urn):
         scred = []
+        # PG implementation needs a user cred
         if self.needcred:
             uc, msg = self.get_user_cred(True)
             if uc is not None:
@@ -1135,10 +1155,11 @@ class Framework(Framework_Base):
         print it and return None.
         """
         scred = []
+        # PG implementation needs a slice cred
         if self.needcred:
-            uc, msg = self.get_user_cred(True)
-            if uc is not None:
-                scred.append(uc)
+            sc = self.get_slice_cred_struct(urn)
+            if sc is not None:
+                scred.append(sc)
 
         expiration = naiveUTC(expiration_dt).isoformat()
         self.logger.info('Requesting new slice expiration %r', expiration)
@@ -1257,11 +1278,13 @@ class Framework(Framework_Base):
         if urn is None or urn.strip() == "" or not is_valid_urn_bytype(urn, 'user', None):
             return None
         creds = []
+        # PG implementation seems to want a user cred
         if self.needcred:
             uc, msg = self.get_user_cred(True)
             if uc is not None:
                 creds.append(uc)
         options = {'match': {'MEMBER_URN': urn}, 'filter': ['MEMBER_EMAIL']}
+        creds, options = self._add_credentials_and_speaksfor(creds, options)
         if not self.speakV2:
             res, mess = _do_ssl(self, None, "Looking up member email",
                                 self.ma().lookup_identifying_member_info, creds, options)
@@ -1288,6 +1311,12 @@ class Framework(Framework_Base):
         # Could grab KEY_PRIVATE here too, but not useful I think
         options = {'match': {'KEY_MEMBER': urn}, 'filter': ['KEY_PUBLIC']}
 
+        # PG implementation seems to want a user cred
+        if self.needcred:
+            uc, msg = self.get_user_cred(True)
+            if uc is not None:
+                creds.append(uc)
+
         creds, options = self._add_credentials_and_speaksfor(creds, options)
 
         if not self.speakV2:
@@ -1301,8 +1330,6 @@ class Framework(Framework_Base):
             # We only asked for one person so flip back to V1 format
             if res['code'] == 0:
                 res['value'] = {urn : res['value'].values()}
-
-
 
         logr = self._log_results((res, mess), 'Lookup member %s SSH keys' % urn)
         if logr == True:
@@ -1394,6 +1421,7 @@ class Framework(Framework_Base):
         project_urn = self.project_name_to_urn(project_name)
 
         creds = []
+        # If PG supported projects, they'd want a user cred
         if self.needcred:
             uc, msg = self.get_user_cred(True)
             if uc is not None:
@@ -1441,7 +1469,7 @@ class Framework(Framework_Base):
         slice_urn = self.slice_name_to_urn(slice_urn)
         creds = []
         if self.needcred:
-            # FIXME: Neither user or slice cred work at PG. Which is correct?
+            # FIXME: Either user or slice cred work at PG. Which is correct?
             sc = self.get_slice_cred_struct(slice_urn)
             if sc is not None:
                 creds.append(sc)
@@ -1476,7 +1504,7 @@ class Framework(Framework_Base):
         slice_urn = self.slice_name_to_urn(slice_urn)
         creds = []
         if self.needcred:
-            # FIXME: Neither user or slice cred work at PG. Which is correct?
+            # FIXME: Either user or slice cred work at PG. Which is correct?
             sc = self.get_slice_cred_struct(slice_urn)
             if sc is not None:
                 creds.append(sc)
@@ -1602,16 +1630,32 @@ class Framework(Framework_Base):
             if not is_valid_urn(agg_urn):
                 self.logger.warn("Invalid aggregate URN '%s' for recording new sliver from sliver urn '%s'", agg_urn, sliver_urn)
                 return ""
+        elif sliver_urn.startswith(slice_urn) and ('al2s' in agg_urn or 'foam' in agg_urn):
+            # Work around a FOAM/AL2S bug producing bad sliver URNs
+            # See http://groups.geni.net/geni/ticket/1294
+            self.logger.debug("Malformed sliver URN '%s'. Assuming this is OK anyhow at this FOAM based am: %s. See http://groups.geni.net/geni/ticket/1294", sliver_urn, agg_urn)
+        elif sliver_urn.startswith(slice_urn) and 'ion.internet2' in agg_urn:
+            # Ticket #722
+            # Work around an ION bug producing bad sliver URNs
+            # See http://groups.geni.net/geni/ticket/1292
+            self.logger.debug("Malformed sliver URN '%s'. Assuming this is OK anyhow at this ION am: %s. See http://groups.geni.net/geni/ticket/1292", sliver_urn, agg_urn)
         else:
             # The authority of the agg_urn should be the start of the authority of the sliver auth
             # this allows a sliver at exogeni.net:bbn to be recorded under the AM exogeni.net
             agg_auth = agg_urn[0 : agg_urn.find('authority+')]
             idx1 = sliver_urn.find('sliver+')
             auth = sliver_urn[0 : idx1]
+            slice_auth = slice_urn[0 : slice_urn.find('slice+')]
             if not auth.startswith(agg_auth):
-                self.logger.debug("Skipping sliver '%s' that doesn't appear to come from the specified AM '%s'", sliver_urn,
+                if "ion.internet2.edu" in agg_auth and "ion.internet2.edu" in sliver_urn and slice_auth == auth:
+                    # Ticket #722
+                    # Work around an ION bug producing bad sliver URNs
+                    # See http://groups.geni.net/geni/ticket/1292
+                    self.logger.debug("Malformed sliver URN '%s'. Assuming this is OK anyhow at this ION am: %s. See http://groups.geni.net/geni/ticket/1292", sliver_urn, agg_urn)
+                else:
+                    self.logger.debug("Skipping sliver '%s' that doesn't appear to come from the specified AM '%s'", sliver_urn,
                                   agg_urn)
-                return ""
+                    return ""
         # FIXME: This assumes the sliver was created now, which isn't strictly true on create,
         # and is certainly wrong if we are doing a create because the update failed
         fields = {"SLIVER_INFO_URN": sliver_urn,
@@ -1723,10 +1767,13 @@ class Framework(Framework_Base):
             self.logger.debug("Recording new slivers in struct")
             for sliver in slivers:
                 if not (isinstance(sliver, dict) and \
-                            sliver.has_key('geni_sliver_urn')):
+                            (sliver.has_key('geni_sliver_urn') or sliver.has_key('geni_urn'))):
                     continue
-                sliver_urn = sliver['geni_sliver_urn']
-                exp = None
+                if sliver.has_key('geni_sliver_urn'):
+                    sliver_urn = sliver['geni_sliver_urn']
+                else:
+                    sliver_urn = sliver['geni_urn']
+                exp = expiration
                 if sliver.has_key('geni_expires'):
                     exp = sliver['geni_expires']
                 msg = msg + str(self._record_one_new_sliver(sliver_urn,
@@ -1830,12 +1877,23 @@ class Framework(Framework_Base):
         if sliver_urn is None or sliver_urn.strip() == "":
             self.logger.warn("Empty sliver_urn to update record of sliver expiration")
             return
+
         # Just make sure this is a reasonable URN of type sliver,
         # without validating the name portion - since we really don't
         # care so much what names the AM uses
         if not self._weakSliverValidCheck(sliver_urn):
-            self.logger.warn("Cannot update sliver expiration record: Invalid sliver urn '%s'", sliver_urn)
-            return
+            if is_valid_urn(agg_urn) and sliver_urn.startswith(slice_urn) and ('al2s' in agg_urn or 'foam' in agg_urn):
+                # Work around a FOAM/AL2S bug producing bad sliver URNs
+                # See http://groups.geni.net/geni/ticket/1294
+                self.logger.debug("Malformed sliver URN '%s'. Assuming this is OK anyhow at this FOAM based am: %s. See http://groups.geni.net/geni/ticket/1294", sliver_urn, agg_urn)
+            elif is_valid_urn(agg_urn) and "ion.internet2.edu" in sliver_urn and 'ion.internet2' in agg_urn:
+                # Ticket #722
+                # Work around a ION bug producing bad sliver URNs
+                # See http://groups.geni.net/geni/ticket/1292
+                self.logger.debug("Malformed sliver URN '%s'. Assuming this is OK anyhow at this ION am: %s. See http://groups.geni.net/geni/ticket/1292", sliver_urn, agg_urn)
+            else:
+                self.logger.warn("Cannot update sliver expiration record: Invalid sliver urn '%s'", sliver_urn)
+                return
         if not is_valid_urn(agg_urn):
             agg_urn = self._getAggFromSliverURN(sliver_urn)
 
@@ -1919,6 +1977,7 @@ class Framework(Framework_Base):
 
     # Find all slivers the SA lists for the given slice
     # Return a struct by AM URN containing a struct: sliver_urn = sliver info struct
+    # Compare with list_sliverinfo_urns which only returns the sliver URNs
     def list_sliver_infos_for_slice(self, slice_urn):
         slivers_by_agg = {}
         slice_urn = self.slice_name_to_urn(slice_urn)
