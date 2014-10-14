@@ -167,6 +167,7 @@ gcf 2.7:
    * ExoGENI `Embedding workflow ERROR` can mean no more VLAN tags. 
   * When reading an alternate URL using the agg_nick_cache, use the proper URL not the 
     version without the http/https prefix used for matching. (#740)
+  * Exit if an EG AM is in maintenance (#742)
 
  * readyToLogin
   * Handle when omni switches AM API version number (#643)

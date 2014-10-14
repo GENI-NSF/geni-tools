@@ -540,6 +540,10 @@ Cannot find the set of paths for the RequestTopology. '.
 `Exception`
  - A generic aggregate error. Perhaps try again?
 
+`this user is not on the controller's whitelist`
+ - The ExoGENI aggregate is in maintenance. Try a different aggregate
+ or try again later. Monitor the mailing list: https://groups.google.com/forum/#!forum/geni-orca-users
+
 === Errors in the tool – you may need to report this as a bug ===
 
 ` … has request tag XXX that is already in use by …`
