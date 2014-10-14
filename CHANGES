@@ -1,5 +1,7 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 2.8:
+
 gcf 2.7:
  * Omni
   * Calls to `status` and `sliverstatus` will also call the CH

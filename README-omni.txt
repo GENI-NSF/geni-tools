@@ -41,6 +41,8 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
 
+New in v2.8:
+
 New in v2.7:
  * Calls to `status` and `sliverstatus` will also call the CH
    to try to sync up the CH records of slivers with truth
@@ -822,7 +824,7 @@ Omni supports the following command-line options.
 {{{
 $ ~/gcf/src/omni.py -h                            
 Usage: 
-GENI Omni Command Line Aggregate Manager Tool Version 2.7
+GENI Omni Command Line Aggregate Manager Tool Version 2.8
 Copyright (c) 2014 Raytheon BBN Technologies
 
 omni.py [options] [--project <proj_name>] <command and arguments> 
