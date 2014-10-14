@@ -157,10 +157,16 @@ gcf 2.7:
     * The tag selected on such hops should be marked unavailable where we
       import from.
   * Handle new VLAN unavailable error message from OESS. (#729)
+   * And properly parse it. (#737)
   * Handle malformed status from ION where 1 circuit failed but overall status is ready. (#731)
   * When editing down the available range, exit if the range is now empty. (#733)
   * Exit from launcher if 0 ready aggregates but not done - that's a bug. (#735)
   * Ensure `inProcess` is false when we retry. (#736)
+  * Clarify some error messages: (#741)
+   * `Topology too complex` means we need to go to the SCS to find a VLAN, but will retry.
+   * ExoGENI `Embedding workflow ERROR` can mean no more VLAN tags. 
+  * When reading an alternate URL using the agg_nick_cache, use the proper URL not the 
+    version without the http/https prefix used for matching. (#740)
 
  * readyToLogin
   * Handle when omni switches AM API version number (#643)

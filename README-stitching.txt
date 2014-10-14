@@ -525,10 +525,16 @@ Cannot find the set of paths for the RequestTopology. '.
 `Error encountered converting RSpec to NDL`
  - ExoGENI did not understand something in your request RSpec.
 
+`Embedding workflow ERROR: 1:Insufficient resources or Unknown domain`
+ - This ExoGENI error may mean the aggregate ran out of VLAN tags or
+ some other resource. Alternately, it may mean you sent your request
+ to the wrong ExoGENI aggregate (included an incorrect URN in your
+ request RSpec or used the `--noExoSM` option mistakenly.
+
 `Embedding workflow ERROR`
  - ExoGENI aggregates cannot handle requests that mention other
    ExoGENI aggregates. Typically, stitcher sends such requests
-   to the ExoSM. Did you supply `--useExoSM` by mistake?
+   to the ExoSM. Did you supply `--noExoSM` by mistake?
    Alternatively, there may be an error in your request RSpec.
 
 `Exception`
@@ -553,6 +559,7 @@ Cannot find the set of paths for the RequestTopology. '.
 `vlan tag … not available` OR
 `Could not find a free vlan tag` OR
 `Could not reserve a vlan tag for` OR
+`Exception: requested VLAN unavailable` OR
 `Error in building the dependency tree, probably not available vlan path`
  - Some VLAN tag you requested is not available. Stitcher will try to
  find another and try again.
@@ -561,6 +568,10 @@ Cannot find the set of paths for the RequestTopology. '.
  - This is the first time this aggregate has seen your
  project. Stitcher will retry and the error should go away. If not,
  try again.
+
+`Topology too complex`
+ - Stitcher cannot find a new VLAN tag to try itself, but will retry
+ your request at the SCS if possible.
 
 === After too many transient errors, stitcher gives up ===
 

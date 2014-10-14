@@ -1968,9 +1968,17 @@ class Aggregate(object):
                             elif 'Embedding workflow ERROR' in msg:
                                 # FIXME: This may indicate we sent a request to an individual rack
                                 # When we meant to send it to the ExoSM. Could be a stitcher bug.
+                                # It could also mean the AM is out of VLAN tags (Ticket #741)
                                 isFatal = True
-                                self.logger.debug("EG Fatal error: Embedding workflow error")
-                                fatalMsg = "Reservation request impossible at %s: Did you request resources from the wrong ExoGENI AM? %s..." % (self, msg)
+                                if 'Insufficient resources or Unknown domain' in msg and 'Domain/vlan' in msg:
+                                    self.logger.debug("EG fatal error: looks like we ran out of VLANs")
+                                    fatalMsg = "Reservation request impossible at %s: The Aggregate may not have enough VLANs. %s..." % (self, msg)
+                                elif 'Insufficient resources' in msg:
+                                    self.logger.debug("EG fatal error: looks like we ran out of some other resource")
+                                    fatalMsg = "Reservation request impossible at %s: The Aggregate may not have enough resources. %s..." % (self, msg)
+                                else:
+                                    self.logger.debug("EG Fatal error: Embedding workflow error")
+                                    fatalMsg = "Reservation request impossible at %s: Did you request resources from the wrong ExoGENI AM? %s..." % (self, msg)
 
                         elif self.dcn:
                             # Really a 2nd time should be something else. But see http://groups.geni.net/geni/ticket/1207
@@ -2753,7 +2761,7 @@ class Aggregate(object):
                         # Sample: code 24: Exception: requested VLAN unavailable: sdn-sw.sunn.net.internet2.edu,e5/1 VLAN=2900. 
                         self.logger.debug("Attempting to ID failed hop from OESS message: %s", msg)
                         import re
-                        match = re.match("requested VLAN unavailable:\s+(.+)\s*VLAN=(\d+).", msg)
+                        match = re.match(".*requested VLAN unavailable:\s*(\S+)\s*VLAN=(\d+)[^\d]*", msg)
                         if match:
                             failedifc = match.group(1).strip()
                             failedhopname = failedifc.replace(',',':')
@@ -3091,7 +3099,7 @@ class Aggregate(object):
 #    from request avail range), delete the reservation at that other AM
 #    and mark it incomplete in some way
                     self.logger.debug("%s uses the VLANs picked elsewhere - so stitcher cannot redo the request locally.", hop)
-                    errMsg = "Topology too complex - ask Stitching Service to find a VLAN tag (%s)" % errMsg
+                    errMsg = "Topology too complex for local redo - ask Stitching Service to find a VLAN tag (%s)" % errMsg
                     canRedoRequestHere = False
 
                     # FIXME: Could mark the failed tag on hop as unavail where it came from, though that's a little disingenuous.
@@ -3213,14 +3221,14 @@ class Aggregate(object):
                     if hop.aggregate.isDependencyFor and len(hop.aggregate.isDependencyFor) > 0 \
                             and iter(hop.aggregate.isDependencyFor).next():
                         self.logger.debug("dependentAgg %s's hop %s's Aggregate is a dependency for others - cannot redo here", depAgg, hop)
-                        errMsg = "Topology too complex - ask Stitching Service to find a VLAN tag (%s)" % errMsg
+                        errMsg = "Topology too complex for local redo - ask Stitching Service to find a VLAN tag (%s)" % errMsg
                         canRedoRequestHere=False
                         aggOK = False
                         break
                 # End of loop over hops in the dependent agg
                 if not aggOK:
 #                    self.logger.debug("depAgg %s has an issue - cannot redo here", depAgg)
-                    errMsg = "Topology too complex - ask Stitching Service to find a VLAN tag (%s)" % errMsg
+                    errMsg = "Topology too complex for local redo - ask Stitching Service to find a VLAN tag (%s)" % errMsg
                     canRedoRequestHere=False
                     self.logger.debug(errMsg)
                     break
