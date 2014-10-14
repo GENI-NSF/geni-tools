@@ -1863,7 +1863,7 @@ class StitchingHandler(object):
                     hadURL = handler_utils._extractURL(self.logger, agg.url)
                     newURL = handler_utils._extractURL(self.logger, amURL)
                     if hadURL != newURL and not hadURL in newURL and not newURL in hadURL and not newURL.strip == '':
-                        agg.alt_url = newURL
+                        agg.alt_url = amURL.strip()
                         break
 #                    else:
 #                        self.logger.debug("Not setting alt_url for %s. URL is %s, alt candidate was %s with URN %s", agg, hadURL, newURL, amURN)
