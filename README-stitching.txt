@@ -545,7 +545,8 @@ Cannot find the set of paths for the RequestTopology. '.
  or try again later. Monitor the mailing list: https://groups.google.com/forum/#!forum/geni-orca-users
 
 `Invalid slice urn`
- - This is a fatal error from ExoGENI.
+ - This is a fatal error from ExoGENI. Did you request more than 1
+   GENI stitching link at a single ExoGENI site?
 
 === Errors in the tool – you may need to report this as a bug ===
 
