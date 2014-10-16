@@ -865,6 +865,7 @@ class Aggregate(object):
                             if not unavail2.isdisjoint(avail):
                                 self.logger.debug("%s's avail ('%s') includes tags unavail at dependent hop %s: '%s'. Will modify range request.", hop, avail, hop2, unavail2)
                                 hop._hop_link.vlan_range_request = hop._hop_link.vlan_range_request - hop2.vlans_unavailable
+                                avail = hop._hop_link.vlan_range_request
                                 if len(hop._hop_link.vlan_range_request) == 0:
                                     self.logger.debug("That made the avail range empty!")
                                     self.inProcess = False
@@ -872,7 +873,13 @@ class Aggregate(object):
                             if not avail <= avail2:
                                 # FIXME: Did SCS give me bad avail ranges?
                                 # Should I make avail be the intersection of avail and avail2?
-                                self.logger.debug("FIXME: %s avail '%s' includes tags not avail at dependent hop %s: '%s'", hop, avail, hop2, avail2)
+                                self.logger.debug("%s avail '%s' includes tags not avail at dependent hop %s: '%s'. Will modify range request.", hop, avail, hop2, avail2)
+                                hop._hop_link.vlan_range_request = hop._hop_link.vlan_range_request & hop2._hop_link.vlan_range_request
+                                if len(hop._hop_link.vlan_range_request) == 0:
+                                    self.logger.debug("That made the avail range empty!")
+                                    self.inProcess = False
+                                    raise StitchingCircuitFailedError("Reservation impossible as configured - Try again from the SCS. Interface has 0 VLAN tags that work! (At %s)" % hop)
+
                 continue
 
             # Calculate the new suggested/avail for this hop
