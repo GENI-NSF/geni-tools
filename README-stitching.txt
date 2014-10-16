@@ -544,6 +544,9 @@ Cannot find the set of paths for the RequestTopology. '.
  - The ExoGENI aggregate is in maintenance. Try a different aggregate
  or try again later. Monitor the mailing list: https://groups.google.com/forum/#!forum/geni-orca-users
 
+`Invalid slice urn`
+ - This is a fatal error from ExoGENI.
+
 === Errors in the tool – you may need to report this as a bug ===
 
 ` … has request tag XXX that is already in use by …`
