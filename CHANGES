@@ -1,6 +1,10 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
 gcf 2.8:
+ * Stitcher
+  * Limit available range on a hop that doesn't import to tags available at hops that 
+    import from it. (#747)
+  * `Invalid slice urn` is fatal at ExoGENI. (#746)
 
 gcf 2.7:
  * Omni

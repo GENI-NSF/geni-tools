@@ -865,6 +865,7 @@ class Aggregate(object):
                             if not unavail2.isdisjoint(avail):
                                 self.logger.debug("%s's avail ('%s') includes tags unavail at dependent hop %s: '%s'. Will modify range request.", hop, avail, hop2, unavail2)
                                 hop._hop_link.vlan_range_request = hop._hop_link.vlan_range_request - hop2.vlans_unavailable
+                                avail = hop._hop_link.vlan_range_request
                                 if len(hop._hop_link.vlan_range_request) == 0:
                                     self.logger.debug("That made the avail range empty!")
                                     self.inProcess = False
@@ -872,7 +873,13 @@ class Aggregate(object):
                             if not avail <= avail2:
                                 # FIXME: Did SCS give me bad avail ranges?
                                 # Should I make avail be the intersection of avail and avail2?
-                                self.logger.debug("FIXME: %s avail '%s' includes tags not avail at dependent hop %s: '%s'", hop, avail, hop2, avail2)
+                                self.logger.debug("%s avail '%s' includes tags not avail at dependent hop %s: '%s'. Will modify range request.", hop, avail, hop2, avail2)
+                                hop._hop_link.vlan_range_request = hop._hop_link.vlan_range_request & hop2._hop_link.vlan_range_request
+                                if len(hop._hop_link.vlan_range_request) == 0:
+                                    self.logger.debug("That made the avail range empty!")
+                                    self.inProcess = False
+                                    raise StitchingCircuitFailedError("Reservation impossible as configured - Try again from the SCS. Interface has 0 VLAN tags that work! (At %s)" % hop)
+
                 continue
 
             # Calculate the new suggested/avail for this hop
@@ -1983,7 +1990,10 @@ class Aggregate(object):
                                 isFatal = True
                                 self.logger.debug("EG fatal error: not on whitelist or in maintenance")
                                 fatalMsg = "Reservation currently impossible at %s: The aggregate may currently be in maintenance. Check https://groups.google.com/forum/#!forum/geni-orca-users. %s..." % (self, msg)
-
+                            elif 'Invalid slice urn' in msg:
+                                isFatal = True
+                                self.logger.debug("EG fatal error: invalid slice urn")
+                                fatalMsg = "Reservation request impossible at %s: The aggregate had an unknown internal error. Report at geni-orca-users@googlegroups.com. %s..." % (self, msg)
                         elif self.dcn:
                             # Really a 2nd time should be something else. But see http://groups.geni.net/geni/ticket/1207
                             if "AddPersonToSite: Invalid argument: No such site" in msg and self.allocateTries < 4:
