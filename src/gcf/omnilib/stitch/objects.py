@@ -1990,7 +1990,10 @@ class Aggregate(object):
                                 isFatal = True
                                 self.logger.debug("EG fatal error: not on whitelist or in maintenance")
                                 fatalMsg = "Reservation currently impossible at %s: The aggregate may currently be in maintenance. Check https://groups.google.com/forum/#!forum/geni-orca-users. %s..." % (self, msg)
-
+                            elif 'Invalid slice urn' in msg:
+                                isFatal = True
+                                self.logger.debug("EG fatal error: invalid slice urn")
+                                fatalMsg = "Reservation request impossible at %s: The aggregate had an unknown internal error. Report at geni-orca-users@googlegroups.com. %s..." % (self, msg)
                         elif self.dcn:
                             # Really a 2nd time should be something else. But see http://groups.geni.net/geni/ticket/1207
                             if "AddPersonToSite: Invalid argument: No such site" in msg and self.allocateTries < 4:
