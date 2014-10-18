@@ -5,6 +5,7 @@ gcf 2.8:
   * Limit available range on a hop that doesn't import to tags available at hops that 
     import from it. (#747)
   * `Invalid slice urn` is fatal at ExoGENI. (#746)
+  * Remove note about capacity at ExoGENI, now that it is in kbps. (#678)
 
 gcf 2.7:
  * Omni

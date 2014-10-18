@@ -328,7 +328,6 @@ python src/gcf/omnilib/stitch/scs.py --listaggregates
   other things but not an explicit node. Use the `--fixedEndpoint`
   option to be sure aggregates can handle this.
  - Stitching to ExoGENI aggregates
-  - Note that in ExoGENI, capacity is in ''bps''.
   - ExoGENI reservations can come from the specific rack, or from the
   ExoSM's allocation of resources at that rack. You can control in
   stitcher whether you use the local racks or the ExoSM, by using the
