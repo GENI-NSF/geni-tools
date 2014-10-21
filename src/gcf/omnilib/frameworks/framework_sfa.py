@@ -169,6 +169,7 @@ class Framework(Framework_Base):
 
         self.config = config
         self.logger = logging.getLogger('omni.sfa')
+        self.opts = opts
 
         # Download a cert from PLC if necessary
         if (not os.path.exists(config['cert'])) or (os.path.getsize(config['cert']) < 1):
