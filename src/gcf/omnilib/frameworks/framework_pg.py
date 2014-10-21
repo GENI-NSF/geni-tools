@@ -59,6 +59,7 @@ class Framework(Framework_Base):
         Framework_Base.__init__(self, config)
         fwtype = "PG"
         self.fwtype = fwtype
+        self.opts = opts
         self.logger = logging.getLogger("omni.protogeni")
         config['cert'] = os.path.expanduser(config['cert'])
         if not os.path.exists(config['cert']):
