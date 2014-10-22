@@ -10,6 +10,8 @@ gcf 2.8:
     import from it. (#747)
   * `Invalid slice urn` is fatal at ExoGENI. (#746)
   * Remove note about capacity at ExoGENI, now that it is in kbps. (#678)
+  * Catch keyboard interrupts to warn if you interrupt your run and have 
+    left over reservations. (#754)
 
 gcf 2.7:
  * Omni
