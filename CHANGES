@@ -12,6 +12,8 @@ gcf 2.8:
   * Remove note about capacity at ExoGENI, now that it is in kbps. (#678)
   * Catch keyboard interrupts to warn if you interrupt your run and have 
     left over reservations. (#754)
+  * Error and exit if the requrest uses Speaks For and requires AL2S 
+    (since AL2S does not support Speaks For yet). (#753)
 
 gcf 2.7:
  * Omni
