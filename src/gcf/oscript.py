@@ -1143,6 +1143,8 @@ def getParser():
     devgroup.add_option("--raise-error-on-v2-amapi-error", dest='raiseErrorOnV2AMAPIError',
                       default=False, action="store_true",
                       help="In AM API v2, if an AM returns a non-0 (failure) result code, raise an AMAPIError. Default is %default. For use by scripts.")
+    devgroup.add_option("--maxBusyRetries", default=4, action="store", type="int",
+                      help="Max times to retry AM or CH calls on getting a 'busy' error. Default: %default")
     devgroup.add_option("--no-compress", dest='geni_compressed', 
                       default=True, action="store_false",
                       help="Do not compress returned values")

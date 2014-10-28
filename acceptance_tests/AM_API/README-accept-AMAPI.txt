@@ -613,6 +613,9 @@ Options:
                         In AM API v2, if an AM returns a non-0 (failure)
                         result code, raise an AMAPIError. Default is False.
                         For use by scripts.
+    --maxBusyRetries=MAXBUSYRETRIES
+                        Max times to retry AM or CH calls on getting a 'busy'
+                        error. Default: 4
     --no-compress       Do not compress returned values
     --abac              Use ABAC authorization
     --arbitrary-option  Add an arbitrary option to ListResources (for testing

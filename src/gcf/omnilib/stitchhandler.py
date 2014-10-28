@@ -529,6 +529,24 @@ class StitchingHandler(object):
                 self.logger.info(msg)
                 retVal += msg
 
+        except KeyboardInterrupt:
+            if lvl:
+                self.logger.setLevel(lvl)
+            msg = 'Stitching interrupted!'
+            if self.lastException:
+                msg += ' ' + str(self.lastException)
+            self.logger.error(msg)
+
+            class DumbLauncher():
+                def __init__(self, agglist):
+                    self.aggs = agglist
+
+            #self.deleteAllReservations(DumbLauncher(self.ams_to_process)
+
+            for am in self.ams_to_process:
+                if am.manifestDom:
+                    self.logger.warn("You have a reservation at %s", am)
+            sys.exit(-1)
         except StitchingError, se:
             if lvl:
                 self.logger.setLevel(lvl)
@@ -816,6 +834,16 @@ class StitchingHandler(object):
         # Add extra info about the aggregates to the AM objects
         self.add_am_info(self.ams_to_process)
 
+        # If using speaks for and have OESS in the list, bail
+        haveOESS = None
+        for am in self.ams_to_process:
+            if am.isOESS:
+                haveOESS = am
+                break
+        if haveOESS and self.opts.speaksfor:
+            self.logger.debug("%s required, is AL2S, but 'speaksfor' option specified", haveOESS)
+            raise StitchingError("Request requires AL2S but uses 'Speaks For' which is not supported (yet) at AL2S.")
+
         # FIXME: check each AM reachable, and we know the URL/API version to use
 
         # If requesting from >1 ExoGENI AM, then use ExoSM. And use ExoSM only once.
@@ -908,10 +936,23 @@ class StitchingHandler(object):
             self.lastException = se
             if self.scsCalls == self.maxSCSCalls:
                 self.logger.error("Stitching max circuit failures reached - will delete and exit.")
-                self.deleteAllReservations(launcher)
+                try:
+                    self.deleteAllReservations(launcher)
+                except KeyboardInterrupt:
+                    self.logger.error('... deleting interrupted!')
+                    for am in launcher.aggs:
+                        if am.manifestDom:
+                            self.logger.warn("You have a reservation at %s", am)
                 raise StitchingError("Stitching reservation failed %d times. Last error: %s" % (self.scsCalls, se))
             self.logger.warn("Stitching failed but will retry: %s", se)
-            success = self.deleteAllReservations(launcher)
+            success = False
+            try:
+                success = self.deleteAllReservations(launcher)
+            except KeyboardInterrupt:
+                self.logger.error('... deleting interrupted!')
+                for am in launcher.aggs:
+                    if am.manifestDom:
+                        self.logger.warn("You have a reservation at %s", am)
             if not success:
                 raise StitchingError("Stitching failed. Would retry but delete had errors. Last Stitching error: %s" % se)
 
@@ -933,7 +974,14 @@ class StitchingHandler(object):
                 self.logger.error("Root cause error: %s", self.lastException)
                 newError = StitchingError("%s which caused %s" % (str(self.lastException), str(se)))
                 se = newError
-            self.deleteAllReservations(launcher)
+            try:
+                self.deleteAllReservations(launcher)
+            except KeyboardInterrupt:
+                self.logger.error('... deleting interrupted!')
+                for am in launcher.aggs:
+                    if am.manifestDom:
+                        self.logger.warn("You have a greservation at %s", am)
+                #raise
             raise se
         return lastAM
 

@@ -42,6 +42,8 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 == Release Notes ==
 
 New in v2.8:
+ * Allow configuring how many times Omni retries on a busy error from
+   an AM or CH. Use `--maxBusyRetries`. Default remains 4. (#749)
 
 New in v2.7:
  * Calls to `status` and `sliverstatus` will also call the CH
@@ -1058,6 +1060,9 @@ Options:
                         In AM API v2, if an AM returns a non-0 (failure)
                         result code, raise an AMAPIError. Default is False.
                         For use by scripts.
+    --maxBusyRetries=MAXBUSYRETRIES
+                        Max times to retry AM or CH calls on getting a 'busy'
+                        error. Default: 4
     --no-compress       Do not compress returned values
     --abac              Use ABAC authorization
     --arbitrary-option  Add an arbitrary option to ListResources (for testing

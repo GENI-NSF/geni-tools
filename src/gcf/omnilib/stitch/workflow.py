@@ -148,7 +148,7 @@ class WorkflowParser(object):
                     self.logger.debug("%s imports vlans, has no dependencies, so copying import_from from previous peer hop on same AM %s", hop, prevHop)
                     import_from_hop = prevHop.import_vlans_from
             else:
-                nextHop = hop.path.find_hop_idex(hop.idx + 1)
+                nextHop = hop.path.find_hop_idx(hop.idx + 1)
                 if nextHop and nextHop.aggregate.urn == hop.aggregate.urn:
                     if not nextHop.import_vlans:
                         self.logger.warn("%s imports vlans, has no dependencies. Next hop is on same AM, but it does not import_vlans. So got nowhere to import from!", hop)
