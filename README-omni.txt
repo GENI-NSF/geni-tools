@@ -44,6 +44,7 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 New in v2.8:
  * Allow configuring how many times Omni retries on a busy error from
    an AM or CH. Use `--maxBusyRetries`. Default remains 4. (#749)
+ * Fix error message on expired user cert. (#756)
 
 New in v2.7:
  * Calls to `status` and `sliverstatus` will also call the CH
