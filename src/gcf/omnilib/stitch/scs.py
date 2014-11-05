@@ -229,7 +229,7 @@ def main(argv=None):
     listAMs = False
     for arg in argv:
         ind = ind + 1
-        if "--scs_url" == arg and (ind+1) < len(argv):
+        if ("--scs_url" == arg or "--scsURL" == arg) and (ind+1) < len(argv):
             SCS_URL = argv[ind+1]
         if "--monitoring" == arg:
             printR = False

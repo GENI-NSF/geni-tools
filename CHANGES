@@ -15,6 +15,7 @@ gcf 2.8:
     left over reservations. (#754)
   * Error and exit if the requrest uses Speaks For and requires AL2S 
     (since AL2S does not support Speaks For yet). (#753)
+  * Accept `--scsURL` in `scs.py` to specify the SCS URL. (#755)
 
 gcf 2.7:
  * Omni
