@@ -2374,6 +2374,7 @@ class Aggregate(object):
             opName = 'deletesliver'
             if self.api_version > 2:
                 opName = 'delete'
+            self.logger.info("Doing %s at %s...", opName, self)
             if opts.warn:
                 omniargs = ['--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename]
             else:
