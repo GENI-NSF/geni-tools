@@ -116,6 +116,13 @@ class StitchingHandler(object):
         # Remember we got the extra info for this AM
         self.amURNsAddedInfo = []
 
+        if self.opts.timeout == 0:
+            self.config['timeoutTime'] = datetime.datetime.max
+            self.logger.debug("Requested no timeout for stitcher.")
+        else:
+            self.config['timeoutTime'] = datetime.datetime.utcnow() + datetime.timedelta(minutes=self.opts.timeout)
+            self.logger.debug("Stitcher run will timeout at %s UTC.", self.config['timeoutTime'])
+
     def doStitching(self, args):
         '''Main stitching function.'''
         # Get request RSpec
@@ -690,6 +697,22 @@ class StitchingHandler(object):
 
     def mainStitchingLoop(self, sliceurn, requestDOM, existingAggs=None):
         # existingAggs are Aggregate objects
+
+        if datetime.datetime.utcnow() >= self.config['timeoutTime']:
+            msg = "Reservation attempt timed out after %d minutes." % self.opts.timeout
+            self.logger.warn("%s Deleting any reservations...")
+            class DumbLauncher():
+                def __init__(self, agglist):
+                    self.aggs = agglist
+            try:
+                self.deleteAllReservations(DumbLauncher(existingAggs))
+            except KeyboardInterrupt:
+                self.logger.error('... deleting interrupted!')
+                for am in existingAggs:
+                    if am.manifestDom:
+                        self.logger.warn("You have a reservation at %s", am)
+            raise SticherError(msg)
+
         self.scsCalls = self.scsCalls + 1
         if self.isStitching:
             if self.scsCalls == 1:
@@ -722,6 +745,24 @@ class StitchingHandler(object):
                     sTime = Aggregate.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS
                 # Reset whether we've tried this AM this time through
                 agg.triedRes = False
+
+            if datetime.datetime.utcnow() + datetime.timedelta(seconds=sTime) >= self.config['timeoutTime']:
+                # We'll time out. So quit now.
+                self.logger.debug("After planned sleep for %d seconds we will time out", sTime)
+                msg = "Reservation attempt timing out after %d minutes." % self.opts.timeout
+                self.logger.warn("%s Deleting any reservations...")
+                class DumbLauncher():
+                    def __init__(self, agglist):
+                        self.aggs = agglist
+                try:
+                    self.deleteAllReservations(DumbLauncher(existingAggs))
+                except KeyboardInterrupt:
+                    self.logger.error('... deleting interrupted!')
+                    for am in existingAggs:
+                        if am.manifestDom:
+                            self.logger.warn("You have a reservation at %s", am)
+                raise SticherError(msg)
+
             self.logger.info("Pausing for %d seconds for Aggregates to free up resources...\n\n", sTime)
             time.sleep(sTime)
 
@@ -920,12 +961,14 @@ class StitchingHandler(object):
 
             raise StitchingError("Requested no reservation")
 
-        # Hand each AM the slice credential, so we only read it once
         for am in self.ams_to_process:
+            # Hand each AM the slice credential, so we only read it once
             am.slicecred = self.slicecred
+            # Also hand the timeout time
+            am.timeoutTime = self.config['timeoutTime']
 
         # The launcher handles calling the aggregates to do their allocation
-        launcher = stitch.Launcher(self.opts, self.slicename, self.ams_to_process)
+        launcher = stitch.Launcher(self.opts, self.slicename, self.ams_to_process, self.config['timeoutTime'])
         try:
             # Spin up the main loop
             lastAM = launcher.launch(self.parsedSCSRSpec, self.scsCalls)
