@@ -272,6 +272,9 @@ Other options you should not need to use:
  - `--useSCSugg`: Always use the VLAN tag suggested by the
  SCS. Usually stitcher asks the aggregate to pick, despite what the
  SCS suggested.
+ - `--timeout`: Maximum number of minutes to allow stitcher to run,
+ before timing out. Default is 90 minutes. Specify `0` for no timeout.
+ On timeout, existing reservations are deleted.
 
 == Tips and Details ==
 

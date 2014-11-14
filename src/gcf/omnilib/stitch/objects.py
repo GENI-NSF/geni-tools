@@ -421,8 +421,12 @@ class Aggregate(object):
                 if handler.level == logging.DEBUG:
                     self.inDebug = True
                     break
+
         # Cache the slice cred to only query it once per AM
         self.slicecred = None
+
+        # Cache the stitcher timeout time
+        self.timeoutTime = datetime.datetime.max
 
     def __str__(self):
         if self.nick:
@@ -520,6 +524,13 @@ class Aggregate(object):
             sleepSecs = self.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS 
             if self.dcn:
                 sleepSecs = self.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS
+
+            if datetime.datetime.utcnow() + datetime.timedelta(seconds=sleepSecs) >= self.timeoutTime:
+                # We'll time out. So quit now.
+                self.logger.debug("After planned sleep for %d seconds we will time out", sleepSecs)
+                msg = "Reservation attempt timing out after %d minutes." % opts.timeout
+                raise StitchingError(msg)
+
             self.logger.info("Pausing %d seconds to let aggregate free resources...", sleepSecs)
             time.sleep(sleepSecs)
         # end of block to delete a previous reservation
@@ -2189,6 +2200,12 @@ class Aggregate(object):
         status = 'unknown'
         while tries < self.SLIVERSTATUS_MAX_TRIES:
             # Pause before calls to sliverstatus
+            if datetime.datetime.utcnow() + datetime.timedelta(seconds=self.SLIVERSTATUS_POLL_INTERVAL_SEC) >= self.timeoutTime:
+                # We'll time out. So quit now.
+                self.logger.debug("After planned sleep for %d seconds we will time out", self.SLIVERSTATUS_POLL_INTERVAL_SEC)
+                msg = "Reservation attempt timing out after %d minutes." % opts.timeout
+                raise StitchingError(msg)
+
             self.logger.info("Pausing %d seconds to let circuit become ready...", self.SLIVERSTATUS_POLL_INTERVAL_SEC)
             time.sleep(self.SLIVERSTATUS_POLL_INTERVAL_SEC)
 
