@@ -5,6 +5,7 @@ gcf 2.8:
   * Allow configuring how many times Omni retries on a busy error from
     an AM or CH. Use `--maxBusyRetries`. Default remains 4. (#749)
   * Fix error message on expired user cert. (#756)
+  * Remove ticket #722 workaround (bug fixed at ION AM). (#724)
 
  * Stitcher
   * Limit available range on a hop that doesn't import to tags available at hops that 
