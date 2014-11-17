@@ -2854,53 +2854,14 @@ class AMCallHandler(object):
                                         if s.has_key('geni_urn') and urn_util.is_valid_urn_bytype(s['geni_urn'], 'sliver'):
                                             slice_auth = slice_urn[0 : slice_urn.find('slice+')]
                                             surn = s['geni_urn']
-                                            if "ion.internet2" in surn and "ion.internet2" in agg_urn and surn.startswith(slice_auth):
-                                                # Ticket #722 workaround for http://groups.geni.net/geni/ticket/1292
-                                                # Parse apart surn. It looks like this:
-                                                # <slice>_vlan_ion.internet2.edu-121251
-                                                # The proper sliver_urn is
-                                                # urn:publicid:IDN+ion.internet2.edu+sliver+ion.internet2.edu-121251
-                                                # or possibly urn:publicid:IDN+ion.internet2.edu+sliver+vlan_slicename_ion.internet2.edu-121251
-                                                gid = surn[surn.index('ion.internet2.edu')+len('ion.internet2.edu')+1:]
-                                                proper_surn = 'urn:publicid:IDN+ion.internet2.edu+sliver+ion.internet2.edu-' + gid # manifest
-                                                proper_surn2 = 'urn:publicid:IDN+ion.internet2.edu+sliver+vlan_' + name + '_ion.internet2.edu-' + gid # status
-                                                if surn in sliver_urns:
-                                                    self.logger.debug("Malformed sliver_urn from sliverstatus '%s' from ION was really '%s'. The proper URN is not in our list from sliverstatus but the malformed URN is, so not reporting proper urn. See ticket #722 workaround for http://groups.geni.net/geni/ticket/1292", surn, proper_surn)
-                                                elif proper_surn in sliver_urns:
-                                                    self.logger.debug("Malformed sliver_urn from sliverstatus '%s' from ION was really '%s'. The proper URN is already there, so not reporting proper urn. See ticket #722 workaround for http://groups.geni.net/geni/ticket/1292", surn, proper_surn)
-                                                elif proper_surn2 in sliver_urns:
-                                                    self.logger.debug("Malformed sliver_urn from sliverstatus '%s' from ION was really '%s'. The proper URN is already there, so not reporting proper urn. See ticket #722 workaround for http://groups.geni.net/geni/ticket/1292", surn, proper_surn2)
-                                                else:
-                                                    sliver_urns.append(proper_surn)
-                                                    self.logger.debug("Malformed sliver_urn from sliverstatus '%s' from ION was really '%s'. Reporting it. See ticket #722 workaround for http://groups.geni.net/geni/ticket/1292", surn, proper_surn)
-                                            elif not surn in sliver_urns:
+                                            if not surn in sliver_urns:
                                                 sliver_urns.append(surn)
                                         elif s.has_key('geni_urn'):
                                             surn = s['geni_urn']
                                             if surn is None:
                                                 surn = ""
                                             surn = surn.strip()
-                                            if "ion.internet2" in surn and urn_util.is_valid_urn(surn) and surn.startswith(urn):
-                                                # Ticket #722 workaround for http://groups.geni.net/geni/ticket/1292
-                                                # Parse apart surn. It looks like this:
-                                                # <slice>_vlan_ion.internet2.edu-121251
-                                                # The proper sliver_urn is
-                                                # urn:publicid:IDN+ion.internet2.edu+sliver+ion.internet2.edu-121251
-                                                # or possibly urn:publicid:IDN+ion.internet2.edu+sliver+vlan_slicename_ion.internet2.edu-121251
-                                                gid = surn[surn.index('ion.internet2.edu')+len('ion.internet2.edu')+1:]
-                                                proper_surn = 'urn:publicid:IDN+ion.internet2.edu+sliver+ion.internet2.edu-' + gid
-                                                proper_surn2 = 'urn:publicid:IDN+ion.internet2.edu+sliver+vlan_' + name + '_ion.internet2.edu-' + gid
-                                                if surn in sliver_urns:
-                                                    self.logger.debug("Malformed sliver_urn from sliverstatus '%s' from ION was really '%s'. The proper URN is not in our list from sliverstatus but the malformed URN is, so not reporting proper urn. See ticket #722 workaround for http://groups.geni.net/geni/ticket/1292", surn, proper_surn)
-                                                elif proper_surn in sliver_urns:
-                                                    self.logger.debug("Malformed sliver_urn from sliverstatus '%s' from ION was really '%s'. The proper URN is already there, so not reporting proper urn. See ticket #722 workaround for http://groups.geni.net/geni/ticket/1292", surn, proper_surn)
-                                                elif proper_surn2 in sliver_urns:
-                                                    self.logger.debug("Malformed sliver_urn from sliverstatus '%s' from ION was really '%s'. The proper URN is already there, so not reporting proper urn. See ticket #722 workaround for http://groups.geni.net/geni/ticket/1292", surn, proper_surn2)
-                                                else:
-                                                    sliver_urns.append(proper_surn)
-                                                    self.logger.debug("Malformed sliver_urn from sliverstatus '%s' from ION was really '%s'. Reporting it. See ticket #722 workaround for http://groups.geni.net/geni/ticket/1292", surn, proper_surn)
-                                            # End of block to handle ION bug
-                                            elif surn.startswith(urn) and agg_urn is not None and agg_urn != "" and ("foam" in agg_urn or "al2s" in agg_urn):
+                                            if surn.startswith(urn) and agg_urn is not None and agg_urn != "" and ("foam" in agg_urn or "al2s" in agg_urn):
                                                 # Work around a FOAM/AL2S bug producing bad sliver URNs
                                                 # See http://groups.geni.net/geni/ticket/1294
                                                 if not surn in sliver_urns:
@@ -3347,20 +3308,6 @@ class AMCallHandler(object):
                                         if resource and isinstance(resource, dict) and resource.has_key('geni_urn'):
                                             gurn = resource['geni_urn']
                                             if urn_util.is_valid_urn(gurn):
-                                                # Ticket #722: Fix malformed ION URNs
-                                                # Also update resource['geni_urn']
-                                                if "ion.internet2" in agg_urn and "ion.internet2" in gurn and not gurn.startswith("urn:publicid:IDN+ion.internet2.edu+sliver+"):
-                                                    # Parse apart surn. It looks like this:
-                                                    # <slice>_vlan_ion.internet2.edu-121251
-                                                    # The proper sliver_urn is
-                                                    # urn:publicid:IDN+ion.internet2.edu+sliver+ion.internet2.edu-121251
-                                                    # or possibly urn:publicid:IDN+ion.internet2.edu+sliver+vlan_slicename_ion.internet2.edu-121251
-                                                    gid = gurn[gurn.index('ion.internet2.edu')+len('ion.internet2.edu')+1:]
-                                                    proper_surn = 'urn:publicid:IDN+ion.internet2.edu+sliver+ion.internet2.edu-' + gid # manifest
-                                                    #proper_surn2 = 'urn:publicid:IDN+ion.internet2.edu+sliver+vlan_' + name + '_ion.internet2.edu-' + gid # status
-                                                    self.logger.debug("Work-around #722. ION AM reported malformed sliver URN '%s'. Replacing with '%s'. See http://groups.geni.net/geni/ticket/1292", gurn, proper_surn)
-                                                    gurn = proper_surn
-                                                    resource['geni_urn'] = gurn
                                                 poss_slivers.append(gurn.strip())
 #                                self.logger.debug("AM poss_slivers: %s", str(poss_slivers))
 
