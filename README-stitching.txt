@@ -273,8 +273,10 @@ Other options you should not need to use:
  SCS. Usually stitcher asks the aggregate to pick, despite what the
  SCS suggested.
  - `--timeout`: Maximum number of minutes to allow stitcher to run,
- before timing out. Default is 90 minutes. Specify `0` for no timeout.
- On timeout, existing reservations are deleted.
+ before timing out. Default is no timeout (`0` minutes). Note that
+ by far most runs complete within 45 minutes, and usually much less. Some
+ successful stitching runs take 90 minutes or more. On timeout,
+ existing reservations are deleted.
 
 == Tips and Details ==
 

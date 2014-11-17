@@ -134,7 +134,7 @@ def call(argv, options=None):
     parser.add_option("--scsURL",
                       help="URL to the SCS service. Default: Value of 'scs_url' in omni_config or " + SCS_URL,
                       default=None)
-    parser.add_option("--timeout", default=90, type="int",
+    parser.add_option("--timeout", default=0, type="int",
                       help="Max minutes to allow stitcher to run before killing a reservation attempt (default %default minutes, 0 means no timeout).")
     parser.add_option("--fakeModeDir",
                       help="Developers only: If supplied, use canned server responses from this directory",

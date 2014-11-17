@@ -17,8 +17,8 @@ gcf 2.8:
   * Error and exit if the request uses Speaks For and requires AL2S 
     (since AL2S does not support Speaks For yet). (#753)
   * Accept `--scsURL` in `scs.py` to specify the SCS URL. (#755)
-  * Time out stitcher runs after 90 minutes (control with
-    `--timeout` option), deleting any partial reservations. (#730)
+  * Added `--timeout` option to specify that stitcher runs time out 
+    (default is no timeout as before), deleting any partial reservations. (#730)
 
 gcf 2.7:
  * Omni
