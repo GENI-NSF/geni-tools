@@ -19,6 +19,7 @@ gcf 2.8:
   * Accept `--scsURL` in `scs.py` to specify the SCS URL. (#755)
   * Added `--timeout` option to specify that stitcher runs time out 
     (default is no timeout as before), deleting any partial reservations. (#730)
+  * Add logic to print status when deleting reservations. (#750)
 
 gcf 2.7:
  * Omni

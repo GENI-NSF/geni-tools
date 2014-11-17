@@ -548,7 +548,7 @@ class StitchingHandler(object):
                 def __init__(self, agglist):
                     self.aggs = agglist
 
-            #self.deleteAllReservations(DumbLauncher(self.ams_to_process)
+            #result = self.deleteAllReservations(DumbLauncher(self.ams_to_process)
 
             for am in self.ams_to_process:
                 if am.manifestDom:
@@ -705,7 +705,11 @@ class StitchingHandler(object):
                 def __init__(self, agglist):
                     self.aggs = agglist
             try:
-                self.deleteAllReservations(DumbLauncher(existingAggs))
+                result = self.deleteAllReservations(DumbLauncher(existingAggs))
+                if not result:
+                    for am in existingAggs:
+                        if am.manifestDom:
+                            self.logger.warn("You have a reservation at %s", am)
             except KeyboardInterrupt:
                 self.logger.error('... deleting interrupted!')
                 for am in existingAggs:
@@ -755,7 +759,11 @@ class StitchingHandler(object):
                     def __init__(self, agglist):
                         self.aggs = agglist
                 try:
-                    self.deleteAllReservations(DumbLauncher(existingAggs))
+                    result = self.deleteAllReservations(DumbLauncher(existingAggs))
+                    if not result:
+                        for am in existingAggs:
+                            if am.manifestDom:
+                                self.logger.warn("You have a reservation at %s", am)
                 except KeyboardInterrupt:
                     self.logger.error('... deleting interrupted!')
                     for am in existingAggs:
@@ -980,7 +988,11 @@ class StitchingHandler(object):
             if self.scsCalls == self.maxSCSCalls:
                 self.logger.error("Stitching max circuit failures reached - will delete and exit.")
                 try:
-                    self.deleteAllReservations(launcher)
+                    result = self.deleteAllReservations(launcher)
+                    if not result:
+                        for am in launcher.aggs:
+                            if am.manifestDom:
+                                self.logger.warn("You have a reservation at %s", am)
                 except KeyboardInterrupt:
                     self.logger.error('... deleting interrupted!')
                     for am in launcher.aggs:
@@ -1018,12 +1030,16 @@ class StitchingHandler(object):
                 newError = StitchingError("%s which caused %s" % (str(self.lastException), str(se)))
                 se = newError
             try:
-                self.deleteAllReservations(launcher)
+                result = self.deleteAllReservations(launcher)
+                if not result:
+                    for am in launcher.aggs:
+                        if am.manifestDom:
+                            self.logger.warn("You have a reservation at %s", am)
             except KeyboardInterrupt:
                 self.logger.error('... deleting interrupted!')
                 for am in launcher.aggs:
                     if am.manifestDom:
-                        self.logger.warn("You have a greservation at %s", am)
+                        self.logger.warn("You have a reservation at %s", am)
                 #raise
             raise se
         return lastAM
