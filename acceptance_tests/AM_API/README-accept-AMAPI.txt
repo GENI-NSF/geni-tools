@@ -487,6 +487,9 @@ Options:
                         Sliver URN (not name) on which to act. Supply this
                         option multiple times for multiple slivers, or not at
                         all to apply to the entire slice
+    --cancelled         Should Describe show sliver state of only
+                        geni_provisioned slivers, ignoring any geni_updating
+                        and geni_allocated slivers (default False)
 
   Logging and Verboseness:
     Control the amount of output to the screen and/or to a log

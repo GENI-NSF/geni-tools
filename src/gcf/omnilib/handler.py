@@ -38,7 +38,7 @@ class CallHandler(object):
     """Handle calls on the framework. Valid calls are all
     methods without an underscore: getversion, createslice, deleteslice, 
     getslicecred, listresources, createsliver, deletesliver,
-    renewsliver, sliverstatus, shutdown, listmyslices, listaggregates, renewslice
+    renewsliver, sliverstatus, shutdown, listmyslices, listaggregates, renewslice, etc
     """
 
     def __init__(self, framework, config, opts):

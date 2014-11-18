@@ -68,6 +68,7 @@ from __future__ import absolute_import
        [string (successList, failList)] = omni.py shutdown SLICENAME
        In AM API v3:
        [string dictionary] = omni.py shutdown SLICENAME
+       [string dictionary] = omni.py update SLICENAME RSPEC_FILENAME # Some AM API V3+ AMs only
 
        Non-AM API functions exported by aggregates, supported by Omni:
        From ProtoGENI/InstaGENI:
@@ -955,6 +956,7 @@ def getParser():
  \t\t\t deletesliver <slicename> [AM API V1&2 only] \n\
  \t\t\t delete <slicename> [AM API V3 only] \n\
  \t\t\t shutdown <slicename> \n\
+ \t\t\t update <slicename> <rspec URL, filename, or nickname> [Some AM API V3 AMs only] \n\
  \t\tNon AM API aggregate functions (supported by some aggregates): \n\
  \t\t\t createimage <slicename> <imagename> [optional: false (keep image private)] -u <sliver urn> [ProtoGENI/InstaGENI only] \n\
  \t\t\t snapshotimage <slicename> <imagename> [optional: false (keep image private)] -u <sliver urn> [ProtoGENI/InstaGENI only] \n\
@@ -1037,6 +1039,9 @@ def getParser():
                       help="Supply given URN as user we are speaking for in Speaks For option")
     v3group.add_option("-u", "--sliver-urn", dest="slivers", action="append",
                       help="Sliver URN (not name) on which to act. Supply this option multiple times for multiple slivers, or not at all to apply to the entire slice")
+    # For Update. See http://groups.geni.net/geni/wiki/GAPI_AM_API_DRAFT/Adopted#ChangestoDescribe
+    v3group.add_option("--cancelled", action="store_true", default=False,
+                       help="Should Describe show sliver state of only geni_provisioned slivers, ignoring any geni_updating and geni_allocated slivers (default %default)")
     parser.add_option_group( v3group )
 
     # logging levels
