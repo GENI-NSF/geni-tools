@@ -22,6 +22,8 @@ gcf 2.8:
     (default is no timeout as before), deleting any partial reservations. (#730)
   * Add logic to print status when deleting reservations. (#750)
   * Factor out determining if AM type supports requesting 'any' VLAN tag. (#758)
+  * SCS requires a valid client certificate and uses SSL. (#757)
+   * As a result, the SSL timeout on calls to the SCS should work. (#346)
 
 gcf 2.7:
  * Omni

@@ -55,6 +55,7 @@ from .stitch.VLANRange import *
 from ..geni.util import rspec_schema
 from ..geni.util.rspec_util import is_rspec_string, is_rspec_of_type, rspeclint_exists, validate_rspec
 
+from ..sfa.trust import gid
 from ..sfa.util.xrn import urn_to_hrn, get_leaf
 
 DCN_AM_TYPE = 'dcn' # geni_am_type value from AMs that use the DCN codebase
@@ -384,9 +385,9 @@ class StitchingHandler(object):
         # longer necessary (or a good idea).
 
         if self.isStitching:
-            if not "oingo.dragon.maxgigapop.net:8081" in self.opts.scsURL:
+            if not "oingo.dragon.maxgigapop.net:8443" in self.opts.scsURL:
                 self.logger.info("Using SCS at %s", self.opts.scsURL)
-            self.scsService = scs.Service(self.opts.scsURL, self.opts.ssltimeout, self.opts.verbosessl)
+            self.scsService = scs.Service(self.opts.scsURL, key=self.framework.key, cert=self.framework.cert, timeout=self.opts.ssltimeout, verbose=self.opts.verbosessl)
         self.scsCalls = 0
 
         # Compare the list of AMs in the request with AMs known
@@ -1518,8 +1519,40 @@ class StitchingHandler(object):
             self.logger.debug("Error from slice computation service: %s", e)
             raise 
         except Exception as e:
-            self.logger.error("Exception from slice computation service: %s", e)
-            raise StitchingError("SCS gave error: %s" % e)
+            # FIXME: If SCS used dossl then that might handle many of these errors.
+            # Alternatively, the SCS could handle these itself.
+            excName = e.__class__.__name__
+            strE = str(e)
+            if strE == '':
+                strE = excName
+            elif strE == "''":
+                strE = "%s: %s" % (excName, strE)
+            if strE.startswith('BadStatusLine'):
+                # Did you call scs with http when https was expected?
+                url = self.opts.scsURL.lower()
+                if '8443' in url and not url.startswith('https'):
+                    strE = "Bad SCS URL: Use https for a SCS requiring SSL (running on port 8443). (%s)" % strE
+            elif 'unknown protocol' in strE:
+                url = self.opts.scsURL.lower()
+                if url.startswith('https'):
+                    strE = "Bad SCS URL: Try using http not https. (%s)" % strE
+            elif '404 Not Found' in strE:
+                strE = 'Bad SCS URL (%s): %s' % (self.opts.scsURL, strE)
+            elif 'Name or service not known' in strE:
+                strE = 'Bad SCS host (%s): %s' % (self.opts.scsURL, strE)
+            elif 'alert unknown ca' in strE:
+                try:
+                    certObj = gid.GID(filename=self.framework.cert)
+                    certiss = certObj.get_issuer()
+                    certsubj = certObj.get_urn()
+                    self.logger.debug("SCS gave exception: %s", strE)
+                    strE = "SCS does not trust the CA (%s) that signed your (%s) user certificate! Use an account at another clearinghouse or find another SCS server." % (certiss, certsubj)
+                except:
+                    strE = 'SCS does not trust your certificate. (%s)' % strE
+            self.logger.error("Exception from slice computation service: %s", strE)
+            import traceback
+            self.logger.debug("%s", traceback.format_exc())
+            raise StitchingError("SCS gave error: %s" % strE)
 
         self.logger.debug("SCS successfully returned.");
 
