@@ -544,15 +544,17 @@ class StitchingHandler(object):
                 msg += ' ' + str(self.lastException)
             self.logger.error(msg)
 
-            class DumbLauncher():
-                def __init__(self, agglist):
-                    self.aggs = agglist
 
-            #result = self.deleteAllReservations(DumbLauncher(self.ams_to_process)
+            if self.ams_to_process is not None:
+                class DumbLauncher():
+                    def __init__(self, agglist):
+                        self.aggs = agglist
 
-            for am in self.ams_to_process:
-                if am.manifestDom:
-                    self.logger.warn("You have a reservation at %s", am)
+                result = self.deleteAllReservations(DumbLauncher(self.ams_to_process))
+
+                for am in self.ams_to_process:
+                    if am.manifestDom:
+                        self.logger.warn("You have a reservation at %s", am)
             sys.exit(-1)
         except StitchingError, se:
             if lvl:
@@ -974,6 +976,10 @@ class StitchingHandler(object):
             am.slicecred = self.slicecred
             # Also hand the timeout time
             am.timeoutTime = self.config['timeoutTime']
+
+        # Check current VLAN tag availability before doing allocations
+        # Loop over AMs. If I update an AM, then go to AMs that depend on it and intersect there (but don't redo avail query), and recurse
+        # FIXME!
 
         # The launcher handles calling the aggregates to do their allocation
         launcher = stitch.Launcher(self.opts, self.slicename, self.ams_to_process, self.config['timeoutTime'])
