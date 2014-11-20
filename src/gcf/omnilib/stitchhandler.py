@@ -1066,7 +1066,7 @@ class StitchingHandler(object):
             if self.opts.useSCSSugg:
                 #self.logger.info("Per option, requesting SCS suggested VLAN tags")
                 continue
-            if am.isEG or am.isGRAM or am.isOESS or am.dcn:
+            if not am.supportsAny():
                 self.logger.debug("%s doesn't support requesting 'any' VLAN tag - move on", am)
                 continue
             # Could a complex topology have some hops producing VLANs and some accepting VLANs at the same AM?
@@ -1074,7 +1074,7 @@ class StitchingHandler(object):
 #                self.logger.debug("%s says it depends on no other AMs", am)
             for hop in am.hops:
                 # Init requestAny so we never request 'any' when option says not or it is one of the non-supported AMs
-                requestAny = not (self.opts.useSCSSugg or am.isEG or am.isGRAM or am.isOESS or am.dcn)
+                requestAny = not self.opts.useSCSSugg and am.supportsAny()
                 if not requestAny:
                     continue
                 isConsumer = False
@@ -1107,7 +1107,7 @@ class StitchingHandler(object):
                 if not hop._hop_link.vlan_producer:
                     if not imports and not isConsumer:
                         # See http://groups.geni.net/geni/ticket/1263 and http://groups.geni.net/geni/ticket/1262
-                        if am.isEG or am.isGRAM or am.isOESS or am.dcn:
+                        if not am.supportsAny():
                             self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG or GRAM or OESS or DCN AM, where we cannot assume 'any' works.", hop)
                             requestAny = False
                         else:
@@ -1125,7 +1125,7 @@ class StitchingHandler(object):
                     isProducer = True
                     self.logger.debug("%s marked as a VLAN producer", hop)
                 if not requestAny and not imports and not isConsumer and not isProducer:
-                    if am.isEG or am.isGRAM or am.isOESS or am.dcn:
+                    if not am.supportsAny():
                         self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG or GRAM or OESS or DCN AM, where we cannot assume 'any' works.", hop)
                     else:
                         # If this hop doesn't import and isn't explicitly marked as either a consumer or a producer, then
