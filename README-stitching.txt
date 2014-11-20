@@ -651,7 +651,6 @@ Cannot find the set of paths for the RequestTopology. '.
  - Tune counters, sleep durations, etc
  - Return a struct with detailed results (not just comments in manifest)
  - Return a struct on errors
- - Use authentication with the SCS
  - `opts.warn` is used to suppress omni output. Clean that up. A `scriptMode` option?
  - Implement `confirmSafeRequest()` to ensure no dangerous requests are made
  - Expand to additional aggregates
