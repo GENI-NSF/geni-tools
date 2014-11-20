@@ -3564,12 +3564,6 @@ class Aggregate(object):
     def deleteReservation(self, opts, slicename):
         '''Delete any previous reservation/manifest at this AM'''
         self.completed = False
-        
-        # Clear old manifests
-        self.manifestDom = None
-        for hop in self.hops:
-            hop._hop_link.vlan_suggested_manifest = None
-            hop._hop_link.vlan_range_manifest = None
 
         # Now mark all AMs that depend on this AM as incomplete, so we'll try them again
         # FIXME: This makes everything in chain get redone. Could we mark only the immediate
@@ -3637,10 +3631,19 @@ class Aggregate(object):
 
         # FIXME: Set a flag marking this AM was deleted?
 
+        # Clear old manifests
+        self.manifestDom = None
+        for hop in self.hops:
+            hop._hop_link.vlan_suggested_manifest = None
+            hop._hop_link.vlan_range_manifest = None
+
+        # Clear old expirations so our end-run printout doesn't include this
+        self.sliverExpirations = []
+
         return
 
     def doAvail(self, opts):
-        # If the AM type support real avail (PG only currently) and we are not requesting 'any' from some
+        # If the AM type support real avail (PG and GRAM only currently) and we are not requesting 'any' from some
         # hop at this AM, then do it.
 
         # If option says don't do these checks, return False
@@ -3648,7 +3651,7 @@ class Aggregate(object):
             return False
 
         # FIXME: Do not hard-code which AM types support this, but put it in omni_defaults
-        if not self.isPG:
+        if not (self.isPG or self.isGRAM):
             return False
         for hop in self._hops:
             if hop._hop_link.vlan_suggested_request != VLANRange.fromString("any") or hop.import_vlans:
