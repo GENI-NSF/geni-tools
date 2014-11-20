@@ -25,6 +25,7 @@
 RSPEC_TAG = 'rspec'
 LINK_TAG = 'link'
 NODE_TAG = 'node'
+PORT_TAG = 'port'
 STITCHING_TAG = 'stitching'
 PATH_TAG = 'path'
 EXPIRES_ATTRIBUTE = 'expires'

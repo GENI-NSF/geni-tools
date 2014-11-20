@@ -541,6 +541,10 @@ class Aggregate(object):
             self.logger.info("%s had previous result we didn't need to redo. Done", self)
             return
 
+        # Check that we're requesting a currently avail VLAN tag (ticket #566)
+        if self.doAvail(opts):
+            self.updateWithAvail(opts)
+
         # Check that all hops have reasonable vlan inputs
         for hop in self.hops:
             if not (hop._hop_link.vlan_suggested_request == VLANRange.fromString("any") or hop._hop_link.vlan_suggested_request <= hop._hop_link.vlan_range_request):
@@ -3626,6 +3630,158 @@ class Aggregate(object):
         # FIXME: Set a flag marking this AM was deleted?
 
         return
+
+    def doAvail(self, opts):
+        # If the AM type support real avail (PG only currently) and we are not requesting 'any' from some
+        # hop at this AM, then do it.
+
+        # If option says don't do these checks, return False
+        if opts.noAvailCheck:
+            return False
+
+        # FIXME: Do not hard-code which AM types support this, but put it in omni_defaults
+        if not self.isPG:
+            return False
+        for hop in self._hops:
+            if hop._hop_link.vlan_suggested_request != VLANRange.fromString("any") or hop.import_vlans:
+                return True
+        return False
+
+    def updateWithAvail(self, opts):
+        # Update our hops availRange based on what is currently avail
+        # Return True if updated some avail Ranges
+
+        self.logger.info("Gathering currently available VLAN tags at %s...", self)
+        rspec = None
+        try:
+            rspec = self.listResources(opts)
+        except StitchingError, se:
+            self.logger.debug("Failed to list avail resources: %s", se)
+        if rspec is None:
+            return False
+        try:
+            from xml.dom.minidom import parseString
+            dom = parseString(rspec)
+        except Exception, e:
+            self.logger.debug("Failed to parse rspec: %s", e)
+            return False
+        ports = dom.getElementsByTagName(defs.PORT_TAG)
+        if not ports or len(ports) == 0:
+            self.logger.debug("No stitching ports found")
+            return False
+        hops = []
+        failToSCS = False
+        didUpdates = False
+        for port in ports:
+            for child in port.childNodes:
+                if child.localName == defs.LINK_TAG:
+                    hLink = HopLink.fromDOM(child)
+                    hops.append(hLink)
+                    foundHop = False
+                    for myHop in self._hops:
+                        if myHop._hop_link.urn == hLink.urn:
+                            foundHop = True
+                            self.logger.debug("Found current available tags for %s", myHop._hop_link.urn)
+                            newAvail = hLink.vlan_range_request
+                            oldAvail = myHop._hop_link.vlan_range_request
+
+                            revisedAvail = newAvail.intersection(oldAvail)
+                            if len(revisedAvail) > 0:
+                                self.logger.debug("Revised available range: '%s' from intersection of old '%s' and new '%s'", revisedAvail, oldAvail, newAvail)
+                                if revisedAvail != oldAvail:
+                                    myHop._hop_link.vlan_range_request = revisedAvail
+                                    didUpdates = True
+                                else:
+                                    self.logger.debug("No change: All calculated request range tags still available: %s", revisedAvail)
+                            else:
+                                self.logger.debug("New available range is disjoint from old! Intersection is empty! New: %s; Old: %s", newAvail, oldAvail)
+                                # Back to the SCS
+                                failToSCS = True
+
+                            markUnavail = oldAvail - newAvail
+                            if len(markUnavail) > 0:
+                                # Each of these tags is locally unavailable. Add them to the unavail list
+                                self.logger.debug("Noting unavailable tags: '%s'", markUnavail)
+                                myHop.vlans_unavailable = myHop.vlans_unavailable.union(markUnavail)
+                            else:
+                                self.logger.debug("All calculated available tags still available: %s", revisedAvail)
+                            break
+                    if not foundHop:
+                        self.logger.debug("Ignoring avail for unused hop %s", hLink.urn)
+        for myHop in self._hops:
+            foundHop = False
+            for hopLink in hops:
+                if myHop._hop_link.urn == hopLink.urn:
+                    foundHop = True
+                    break
+            if not foundHop:
+                self.logger.debug("Failed to find updated availability in RSpec for Hop %s", myHop._hop_link.urn)
+        if failToSCS:
+            self.inProcess = False
+            raise StitchingCircuitFailedError("1+ Hops have 0 available tags currently at %s" % self)
+        return didUpdates
+
+    def listResources(self, opts, slicename=None):
+        # List resources in given slice at this AM if provided,
+        # Else list resources currently available at this AM (--available)
+        # Return is the RSpec.
+        # Raise StitchingError if fail
+
+        opName = 'listresources'
+        if self.api_version > 2 and slicename is not None:
+            opName = 'describe'
+        if opts.warn:
+            omniargs = ['-V%d' % self.api_version,'--raise-error-on-v2-amapi-error', '-a', self.url, opName]
+        else:
+            omniargs = ['-V%d' % self.api_version,'--raise-error-on-v2-amapi-error', '-o', '-a', self.url, opName]
+        if slicename is not None:
+            omniargs.append(slicename)
+        else:
+            omniargs.append('--available')
+        rspec = None
+        self.logger.debug("Doing %s at %s...", opName, self)
+        if not opts.fakeModeDir:
+            try:
+                self.inProcess = True
+                (text, result) = self.doAMAPICall(omniargs, opts, opName, slicename, 1, suppressLogs=True)
+                self.inProcess = False
+                if self.api_version == 2:
+                    if not isinstance(result, dict) or len(result.values()) != 1:
+                        raise StitchingError("Failed to list resources at %s (malformed APIv2 return): %s" % (self, text))
+                    myResult = result.values()[0]
+                    if not isinstance(myResult, dict) and myResult.has_key("value"):
+                        raise StitchingError("Failed to list resources at %s (malformed APIv2 return didn't have a value): %s" % (self, text))
+                    rspec = myResult["value"]
+                else:
+                    # API v3
+                    retCode = 0
+                    try:
+                        retCode = result[self.url]["code"]["geni_code"]
+                    except:
+                        # Malformed return - treat as error
+                        raise StitchingError("Failed to list resources at %s (malformed describe return): %s" % (self, text))
+                    if retCode != 0:
+                        raise StitchingError("Failed to list resources at %s: %s" % (self, text))
+                    if opName == "describe":
+                        try:
+                            rspec = result[self.url]["value"]["geni_rspec"]
+                        except:
+                            # Malformed return - treat as error
+                            raise StitchingError("Failed to list resources at %s (malformed describe return didn't have an rspec): %s" % (self, text))
+                    else:
+                        try:
+                            rspec = result[self.url]["value"]
+                        except:
+                            # Malformed return - treat as error
+                            raise StitchingError("Failed to list resources at %s (malformed APIv3 return didn't have a value): %s" % (self, text))
+
+            except OmniError, e:
+                self.inProcess = False
+                self.logger.error("Failed to %s at %s: %s", opName, self, e)
+                raise StitchingError(e) # FIXME: Right way to re-raise?
+
+        self.inProcess = False
+        return rspec
 
     # This needs to handle createsliver, allocate, sliverstatus, listresources at least
     # suppressLogs makes Omni part log at WARN and up only
