@@ -24,7 +24,8 @@
 from __future__ import absolute_import
 
 import os
-from  ...sfa.trust.gid import GID
+
+from ...sfa.trust.gid import GID
 from ...sfa.trust.credential import Credential
 from ...sfa.trust.certificate import Certificate
 from ...sfa.trust.abac_credential import ABACCredential

@@ -85,7 +85,8 @@ To use stitcher:
  did not specify in your original request RSpec. If you use
  `stitcher.py` to delete your resources and supply no `-a` argument,
  `stitcher` will delete from all aggregates at which it reserved
- resources. If you use `omni`, you must specify which aggregates to invoke. 
+ resources. If you use `omni`, you must specify which aggregates to
+ invoke (or use `--useSliceAggregates`).
 
 For example, to fully delete your reservation:
 {{{
@@ -131,8 +132,8 @@ all resources reserved as a result of this request.
 
 Resource expiration is determined by local aggregates. Some aggregates
 expires resources in 5 days unless renewed. stitcher attempts to
-minimize the number of different times that you resources expire
-at, which sometims means your initial expiration at a particular
+minimize the number of different times at which your resources expire,
+which sometims means your initial expiration at a particular
 aggregate will be sooner that it might otherwise have been. Always pay
 attention to the reported resource expiration when stitcher completes,
 and renew your resources (using `stitcher renewsliver`) when necessary.
@@ -204,7 +205,8 @@ options as Omni. `stitcher` however adds several options:
  Service will insist on including the specified switch/port on only
  the named computed stitching path. You can supply this argument many times. Use this
  with caution. Note that this only includes the hop on the named link,
- in contrast to `--includehop`.
+ in contrast to `--includehop`. Note also that a hop cannot both be
+ excluded (via `--excludehop`) and included (via `--includehop` or `--includehoponpath`).
 
 Together, the above options should allow you some control over the
 paths used for your circuits, without requiring that you construct the
@@ -228,7 +230,7 @@ Additionally, these options are used for some topologies:
  rack that specifies both the aggregate URN as well as the URL, EG:
 {{{
 eg-bbn=urn:publicid:IDN+exogeni.net:bbnvmsite+authority+am,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
-eg-renci=urn:publicid:IDN+exogeni.net:rencivmsite+authority+am,https://rci-hn.exogeni.net:11443/orca/xmlrpc
+eg-renci=urn:publicid:IDN+exogeni.net:rcivmsite+authority+am,https://rci-hn.exogeni.net:11443/orca/xmlrpc
 eg-fiu=urn:publicid:IDN+exogeni.net:fiuvmsite+authority+am,https://fiu-hn.exogeni.net:11443/orca/xmlrpc
 }}}
  - `--useExoSM`: Try to use the ExoGENI ExoSM for ExoGENI
@@ -256,6 +258,8 @@ Other options you should not need to use:
  is 30 (seconds).
  - `--scsURL <url>`: URL at which the Stitching Computation Service
  runs. Use the default.
+  - The default may be updated over time via a new `omni_defaults`
+  entry in the `agg_nick_cache`.
  - `--noReservation`: Do not try to reserve at aggregates; instead,
    just save the expanded request RSpec.
  - `--fakeModeDir <directory>`: When supplied, does not make any
@@ -324,7 +328,6 @@ python src/gcf/omnilib/stitch/scs.py --listaggregates
   other things but not an explicit node. Use the `--fixedEndpoint`
   option to be sure aggregates can handle this.
  - Stitching to ExoGENI aggregates
-  - Note that in ExoGENI, capacity is in ''bps''.
   - ExoGENI reservations can come from the specific rack, or from the
   ExoSM's allocation of resources at that rack. You can control in
   stitcher whether you use the local racks or the ExoSM, by using the
@@ -350,6 +353,10 @@ Experimenters can of course specify this information themselves, using
 The Stitching Computation Service (SCS), also provides hints to the
 stitcher script on the order in which to make reservations at the
 various aggregates.
+
+The SCS URL is set by code, may be updated via a new value in the
+aggregate nickname cache, and may be over-ridden by developers or
+testers using the `--scsURL` option.
 
 Known issues with this service can be found on the
 [http://groups.geni.net/geni/query?status=new&status=assigned&status=reopened&component=MAXSCS GENI Trac]
@@ -382,7 +389,7 @@ translates those into calls to the Internet2 OESS system.
 This aggregate has no compute resources - it exists only to provision
 circuits between other aggregates. When you request a stitched link
 between 2 aggregates, often stitcher and the SCS will automatically
-add ION to your request to provide connectivity.
+add AL2S to your request to provide connectivity.
 
 Known issues with this aggregate can be found on the
 [http://groups.geni.net/geni/query?status=new&status=assigned&status=reopened&component=STITCHING GENI Trac]
@@ -504,6 +511,42 @@ Cannot find the set of paths for the RequestTopology. '.
 `Malformed rspec`
  - There was a problem with your request RSpec. Do you have a typo?
 
+`Duplicate node`
+ - 2 of your nodes have the same client_id. Change one.
+
+`No stitching path to ` or `Malformed request? Wrong link type?`
+ - There is a problem with your request RSpec. Did you specify the
+ wrong link type?
+
+`such a short life for a sliver` or `Renew your slice`
+ - Try renewing your slice. Your resources would expire too soon as requested.
+
+`Error encountered converting RSpec to NDL`
+ - ExoGENI did not understand something in your request RSpec.
+
+`Embedding workflow ERROR: 1:Insufficient resources or Unknown domain`
+ - This ExoGENI error may mean the aggregate ran out of VLAN tags or
+ some other resource. Alternately, it may mean you sent your request
+ to the wrong ExoGENI aggregate (included an incorrect URN in your
+ request RSpec or used the `--noExoSM` option mistakenly.
+
+`Embedding workflow ERROR`
+ - ExoGENI aggregates cannot handle requests that mention other
+   ExoGENI aggregates. Typically, stitcher sends such requests
+   to the ExoSM. Did you supply `--noExoSM` by mistake?
+   Alternatively, there may be an error in your request RSpec.
+
+`Exception`
+ - A generic aggregate error. Perhaps try again?
+
+`this user is not on the controller's whitelist`
+ - The ExoGENI aggregate is in maintenance. Try a different aggregate
+ or try again later. Monitor the mailing list: https://groups.google.com/forum/#!forum/geni-orca-users
+
+`Invalid slice urn`
+ - This is a fatal error from ExoGENI. Did you request more than 1
+   GENI stitching link at a single ExoGENI site?
+
 === Errors in the tool – you may need to report this as a bug ===
 
 ` … has request tag XXX that is already in use by …`
@@ -523,6 +566,7 @@ Cannot find the set of paths for the RequestTopology. '.
 `vlan tag … not available` OR
 `Could not find a free vlan tag` OR
 `Could not reserve a vlan tag for` OR
+`Exception: requested VLAN unavailable` OR
 `Error in building the dependency tree, probably not available vlan path`
  - Some VLAN tag you requested is not available. Stitcher will try to
  find another and try again.
@@ -531,6 +575,10 @@ Cannot find the set of paths for the RequestTopology. '.
  - This is the first time this aggregate has seen your
  project. Stitcher will retry and the error should go away. If not,
  try again.
+
+`Topology too complex`
+ - Stitcher cannot find a new VLAN tag to try itself, but will retry
+ your request at the SCS if possible.
 
 === After too many transient errors, stitcher gives up ===
 

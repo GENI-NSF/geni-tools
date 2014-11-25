@@ -52,6 +52,7 @@ class Framework(Framework_Base):
         self.cert_string = file(config['cert'],'r').read()
         self.user_cred = self.init_user_cred( opts )
         self.logger = config['logger']
+        self.opts = opts
         
     def get_user_cred(self):
         message = ""

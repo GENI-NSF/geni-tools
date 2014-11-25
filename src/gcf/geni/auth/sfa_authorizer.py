@@ -22,6 +22,8 @@
 #----------------------------------------------------------------------       
 " Default authorizer class that performs SFA credential verification"
 
+from __future__ import absolute_import
+
 from base_authorizer import Base_Authorizer, AM_Methods
 
 from ..am.am2 import CREATESLIVERPRIV as CREATESLIVERPRIV_V2

@@ -27,7 +27,7 @@ from __future__ import absolute_import
 import logging
 import time
 
-from .utils import StitchingRetryAggregateNewVlanError, StitchingRetryAggregateNewVlanImmediatelyError
+from .utils import StitchingRetryAggregateNewVlanError, StitchingRetryAggregateNewVlanImmediatelyError, StitchingError
 from .objects import Aggregate
 
 class Launcher(object):
@@ -44,6 +44,13 @@ class Launcher(object):
         lastAM = None
         while not self._complete():
             ready_aggs = self._ready_aggregates()
+            if len(ready_aggs) == 0 and not self._complete():
+                self.logger.debug("Error! No ready aggregates and not all complete!")
+                for agg in self.aggs:
+                    if not agg.completed:
+                        self.logger.debug("%s is not complete but also not ready. inProcess=%s, depsComplete=%s", agg, agg.inProcess, agg.dependencies_complete)
+                raise StitchingError("Internal stitcher error: No aggregates are ready to allocate but not all are complete?")
+
             self.logger.debug("\nThere are %d ready aggregates: %s",
                               len(ready_aggs), ready_aggs)
             for agg in ready_aggs:
@@ -62,6 +69,11 @@ class Launcher(object):
                             secs = Aggregate.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS
                     self.logger.info("Pausing for %d seconds for Aggregates to free up resources...\n\n", secs)
                     time.sleep(secs)
+
+                    # After this exception/retry, the list of ready aggregates may have changed
+                    # For example, when we locally work back a bit to handle vlan unavailable
+                    # So break out of this for loop, to make the while re-calculate the list of ready_aggs
+                    break
 
             # FIXME: Do we need to sleep?
 

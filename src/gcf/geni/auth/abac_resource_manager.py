@@ -25,12 +25,13 @@ from __future__ import absolute_import
 
 import datetime
 import dateutil.parser
-from  ...sfa.trust import gid
-from ...sfa.trust import credential
 import types
-from ..util.tz_util import tzd
 import xml.dom.minidom
-from .base_authorizer import AM_Methods, V2_Methods;
+
+from ...sfa.trust import gid
+from ...sfa.trust import credential
+from ..util.tz_util import tzd
+from .base_authorizer import AM_Methods, V2_Methods
 
 # Class to provide requested resource states
 # so that the authorizer can enforce resource quota policies

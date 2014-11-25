@@ -23,7 +23,11 @@
 " Base class for authorizers of AM calls"
 
 from __future__ import absolute_import
-from ...sfa.trust import gid
+
+try:
+    from ...sfa.trust import gid
+except:
+    from gcf.sfa.trust import gid
 
 # Name of all AM Methods
 class AM_Methods:

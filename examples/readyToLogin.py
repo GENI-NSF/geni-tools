@@ -217,13 +217,24 @@ def getInfoFromSliceManifest( amUrl ) :
         print "ERROR: No value slot in return from %s from %s; review the logs."\
               % (apicall, amUrl)
         return []
+      if not apicallout[key].has_key('code') or not isinstance(apicallout[key]['code'], dict) or not apicallout[key]['code'].has_key('geni_code') or apicallout[key]['code']['geni_code'] != 0:
+          msg = "ERROR: Failed to get manifest from %s call at %s; " % (apicall, amUrl)
+          if apicallout[key].has_key('output') and str(apicallout[key]['output']).strip() != "":
+              msg += apicallout[key]['output']
+          else:
+              msg += "review the logs"
+          print msg
+          return []
       value = apicallout[key]["value"]
 
       if tmpoptions.api_version == 2:
         manifest = value
       else:
         if tmpoptions.api_version == 3:
-          manifest = value['geni_rspec']
+            if not (isinstance(value, dict) and value.has_key('geni_rspec')):
+                print "ERROR: Malformed return from %s at %s - no rspec found" % (apicall, amUrl)
+                return []
+            manifest = value['geni_rspec']
         else:
           print "ERROR: API v%s not yet supported" %tmpoptions.api_version
           return []          
@@ -581,8 +592,10 @@ def printLoginInfo( loginInfoDict, keyList ) :
 
     for client_id, itemList in sortedAMInfo.items():
       for item in itemList:
-          if not firstTime.has_key( item['client_id'] ):
-              firstTime[ item['client_id'] ] = True
+          if not firstTime.has_key( amUrl ):
+              firstTime[amUrl] = {}
+          if not firstTime[amUrl].has_key( item['client_id'] ):
+              firstTime[amUrl][item['client_id'] ] = True
           #    print "This is first time for %s" % item['client_id']
           output = ""
           if options.readyonly :
@@ -594,7 +607,7 @@ def printLoginInfo( loginInfoDict, keyList ) :
               sys.stderr.write("There is no status information for node %s. Print login info." % item['client_id'])
           # If there are status info print it, if not just skip it
           try:
-            if firstTime[ item['client_id'] ]:
+            if firstTime[amUrl][item['client_id'] ]:
                 gsOut = ""
                 amsOut = ""
                 if item.has_key('geni_status') and item['geni_status'].strip()!="":
@@ -611,7 +624,7 @@ def printLoginInfo( loginInfoDict, keyList ) :
                 else:
                         output += "\n%s's geni_status is: unknown \n" % (item['client_id'])
                 # Check if node is in ready state
-            firstTime[ item['client_id'] ]=False
+            firstTime[amUrl][ item['client_id'] ]=False
           except KeyError as ke:
               #print "Got error looking in firstTime for %s: %s" % (item['client_id'], ke)
               pass
@@ -751,7 +764,7 @@ def main_no_print(argv=None, opts=None, slicen=None):
   options.useSliceAggregates = False
       
   # Run equivalent of 'omni.py getversion'
-  argv = ['getversion']
+  argv = ['--ForceUseGetVersionCache', 'getversion']
   try:
     text, getVersion = omni.call( argv, options )
   except (oe.AMAPIError, oe.OmniError) :

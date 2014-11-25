@@ -59,9 +59,15 @@ def _do_ssl(framework, suppresserrors, reason, fn, *args):
     otherwise returns None. And (2) A message explaining any errors."""
 
     # Change exception name?
+
+    # How many times should we retry if we get a busy error (sleeping how long?)
     max_attempts = 4
+    if hasattr(framework,'opts') and hasattr(framework.opts,'maxBusyRetries'):
+        if max_attempts != framework.opts.maxBusyRetries:
+            max_attempts = framework.opts.maxBusyRetries
+            framework.logger.debug("Resetting max retries based on option to %d", max_attempts)
     attempt = 0
-    retry_pause_seconds = 15
+    retry_pause_seconds = 20
 
     failMsg = "Call for %s failed." % reason
     while(attempt <= max_attempts):
