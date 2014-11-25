@@ -21,6 +21,10 @@
     },
     "conditional_assertions" : [
         {
+	  "precondition" : "True",
+	  "exclusive" : true,
+	  "clauses" : [
+          { 
             "condition" : "$SFA_AUTHORIZED", 
             "assertion" : "AM.IS_AUTHORIZED<-$CALLER"
             },
@@ -63,8 +67,9 @@
             "condition" : "'urn:publicid:IDN+ch1.gpolab.bbn.com+user+bujcich' == '$CALLER'",
             "assertion" : "AM.IS_BLACKLISTED<-$CALLER"
             }
-
-        ],
+	 ]
+        }
+    ],
     "policies" : [
         "AM.MAY_SHUTDOWN<-CH_MB_SA.MAY_SHUTDOWN"
     ],
