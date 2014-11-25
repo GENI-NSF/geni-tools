@@ -158,16 +158,26 @@ class ABAC_Authorizer(Base_Authorizer):
     # generate the assertion
     def _generate_assertions(self, bindings, rules):
         assertions = []
-        for ca in rules.getConditionalAssertions():
-            condition = ca['condition']
-            assertion = ca['assertion']
-            bound_condition = self._bind_expression(condition, bindings)
-            if self._has_unbound_variables(bound_condition): continue
-            self._logger.info("EVAL : %s" % bound_condition)
-            if not eval(bound_condition): continue
-            bound_assertion = self._bind_expression(assertion, bindings)
-            if self._has_unbound_variables(bound_assertion): continue
-            assertions.append(bound_assertion)
+        for clause_set in rules.getConditionalAssertions():
+            precondition = clause_set['precondition']
+            bound_precondition = self._bind_expression(precondition, bindings)
+            if self._has_unbound_variables(bound_precondition): continue
+            if not eval(bound_precondition): continue
+            exclusive = 'exclusive' in clause_set and clause_set['exclusive']
+            clauses = clause_set['clauses']
+            for ca in clauses:
+                condition = ca['condition']
+                assertion = ca['assertion']
+                bound_condition = self._bind_expression(condition, bindings)
+                if self._has_unbound_variables(bound_condition): continue
+                self._logger.info("EVAL : %s" % bound_condition)
+                if not eval(bound_condition): continue
+                bound_assertion = self._bind_expression(assertion, bindings)
+                if self._has_unbound_variables(bound_assertion): continue
+                assertions.append(bound_assertion)
+            # If this is an exclusive clause set whose precondition matched
+            # Don't look at any other clause sets
+            if exclusive: break 
         return assertions
 
     # If provided a set of ABAC assertions, import them into our set
