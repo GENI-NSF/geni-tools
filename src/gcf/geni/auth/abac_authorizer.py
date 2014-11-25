@@ -158,7 +158,17 @@ class ABAC_Authorizer(Base_Authorizer):
     # generate the assertion
     def _generate_assertions(self, bindings, rules):
         assertions = []
-        for clause_set in rules.getConditionalAssertions():
+        conditional_assertions = rules.getConditionalAssertions()
+
+        # Handle old format of policies that are list of condition/assertion
+        # rather than list of precondition/exclusive and then a list
+        # of condition/assertion clauses
+        if len(conditional_assertions) > 0 and \
+                'precondition' not in conditional_assertions[0]:
+            conditional_assertions = [{'precondition' : 'True',
+                                      'clauses' : conditional_assertions}]
+
+        for clause_set in conditional_assertions:
             precondition = clause_set['precondition']
             bound_precondition = self._bind_expression(precondition, bindings)
             if self._has_unbound_variables(bound_precondition): continue

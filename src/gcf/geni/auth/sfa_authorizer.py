@@ -24,7 +24,7 @@
 
 from __future__ import absolute_import
 
-from base_authorizer import Base_Authorizer, AM_Methods
+from .base_authorizer import Base_Authorizer, AM_Methods
 
 from ..am.am2 import CREATESLIVERPRIV as CREATESLIVERPRIV_V2
 from ..am.am2 import RENEWSLIVERPRIV as RENEWSLIVERPRIV_V2
