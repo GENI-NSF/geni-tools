@@ -735,6 +735,10 @@ def main_no_print(argv=None, opts=None, slicen=None):
   options.warn = True
   framework, config, args, opts = omni.initialize( [], options )
 
+  # If creating an ansible inventory don't check the keys
+  if options.ansible_inventory:
+      options.include_keys = False
+
   keyList = findUsersAndKeys( )
   if options.include_keys and sum(len(val) for val in keyList.itervalues())== 0:
     print "ERROR: There are no keys. You can not login to your nodes."
