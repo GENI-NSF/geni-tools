@@ -272,6 +272,11 @@ Other options you should not need to use:
  - `--useSCSugg`: Always use the VLAN tag suggested by the
  SCS. Usually stitcher asks the aggregate to pick, despite what the
  SCS suggested.
+ - `--timeout`: Maximum number of minutes to allow stitcher to run,
+ before timing out. Default is no timeout (`0` minutes). Note that
+ by far most runs complete within 45 minutes, and usually much less. Some
+ successful stitching runs take 90 minutes or more. On timeout,
+ existing reservations are deleted.
 
 == Tips and Details ==
 
@@ -646,7 +651,6 @@ Cannot find the set of paths for the RequestTopology. '.
  - Tune counters, sleep durations, etc
  - Return a struct with detailed results (not just comments in manifest)
  - Return a struct on errors
- - Use authentication with the SCS
  - `opts.warn` is used to suppress omni output. Clean that up. A `scriptMode` option?
  - Implement `confirmSafeRequest()` to ensure no dangerous requests are made
  - Expand to additional aggregates

@@ -142,14 +142,15 @@ def _do_ssl(framework, suppresserrors, reason, fn, *args):
                 if expiredAt:
                     msg += " at %s" % expiredAt
                 msg += ". "
-                if issuer.find("boss") == 0:
+                if "boss" in issuer:
                     msg += "ProtoGENI users should log in to their account at the ProtoGENI website at http://%s and create and download a new certificate. " % issuer
-                elif issuer.find("plc.") == 0:
+                elif "plc" in issuer:
                     msg += "PlanetLab users should email PlanetLab support (support@planet-lab.org) to get a new user certificate."
-                elif issuer.find("ch.geni") == 0:
+                elif "ch.geni" in issuer:
                     msg += "GENI Clearinghouse users should email Portal help (portal-help@geni.net) to get a new certificate."
                 else:
                     msg += "Contact your certificate issuer: %s. " % issuer
+                    msg += "GENI Clearinghouse users should email Portal help (portal-help@geni.net) to get a new certificate. "
                     msg += "ProtoGENI users should log in to their SA website and create and download a new certificate. "
                     msg += "PlanetLab users should email PlanetLab support (support@planet-lab.org) to get a new user certificate."
                 framework.logger.error("Can't do %s. %s", reason, msg)

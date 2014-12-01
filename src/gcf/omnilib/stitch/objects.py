@@ -421,8 +421,12 @@ class Aggregate(object):
                 if handler.level == logging.DEBUG:
                     self.inDebug = True
                     break
+
         # Cache the slice cred to only query it once per AM
         self.slicecred = None
+
+        # Cache the stitcher timeout time
+        self.timeoutTime = datetime.datetime.max
 
     def __str__(self):
         if self.nick:
@@ -488,6 +492,14 @@ class Aggregate(object):
     def ready(self):
         return not self.completed and not self.inProcess and self.dependencies_complete
 
+    def supportsAny(self):
+        # Does this AM (by type) support requesting 'any' VLAN tag?
+        if self.isEG or self.isGRAM or self.isOESS or self.dcn:
+            return False
+        if self.isPG:
+            return True
+        return False # FIXME: Default false or true?
+
     def allocate(self, opts, slicename, rspecDom, scsCallCount):
         '''Main workhorse function. Build the request rspec for this AM,
         and make the reservation. On error, delete and signal failure.'''
@@ -520,6 +532,13 @@ class Aggregate(object):
             sleepSecs = self.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS 
             if self.dcn:
                 sleepSecs = self.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS
+
+            if datetime.datetime.utcnow() + datetime.timedelta(seconds=sleepSecs) >= self.timeoutTime:
+                # We'll time out. So quit now.
+                self.logger.debug("After planned sleep for %d seconds we will time out", sleepSecs)
+                msg = "Reservation attempt timing out after %d minutes." % opts.timeout
+                raise StitchingError(msg)
+
             self.logger.info("Pausing %d seconds to let aggregate free resources...", sleepSecs)
             time.sleep(sleepSecs)
         # end of block to delete a previous reservation
@@ -534,7 +553,7 @@ class Aggregate(object):
         for hop in self.hops:
             if not (hop._hop_link.vlan_suggested_request == VLANRange.fromString("any") or hop._hop_link.vlan_suggested_request <= hop._hop_link.vlan_range_request):
                 raise StitchingError("%s hop %s suggested %s not in avail %s" % (self, hop, hop._hop_link.vlan_suggested_request, hop._hop_link.vlan_range_request))
-            if hop._hop_link.vlan_suggested_request == VLANRange.fromString("any") and (self.isEG or self.isGRAM or self.isOESS or self.dcn):
+            if hop._hop_link.vlan_suggested_request == VLANRange.fromString("any") and not self.supportsAny():
                 raise StitchingError("%s hop %s suggested is 'any' which is not supported at this AM type" % (self, hop))
 
         # Check that if a hop has the same URN as another on this AM, that it has a different VLAN tag
@@ -847,7 +866,7 @@ class Aggregate(object):
                         self.logger.debug("Resetting suggested tag at %s from %s to %s", hop, hop._hop_link.vlan_suggested_request, pick)
                         hop._hop_link.vlan_suggested_request = VLANRange(pick)
                         sug = hop._hop_link.vlan_suggested_request
-                    if sug == VLANRange.fromString("any") and (self.isEG or self.isGRAM or self.isOESS or self.dcn):
+                    if sug == VLANRange.fromString("any") and not self.supportsAny():
                         self.logger.debug("%s marked with suggested of 'any' but %s doesn't support 'any'", hop, self)
                         raise StitchingError("Trying to request 'any' VLAN at an unsupported aggregate (%s)" % self)
                     if sug <= unavail:
@@ -927,7 +946,7 @@ class Aggregate(object):
                 raise StitchingCircuitFailedError("Circuit reservation impossible at %s using VLANs others picked. Try again from the SCS" % self)
 
             if new_suggested == VLANRange.fromString("any"):
-                if self.isEG or self.isGRAM or self.isOESS or self.dcn:
+                if not self.supportsAny():
                     # copy of tags trying to use 'any' at an AM that doesn't support it
                     # This should never happen cause we should only be looking at hops that import tags
                     # where the hop we import from has a manifest, which would not be 'any'
@@ -2189,6 +2208,12 @@ class Aggregate(object):
         status = 'unknown'
         while tries < self.SLIVERSTATUS_MAX_TRIES:
             # Pause before calls to sliverstatus
+            if datetime.datetime.utcnow() + datetime.timedelta(seconds=self.SLIVERSTATUS_POLL_INTERVAL_SEC) >= self.timeoutTime:
+                # We'll time out. So quit now.
+                self.logger.debug("After planned sleep for %d seconds we will time out", self.SLIVERSTATUS_POLL_INTERVAL_SEC)
+                msg = "Reservation attempt timing out after %d minutes." % opts.timeout
+                raise StitchingError(msg)
+
             self.logger.info("Pausing %d seconds to let circuit become ready...", self.SLIVERSTATUS_POLL_INTERVAL_SEC)
             time.sleep(self.SLIVERSTATUS_POLL_INTERVAL_SEC)
 
@@ -2374,6 +2399,7 @@ class Aggregate(object):
             opName = 'deletesliver'
             if self.api_version > 2:
                 opName = 'delete'
+            self.logger.info("Doing %s at %s...", opName, self)
             if opts.warn:
                 omniargs = ['--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename]
             else:
@@ -3405,7 +3431,7 @@ class Aggregate(object):
                     self.logger.debug("%s re-using already picked tag %s", hop, pick)
                 else:
                     # Pick a new tag if we can
-                    if (hop._hop_link.vlan_producer or not hop._import_vlans) and not (self.isEG or self.isGRAM or self.isOESS or self.dcn):
+                    if (hop._hop_link.vlan_producer or not hop._import_vlans) and self.supportsAny():
                         # If this hop picks the VLAN tag, and this AM accepts 'any', then we leave pick as 'any'
                         self.logger.debug("%s is a vlan producer or doesn't import vlans and handles suggested of 'any', so after all that let it pick any tag.", hop)
                     elif len(nextRequestRangeByHop[hop]) == 0:

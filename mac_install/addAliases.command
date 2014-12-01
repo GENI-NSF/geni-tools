@@ -30,7 +30,11 @@
 
 ## Function that writes aliases to the specified rc file
 writeAliases () {
-    echo $'\n' >> $1
+    # Append a blank last line if there isn't one already
+    lastline=`tail -1 $1`
+    if [ "$lastline" != "" ]; then
+	echo $'\n' >> $1
+    fi
     echo "# Aliases for commands in the GENI omniTools-2.8 package" >> $1
     echo "alias omni='/Applications/omniTools-2.8/omni.app/Contents/MacOS/omni'" >> $1
     echo "alias stitcher='/Applications/omniTools-2.8/stitcher.app/Contents/MacOS/stitcher'" >> $1
@@ -41,8 +45,22 @@ writeAliases () {
     echo "alias remote-execute='/Applications/omniTools-2.8/remote-execute.app/Contents/MacOS/remote-execute'" >> $1
 }
 
+# Function that removes lines that look like what writeAliases adds
+removeAliases () {
+   sed -i".bak" '/\/Applications\/omniTools/d;/# Aliases for commands in the GENI omniTools/d' $1
+}
+
 wroteAliases=false
 
+# Look for a file with aliases in 3 usual spots
+# First, delete any existing aliases
+for rcFile in $HOME/.bash_profile $HOME/.bash_login $HOME/.profile ; do
+    if [ -f $rcFile ] ; then
+	removeAliases $rcFile
+    fi
+done
+
+# Then add the new aliases - but only once
 for rcFile in $HOME/.bash_profile $HOME/.bash_login $HOME/.profile ; do
     if [ -f $rcFile ] ; then
         writeAliases $rcFile

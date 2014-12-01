@@ -75,7 +75,7 @@ import gcf.omnilib.stitch.objects
 #from gcf.omnilib.stitch.objects import DCN_AM_RETRY_INTERVAL_SECS as DCN_AM_RETRY_INTERVAL_SECS
 
 # URL of the SCS service
-SCS_URL = "http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc"
+SCS_URL = "https://oingo.dragon.maxgigapop.net:8443/geni/xmlrpc"
 
 DEFAULT_CAPACITY = 20000 # in Kbps
 
@@ -134,8 +134,10 @@ def call(argv, options=None):
     parser.add_option("--scsURL",
                       help="URL to the SCS service. Default: Value of 'scs_url' in omni_config or " + SCS_URL,
                       default=None)
+    parser.add_option("--timeout", default=0, type="int",
+                      help="Max minutes to allow stitcher to run before killing a reservation attempt (default %default minutes, 0 means no timeout).")
     parser.add_option("--fakeModeDir",
-                      help="If supplied, use canned server responses from this directory",
+                      help="Developers only: If supplied, use canned server responses from this directory",
                       default=None)
     parser.add_option("--savedSCSResults", default=None,
                       help="Developers only: Use this saved file of SCS results instead of calling SCS (saved previously using --debug)")

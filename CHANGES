@@ -4,6 +4,9 @@ gcf 2.8:
  * Omni
   * Allow configuring how many times Omni retries on a busy error from
     an AM or CH. Use `--maxBusyRetries`. Default remains 4. (#749)
+  * Fix error message on expired user cert. (#756)
+  * Remove ticket #722 workaround (bug fixed at ION AM). (#724)
+  * Mac installer: remove old aliases before adding new ones. (#556)
 
  * Stitcher
   * Limit available range on a hop that doesn't import to tags available at hops that 
@@ -12,8 +15,18 @@ gcf 2.8:
   * Remove note about capacity at ExoGENI, now that it is in kbps. (#678)
   * Catch keyboard interrupts to warn if you interrupt your run and have 
     left over reservations. (#754)
-  * Error and exit if the requrest uses Speaks For and requires AL2S 
+  * Error and exit if the request uses Speaks For and requires AL2S 
     (since AL2S does not support Speaks For yet). (#753)
+  * Accept `--scsURL` in `scs.py` to specify the SCS URL. (#755)
+  * Added `--timeout` option to specify that stitcher runs time out 
+    (default is no timeout as before), deleting any partial reservations. (#730)
+  * Add logic to print status when deleting reservations. (#750)
+  * Factor out determining if AM type supports requesting 'any' VLAN tag. (#758)
+  * SCS requires a valid client certificate and uses SSL. (#757)
+   * As a result, the SSL timeout on calls to the SCS should work. (#346)
+ * readyToLogin
+  * Add --ansible-inventory option which creates a host file to use with Ansible. Works 
+    with -o and --prefix. (#759)
 
 gcf 2.7:
  * Omni

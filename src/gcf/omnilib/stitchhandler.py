@@ -55,6 +55,7 @@ from .stitch.VLANRange import *
 from ..geni.util import rspec_schema
 from ..geni.util.rspec_util import is_rspec_string, is_rspec_of_type, rspeclint_exists, validate_rspec
 
+from ..sfa.trust import gid
 from ..sfa.util.xrn import urn_to_hrn, get_leaf
 
 DCN_AM_TYPE = 'dcn' # geni_am_type value from AMs that use the DCN codebase
@@ -115,6 +116,13 @@ class StitchingHandler(object):
 
         # Remember we got the extra info for this AM
         self.amURNsAddedInfo = []
+
+        if self.opts.timeout == 0:
+            self.config['timeoutTime'] = datetime.datetime.max
+            self.logger.debug("Requested no timeout for stitcher.")
+        else:
+            self.config['timeoutTime'] = datetime.datetime.utcnow() + datetime.timedelta(minutes=self.opts.timeout)
+            self.logger.debug("Stitcher run will timeout at %s UTC.", self.config['timeoutTime'])
 
     def doStitching(self, args):
         '''Main stitching function.'''
@@ -377,9 +385,9 @@ class StitchingHandler(object):
         # longer necessary (or a good idea).
 
         if self.isStitching:
-            if not "oingo.dragon.maxgigapop.net:8081" in self.opts.scsURL:
+            if not "oingo.dragon.maxgigapop.net:8443" in self.opts.scsURL:
                 self.logger.info("Using SCS at %s", self.opts.scsURL)
-            self.scsService = scs.Service(self.opts.scsURL, self.opts.ssltimeout, self.opts.verbosessl)
+            self.scsService = scs.Service(self.opts.scsURL, key=self.framework.key, cert=self.framework.cert, timeout=self.opts.ssltimeout, verbose=self.opts.verbosessl)
         self.scsCalls = 0
 
         # Compare the list of AMs in the request with AMs known
@@ -541,7 +549,7 @@ class StitchingHandler(object):
                 def __init__(self, agglist):
                     self.aggs = agglist
 
-            #self.deleteAllReservations(DumbLauncher(self.ams_to_process)
+            #result = self.deleteAllReservations(DumbLauncher(self.ams_to_process)
 
             for am in self.ams_to_process:
                 if am.manifestDom:
@@ -690,6 +698,26 @@ class StitchingHandler(object):
 
     def mainStitchingLoop(self, sliceurn, requestDOM, existingAggs=None):
         # existingAggs are Aggregate objects
+
+        if datetime.datetime.utcnow() >= self.config['timeoutTime']:
+            msg = "Reservation attempt timed out after %d minutes." % self.opts.timeout
+            self.logger.warn("%s Deleting any reservations...")
+            class DumbLauncher():
+                def __init__(self, agglist):
+                    self.aggs = agglist
+            try:
+                result = self.deleteAllReservations(DumbLauncher(existingAggs))
+                if not result:
+                    for am in existingAggs:
+                        if am.manifestDom:
+                            self.logger.warn("You have a reservation at %s", am)
+            except KeyboardInterrupt:
+                self.logger.error('... deleting interrupted!')
+                for am in existingAggs:
+                    if am.manifestDom:
+                        self.logger.warn("You have a reservation at %s", am)
+            raise SticherError(msg)
+
         self.scsCalls = self.scsCalls + 1
         if self.isStitching:
             if self.scsCalls == 1:
@@ -722,6 +750,28 @@ class StitchingHandler(object):
                     sTime = Aggregate.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS
                 # Reset whether we've tried this AM this time through
                 agg.triedRes = False
+
+            if datetime.datetime.utcnow() + datetime.timedelta(seconds=sTime) >= self.config['timeoutTime']:
+                # We'll time out. So quit now.
+                self.logger.debug("After planned sleep for %d seconds we will time out", sTime)
+                msg = "Reservation attempt timing out after %d minutes." % self.opts.timeout
+                self.logger.warn("%s Deleting any reservations...")
+                class DumbLauncher():
+                    def __init__(self, agglist):
+                        self.aggs = agglist
+                try:
+                    result = self.deleteAllReservations(DumbLauncher(existingAggs))
+                    if not result:
+                        for am in existingAggs:
+                            if am.manifestDom:
+                                self.logger.warn("You have a reservation at %s", am)
+                except KeyboardInterrupt:
+                    self.logger.error('... deleting interrupted!')
+                    for am in existingAggs:
+                        if am.manifestDom:
+                            self.logger.warn("You have a reservation at %s", am)
+                raise SticherError(msg)
+
             self.logger.info("Pausing for %d seconds for Aggregates to free up resources...\n\n", sTime)
             time.sleep(sTime)
 
@@ -920,12 +970,14 @@ class StitchingHandler(object):
 
             raise StitchingError("Requested no reservation")
 
-        # Hand each AM the slice credential, so we only read it once
         for am in self.ams_to_process:
+            # Hand each AM the slice credential, so we only read it once
             am.slicecred = self.slicecred
+            # Also hand the timeout time
+            am.timeoutTime = self.config['timeoutTime']
 
         # The launcher handles calling the aggregates to do their allocation
-        launcher = stitch.Launcher(self.opts, self.slicename, self.ams_to_process)
+        launcher = stitch.Launcher(self.opts, self.slicename, self.ams_to_process, self.config['timeoutTime'])
         try:
             # Spin up the main loop
             lastAM = launcher.launch(self.parsedSCSRSpec, self.scsCalls)
@@ -937,7 +989,11 @@ class StitchingHandler(object):
             if self.scsCalls == self.maxSCSCalls:
                 self.logger.error("Stitching max circuit failures reached - will delete and exit.")
                 try:
-                    self.deleteAllReservations(launcher)
+                    result = self.deleteAllReservations(launcher)
+                    if not result:
+                        for am in launcher.aggs:
+                            if am.manifestDom:
+                                self.logger.warn("You have a reservation at %s", am)
                 except KeyboardInterrupt:
                     self.logger.error('... deleting interrupted!')
                     for am in launcher.aggs:
@@ -975,12 +1031,16 @@ class StitchingHandler(object):
                 newError = StitchingError("%s which caused %s" % (str(self.lastException), str(se)))
                 se = newError
             try:
-                self.deleteAllReservations(launcher)
+                result = self.deleteAllReservations(launcher)
+                if not result:
+                    for am in launcher.aggs:
+                        if am.manifestDom:
+                            self.logger.warn("You have a reservation at %s", am)
             except KeyboardInterrupt:
                 self.logger.error('... deleting interrupted!')
                 for am in launcher.aggs:
                     if am.manifestDom:
-                        self.logger.warn("You have a greservation at %s", am)
+                        self.logger.warn("You have a reservation at %s", am)
                 #raise
             raise se
         return lastAM
@@ -1007,7 +1067,7 @@ class StitchingHandler(object):
             if self.opts.useSCSSugg:
                 #self.logger.info("Per option, requesting SCS suggested VLAN tags")
                 continue
-            if am.isEG or am.isGRAM or am.isOESS or am.dcn:
+            if not am.supportsAny():
                 self.logger.debug("%s doesn't support requesting 'any' VLAN tag - move on", am)
                 continue
             # Could a complex topology have some hops producing VLANs and some accepting VLANs at the same AM?
@@ -1015,7 +1075,7 @@ class StitchingHandler(object):
 #                self.logger.debug("%s says it depends on no other AMs", am)
             for hop in am.hops:
                 # Init requestAny so we never request 'any' when option says not or it is one of the non-supported AMs
-                requestAny = not (self.opts.useSCSSugg or am.isEG or am.isGRAM or am.isOESS or am.dcn)
+                requestAny = not self.opts.useSCSSugg and am.supportsAny()
                 if not requestAny:
                     continue
                 isConsumer = False
@@ -1048,7 +1108,7 @@ class StitchingHandler(object):
                 if not hop._hop_link.vlan_producer:
                     if not imports and not isConsumer:
                         # See http://groups.geni.net/geni/ticket/1263 and http://groups.geni.net/geni/ticket/1262
-                        if am.isEG or am.isGRAM or am.isOESS or am.dcn:
+                        if not am.supportsAny():
                             self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG or GRAM or OESS or DCN AM, where we cannot assume 'any' works.", hop)
                             requestAny = False
                         else:
@@ -1066,7 +1126,7 @@ class StitchingHandler(object):
                     isProducer = True
                     self.logger.debug("%s marked as a VLAN producer", hop)
                 if not requestAny and not imports and not isConsumer and not isProducer:
-                    if am.isEG or am.isGRAM or am.isOESS or am.dcn:
+                    if not am.supportsAny():
                         self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG or GRAM or OESS or DCN AM, where we cannot assume 'any' works.", hop)
                     else:
                         # If this hop doesn't import and isn't explicitly marked as either a consumer or a producer, then
@@ -1459,8 +1519,40 @@ class StitchingHandler(object):
             self.logger.debug("Error from slice computation service: %s", e)
             raise 
         except Exception as e:
-            self.logger.error("Exception from slice computation service: %s", e)
-            raise StitchingError("SCS gave error: %s" % e)
+            # FIXME: If SCS used dossl then that might handle many of these errors.
+            # Alternatively, the SCS could handle these itself.
+            excName = e.__class__.__name__
+            strE = str(e)
+            if strE == '':
+                strE = excName
+            elif strE == "''":
+                strE = "%s: %s" % (excName, strE)
+            if strE.startswith('BadStatusLine'):
+                # Did you call scs with http when https was expected?
+                url = self.opts.scsURL.lower()
+                if '8443' in url and not url.startswith('https'):
+                    strE = "Bad SCS URL: Use https for a SCS requiring SSL (running on port 8443). (%s)" % strE
+            elif 'unknown protocol' in strE:
+                url = self.opts.scsURL.lower()
+                if url.startswith('https'):
+                    strE = "Bad SCS URL: Try using http not https. (%s)" % strE
+            elif '404 Not Found' in strE:
+                strE = 'Bad SCS URL (%s): %s' % (self.opts.scsURL, strE)
+            elif 'Name or service not known' in strE:
+                strE = 'Bad SCS host (%s): %s' % (self.opts.scsURL, strE)
+            elif 'alert unknown ca' in strE:
+                try:
+                    certObj = gid.GID(filename=self.framework.cert)
+                    certiss = certObj.get_issuer()
+                    certsubj = certObj.get_urn()
+                    self.logger.debug("SCS gave exception: %s", strE)
+                    strE = "SCS does not trust the CA (%s) that signed your (%s) user certificate! Use an account at another clearinghouse or find another SCS server." % (certiss, certsubj)
+                except:
+                    strE = 'SCS does not trust your certificate. (%s)' % strE
+            self.logger.error("Exception from slice computation service: %s", strE)
+            import traceback
+            self.logger.debug("%s", traceback.format_exc())
+            raise StitchingError("SCS gave error: %s" % strE)
 
         self.logger.debug("SCS successfully returned.");
 
