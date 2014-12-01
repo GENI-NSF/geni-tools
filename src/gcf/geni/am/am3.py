@@ -27,6 +27,13 @@ Invoked from gcf-am.py
 The GENI AM API is defined in the AggregateManager class.
 """
 
+/* Note: This AM uses SFA authorization to check that the caller
+has appropriate credentials to make the call. If this AM is used in 
+conjunction with the policy-based authorization capability (in gcf.geni.auth)
+then this code needs to only extract expiration times from the credentials
+which can be done using the gcf.sfa.credential module
+*/
+
 from __future__ import absolute_import
 
 import base64

@@ -77,6 +77,9 @@ class Base_Authorizer(object):
     #   creds : List of credential/type pairs
     #   args : Dictionary of name/value pairs of AM call arguments
     #   opts : Dictionary of user provided options
+    #   requested_allocation_state: The state of the allocated resources
+    #     if the given request WERE to be authorized. This consists of 
+    #     a list of all allocation measurements.
     def authorize(self, method, caller, creds, args, opts,
                   requested_allocation_state):
         if self._logger:

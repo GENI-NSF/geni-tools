@@ -42,6 +42,12 @@ from ..am.am3 import SHUTDOWNSLIVERPRIV as SHUTDOWNSLIVERPRIV_V3
 
 from ..util.cred_util import CredentialVerifier
 
+/* Note: This authorizer does the standard SFA checking for privileges
+   based on credentials. For aggregtes or authorizers that only wish
+   to extract expiration times from credentials, the gcf.sfa.credential
+   module to create a Credential object and extract features from that object
+*/
+
 class SFA_Authorizer(Base_Authorizer):
 
     # For each method (V2 and V3) indicate what SFA privileges are required
