@@ -265,12 +265,12 @@ Additional Optional Features
 
 This version of GCF supports two features whose use is optional:
 
-     - Authorization: The abilityto interpose a layer of policy-based 
+     - Authorization: The ability to interpose a layer of policy-based 
 authorization between API call validation (authentication, argument
 checking) and the call itself. See README-authorization.txt for more details.
 
      - Resource Scheduling: The ability to allocate a resource at some
-futured date, thus reserving it for a future provision. 
+future date, thus reserving it for a future provision. 
 See README-scheduling.txt for more details.
 
 

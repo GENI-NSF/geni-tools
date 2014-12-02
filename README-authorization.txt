@@ -2,16 +2,16 @@ GCF Policy-based Authorization
 
 Overview
 
-As of GCF version 2.8, the GCF AM's support a policy-based  authorization 
-capability by which aggregates may use external policy files add additional
+As of GCF version 2.8, the GCF AM's support a policy-based authorization 
+capability by which aggregates may use external policy files to add additional
 and specific restrictions on which invocations may or may not be allowed
 by the aggregate manager. The GCF AM (v2 and v3) look for an authorizer class
 (if configured: see below) and if provided, will call the authorizer to 
-see if the given request is allowed, 
+see if the given request is allowed.
 
 This authorization call is interposed between the
 authentication and argument validation portion of the AM and the call
-to the delegate. Thus, any aggregate manager who uses the GCF AM framework
+to the delegate. Thus, any aggregate manager that uses the GCF AM framework
 and provides its own delegate will inherit this capability.
 
 The intent of this authorization capability is to provide support 
@@ -91,7 +91,7 @@ Manager
 
 # The authorization process supports interposing an argument guard
 # to add additional requirements, validation checks or transformations
-# on provided arguments
+# on provided arguments.
 # The argument guard must derive from the python class
 # gcf.geni.auth.argument_guard.Base_Argument_Guard and provide this method:
 #
@@ -105,25 +105,25 @@ argument_guard=gcf.geni.auth.argument_guard.TEST_Argument_Guard
 
 # Optionally, one can set up the authorization as a local XMLRPC service
 # So that the authorization runs in a separate process from the AM, which
-# supports AMs written in different languages to use the same authorization
+# allows AMs written in different languages to use the same authorization
 # code base. If a URL of an authorizer is provided, it is contacted
 # by the AM to provide authorization services. Otherwise, an internal
-# instance of the 'authorizer' above is contacted
+# instance of the 'authorizer' above is contacted.
 # 
 remote_authorizer=http://localhost:8888
 
 ABAC Overview
 
 ABAC (http://abac.deterlab.net) is a first-order logic system that supports
-creating signed assertings and proving whethr a given statement can be 
+creating signed assertions and proving whether a given statement can be 
 proven from a provided set of assertions. ABAC statements are typically of
 one of these two forms:
     * [Signer][Set]<--[Member].
-         "Signer asserts that Member is in a givn set"
+         "Signer asserts that Member is in a given set"
 	 e.g. "AM.MAY_SHUTDOWN<--MSB
 
     * [Signer].[SetA]<--[Autority].[SetB]
-         "Signer asserts that anyone that Authority places in set B 
+         "Signer asserts that anyone that Authority places in Set B 
          is in Set A."
 	 e.g. "AM.MAY_SHUTDOWN<--IMINDS_CH.MAY_SHUTDOWN"
 
@@ -152,7 +152,7 @@ The ABAC policy file is a JSON file with these tags (most optional):
 	#            },
 	"conditional_assertions" : ...
 
-	# Fixed (uncnoditional ABAC statements to be included in
+	# Fixed (unconditional) ABAC statements to be included in
 	# query calculations, e.g. 
 	# "AM.MAY_SHUTDOWN<--CH_IMINDS.MAY_SHUTDOWN"
 	"policies": ...
@@ -184,7 +184,7 @@ that there will be some standard authorization criteria a given
 aggregate may want to consider
    - SFA Authorization: Does the given call satisfy SFA criteria? (Is
 there a credential signed by a trusted authority providing the authorization
-to perform given operation in given contexgt
+to perform given operation in given context?)
    - Quotas. A given aggregate may wish to place quotas on the amount
 or number of resources allowed to be allocated to a given entity (user,
 slice, project, authority) at a given time or over time. Depending on 
@@ -192,11 +192,11 @@ the resource manager provided, different 'measurements' can be provided
 to the aggrregate manager, allowing the binding of variables against
 which resource quotas can be tested, e.g. "$AUTHORITY_VM_TOTAL > 2" or
 "$PROJECT_BW_HOURS > 1000000".
-   - Blacklist/Whitelist. Policies can assert that a given invocation
-(caler or associated authority) must be on a given whitelist or must
+   - Blacklist/Whitelist. Policies can assert that a given invoker 
+(caller or associated authority) must be on a given whitelist or must
 not be on a given blacklist. (Such lists would be externally managed).
    - Schedule violation. A given aggregate may wish to assert that
-certain users may access resources only in certain times of day, week
+certain users may access resources only in certain times of day, week.
   - Topology management. A given aggregate may wish to limit which
 external resources a given slice may connect to (e.g. what remote
 resources may be stitched to) by a given user.
