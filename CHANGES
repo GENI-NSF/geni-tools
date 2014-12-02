@@ -33,8 +33,8 @@ gcf 2.8:
  * gcf
   * Add support for policy-based authorizer to interpose between authentication
     and delegate invocation. (#660)
-   * Allow ABAC-like per aggregate authorization policies. See README-authorization.
-   * Support scheduled reservations. See README-scheduling.
+   * Allow ABAC-like per aggregate authorization policies. See README-authorization.txt
+   * Support scheduled reservations. See README-scheduling.txt
    * Refactored the AM base class to use a Method Context to handle most per method
      processing and error handling.
 
