@@ -37,6 +37,11 @@ gcf 2.8:
    * Support scheduled reservations. See README-scheduling.txt
    * Refactored the AM base class to use a Method Context to handle most per method
      processing and error handling.
+    * Instead of wrapping calls to the delegate in a try/except block, we use a
+      `with AMMethodContext` call to check and authorize arguments before making the call
+      to the delegate.
+   * Add a getter for fetching the PEM certificate from the server, to support safely fetching
+     that certificate in a multithreaded environment.
 
 gcf 2.7:
  * Omni
