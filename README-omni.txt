@@ -47,6 +47,8 @@ New in v2.8:
  * Fix error message on expired user cert. (#756)
  * Remove ticket #722 workaround (bug fixed at ION AM). (#724)
  * Mac installer: remove old aliases before adding new ones. (#556)
+ * Add support for `--start-time` option to specify a `geni_start_time` option
+   for any aggregates that support such a value. (#660)
 
 New in v2.7:
  * Calls to `status` and `sliverstatus` will also call the CH
