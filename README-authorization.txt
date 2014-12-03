@@ -179,6 +179,14 @@ The ABAC policy file is a JSON file with these tags (most optional):
 	"queries": ....
 }
 
+Example Policy Files
+-----------------------
+
+An example policy file is provided in $GCF/examples/example_am_policies.json.
+
+An exmaple policy MAP file is provided in
+$GCF/examples/example_am_policy_map.json.
+
 Example Policy Capabilities
 ---------------------------
 
