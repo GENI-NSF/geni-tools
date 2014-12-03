@@ -31,7 +31,7 @@ from .base_authorizer import AM_Methods
 
 # Base class for argument guard
 class Base_Argument_Guard:
-    
+
     # Check the arguments and options presented to the given call
     # Either return an exception or 
     # return the (same or modified) arguments and options
@@ -41,7 +41,7 @@ class Base_Argument_Guard:
 class TEST_Argument_Guard:
 
     def validate_arguments(self, method_name, arguments, options):
-        
+
         options['Test_Entry'] = 'Test_Option_Value'
         arguments['Test_Argument'] = 'Test_Argument_Value'
         return arguments, options

@@ -1,25 +1,25 @@
-#----------------------------------------------------------------------       
+#----------------------------------------------------------------------
 # Copyright (c) 2010-2014 Raytheon BBN Technologies
-#                                                                             
-# Permission is hereby granted, free of charge, to any person obtaining       
-# a copy of this software and/or hardware specification (the "Work") to       
-# deal in the Work without restriction, including without limitation the      
-# rights to use, copy, modify, merge, publish, distribute, sublicense,        
-# and/or sell copies of the Work, and to permit persons to whom the Work      
-# is furnished to do so, subject to the following conditions:                 
-#                                                                             
-# The above copyright notice and this permission notice shall be              
-# included in all copies or substantial portions of the Work.                 
-#                                                                             
-# THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS         
-# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF                  
-# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND                       
-# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT                 
-# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,                
-# WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,          
-# OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS          
-# IN THE WORK.                                                                
-#----------------------------------------------------------------------       
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and/or hardware specification (the "Work") to
+# deal in the Work without restriction, including without limitation the
+# rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Work, and to permit persons to whom the Work
+# is furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Work.
+# 
+# THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS 
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
+# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+# WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS 
+# IN THE WORK.
+#---------------------------------------------------------------------- 
 
 from __future__ import absolute_import
 
@@ -37,7 +37,7 @@ from .base_authorizer import AM_Methods, V2_Methods
 # so that the authorizer can enforce resource quota policies
 
 class Base_Resource_Manager:
-    
+
     def __init__(self):
         pass
 
@@ -104,9 +104,9 @@ class GCFAM_Resource_Manager(Base_Resource_Manager):
             # if --alap use credential end time
             if "geni_extend_alap" in options:
                 requested = min(expiration, requested)
-            
+
             requested = str(requested)
-                
+
             # go over all slivers in curr_allocations and change end time
             # of those we're trying to change 
             # (slivers of slice or specific slivers)
@@ -123,7 +123,7 @@ class GCFAM_Resource_Manager(Base_Resource_Manager):
                     sliver_info['end_time'] = requested
 
             return curr_allocations
-                                             
+
         else:
             return []
 
@@ -165,7 +165,7 @@ class GCFAM_Resource_Manager(Base_Resource_Manager):
                          'end_time' : str(sliver.endTime()),
                          'measurements' : {'NODE' : 1}}
                 sliver_info.append(entry)
-            
+
 
     # Take the given rspec (if provided) and determine how
     # many nodes are being requested over what time ranges
@@ -176,7 +176,7 @@ class GCFAM_Resource_Manager(Base_Resource_Manager):
         if 'slice_urn' not in arguments: return []
 
         amd = aggregate_manager._delegate
-            
+
         sliver_info = []
         slice_urn = arguments['slice_urn']
         user_urn = gid.GID(string=options['geni_true_caller_cert']).get_urn()
@@ -205,6 +205,3 @@ class GCFAM_Resource_Manager(Base_Resource_Manager):
                 sliver_info.append(entry)
 
         return sliver_info
-
-        
-

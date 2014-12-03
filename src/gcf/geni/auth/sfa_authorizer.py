@@ -1,25 +1,25 @@
-#----------------------------------------------------------------------       
+#---------------------------------------------------------------------- 
 # Copyright (c) 2010-2014 Raytheon BBN Technologies
-#                                                                             
-# Permission is hereby granted, free of charge, to any person obtaining       
-# a copy of this software and/or hardware specification (the "Work") to       
-# deal in the Work without restriction, including without limitation the      
-# rights to use, copy, modify, merge, publish, distribute, sublicense,        
-# and/or sell copies of the Work, and to permit persons to whom the Work      
-# is furnished to do so, subject to the following conditions:                 
-#                                                                             
-# The above copyright notice and this permission notice shall be              
-# included in all copies or substantial portions of the Work.                 
-#                                                                             
-# THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS         
-# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF                  
-# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND                       
-# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT                 
-# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,                
-# WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,          
-# OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS          
-# IN THE WORK.                                                                
-#----------------------------------------------------------------------       
+# 
+# Permission is hereby granted, free of charge, to any person obtaining 
+# a copy of this software and/or hardware specification (the "Work") to 
+# deal in the Work without restriction, including without limitation the 
+# rights to use, copy, modify, merge, publish, distribute, sublicense, 
+# and/or sell copies of the Work, and to permit persons to whom the Work 
+# is furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be 
+# included in all copies or substantial portions of the Work. 
+# 
+# THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS 
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+# WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
+# OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS 
+# IN THE WORK.
+#---------------------------------------------------------------------- 
 " Default authorizer class that performs SFA credential verification"
 
 from __future__ import absolute_import
@@ -76,7 +76,7 @@ class SFA_Authorizer(Base_Authorizer):
         AM_Methods.SHUTDOWN_V3 : { 'privileges' : (SHUTDOWNSLIVERPRIV_V3,) }
 
     }
-        
+
     # Create a cred verifier for all credentials on all calls
     def __init__(self, root_cert, opts, argument_guard):
         Base_Authorizer.__init__(self, root_cert, opts)
@@ -117,6 +117,3 @@ class SFA_Authorizer(Base_Authorizer):
                                                         opts)
         except Exception, e:
             raise Exception("Insufficient privileges: %s" % str(e))
-
-        
-

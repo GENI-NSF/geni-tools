@@ -1,25 +1,25 @@
-#----------------------------------------------------------------------       
+#----------------------------------------------------------------------
 # Copyright (c) 2010-2014 Raytheon BBN Technologies
-#                                                                             
-# Permission is hereby granted, free of charge, to any person obtaining       
-# a copy of this software and/or hardware specification (the "Work") to       
-# deal in the Work without restriction, including without limitation the      
-# rights to use, copy, modify, merge, publish, distribute, sublicense,        
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and/or hardware specification (the "Work") to
+# deal in the Work without restriction, including without limitation the
+# rights to use, copy, modify, merge, publish, distribute, sublicense, 
 # and/or sell copies of the Work, and to permit persons to whom the Work      
-# is furnished to do so, subject to the following conditions:                 
-#                                                                             
-# The above copyright notice and this permission notice shall be              
-# included in all copies or substantial portions of the Work.                 
-#                                                                             
-# THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS         
-# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF                  
-# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND                       
-# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT                 
-# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,                
-# WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,          
-# OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS          
-# IN THE WORK.                                                                
-#----------------------------------------------------------------------       
+# is furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Work.
+# 
+# THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+# WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
+# IN THE WORK.
+#---------------------------------------------------------------------- 
 
 from __future__ import absolute_import
 
@@ -53,7 +53,7 @@ class ABAC_Authorizer(Base_Authorizer):
 
         self._argument_guard = argument_guard
 
-        self._logger = logging.getLogger('abac_auth')
+        self._logger = logging.getLogger('gcf.abac_auth')
         logging.basicConfig(level=logging.INFO)
 
         if not hasattr(opts, 'authorizer_policy_map_file'):
@@ -95,7 +95,7 @@ class ABAC_Authorizer(Base_Authorizer):
         rules = self._DEFAULT_RULES
         if caller_authority_name in self._AUTHORITY_SPECIFIC_RULES:
             rules = self._AUTHORITY_SPECIFIC_RULES[caller_authority_name]
-        print "Rules for %s : %s" % (caller_urn, rules.getLabel())
+        self._logger.debug("Rules for %s : %s" % (caller_urn, rules.getLabel()))
         return rules
 
     # Bind all bindings in current context
@@ -136,7 +136,7 @@ class ABAC_Authorizer(Base_Authorizer):
 #        self._logger.info("ASSERTIONS = %s" % assertions)
 
         success, msg = self._evaluate_queries(bindings, assertions, rules)
-        
+
         del key_id_name_map[caller_keyid]
 
         if not success:
@@ -267,7 +267,7 @@ class ABAC_Authorizer(Base_Authorizer):
         evaluation = self._prove_query(bound_q, assertions)
         msg = rules.getQueryMessageMap()[query]
         return True, evaluation, msg
-        
+
 
     # Replace bindings ($VAR) with bound value
     def _bind_expression(self, expr, bindings):
@@ -279,7 +279,7 @@ class ABAC_Authorizer(Base_Authorizer):
     # Are there any unbound variables in expression?
     def _has_unbound_variables(self, expr):
         return expr.find("$") > -1
-        
+
 
     # Prove (or fail to prove) an ABAC query based on a set of assertions
     # We use a simple recursive chaining to see if we can find a path
@@ -358,7 +358,7 @@ class ABAC_Authorizer(Base_Authorizer):
 # Class to hold the rules to be invoked for members of a given authority
 # We have per-authority rule sets and a default rule set
 class ABAC_Authorizer_Rule_Set:
-    
+
     def __init__(self, label, root_cert):
         self._label = label
         self._root_cert = root_cert
