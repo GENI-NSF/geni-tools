@@ -5,7 +5,7 @@
 # a copy of this software and/or hardware specification (the "Work") to
 # deal in the Work without restriction, including without limitation the
 # rights to use, copy, modify, merge, publish, distribute, sublicense, 
-# and/or sell copies of the Work, and to permit persons to whom the Work      
+# and/or sell copies of the Work, and to permit persons to whom the Work
 # is furnished to do so, subject to the following conditions:
 # 
 # The above copyright notice and this permission notice shall be
@@ -431,7 +431,7 @@ class ABAC_Authorizer_Rule_Set:
         print "   %s" % self._constants
         print "CONDITIONAL ASSERTIONS:"
         print "   %s" % self._conditional_assertions
-        print "POLLICIES:"
+        print "POLICIES:"
         for policy in self._policies:
             print "   %s" % policy
         print "POSITIVE QUERIES:"

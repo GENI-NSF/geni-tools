@@ -519,7 +519,7 @@ class ReferenceAggregateManager(object):
         end_time = self.min_expire(creds, 
                                    requested=('geni_end_time' in options 
                                               and options['geni_end_time']))
-        
+
         # determine the start time as bounded by slice expiration and 'now'
         now = datetime.datetime.utcnow()
         start_time = now
