@@ -23,7 +23,7 @@
 
 # URL for the SCS server
 # May be over-ridden using the commandline option --scsURL
-# scs_url=http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc
+# scs_url=http://geni-scs.net.internet2.edu:8081/geni/xmlrpc
 
 [omni]
 # The default control framework for omni to use.
