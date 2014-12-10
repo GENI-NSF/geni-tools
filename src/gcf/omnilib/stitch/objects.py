@@ -550,6 +550,7 @@ class Aggregate(object):
             return
 
         # Check that we're requesting a currently avail VLAN tag (ticket #566)
+        # Only do the check where it works, would help, and we haven't updated based on current availability relatively recently already
         if self.doAvail(opts):
             self.updateWithAvail(opts)
 
@@ -3646,16 +3647,28 @@ class Aggregate(object):
         # If the AM type support real avail (PG and GRAM only currently) and we are not requesting 'any' from some
         # hop at this AM, then do it.
 
+        # FIXME: also bail if by options we are doing APIv3, on the assumption that this means we're doing real negotiation?
+
         # If option says don't do these checks, return False
         if opts.noAvailCheck:
             return False
 
+        # Does this AM type support getting accurate current VLAN availability?
         # FIXME: Do not hard-code which AM types support this, but put it in omni_defaults
         if not (self.isPG or self.isGRAM):
             return False
+
+        # If we checked availability at this AM fairly recently, don't redo
+        if self.lastAvailCheck and datetime.datetime.utcnow() - self.lastAvailCheck < datetime.timedelta(minutes=defs.CHECK_AVAIL_INTERVAL_MINS):
+            return False
+
+        # Only ask for available if there is a hop at this AM where it could help
         for hop in self._hops:
-            if hop._hop_link.vlan_suggested_request != VLANRange.fromString("any") or hop.import_vlans:
+            # If any hop isn't requesting 'any' and either doesn't import VLANs or imports from a different AM, then this could help
+            if hop._hop_link.vlan_suggested_request != VLANRange.fromString("any") and (not hop.import_vlans or hop.import_vlans_from.aggregate != hop.aggregate):
                 return True
+
+        # This should be cases where all hops at this AM are requesting 'any' or import from another hop at the same AM
         return False
 
     def updateWithAvail(self, opts):
@@ -3676,6 +3689,7 @@ class Aggregate(object):
         except Exception, e:
             self.logger.debug("Failed to parse rspec: %s", e)
             return False
+        self.lastAvailCheck = datetime.datetime.utcnow()
         ports = dom.getElementsByTagName(defs.PORT_TAG)
         if not ports or len(ports) == 0:
             self.logger.debug("No stitching ports found")
