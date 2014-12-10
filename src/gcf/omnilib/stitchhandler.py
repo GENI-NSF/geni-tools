@@ -916,6 +916,12 @@ class StitchingHandler(object):
         # The AM to pick from the currently available tags
         self.changeRequestsToAny()
 
+        for am in self.ams_to_process:
+            # Hand each AM the slice credential, so we only read it once
+            am.slicecred = self.slicecred
+            # Also hand the timeout time
+            am.timeoutTime = self.config['timeoutTime']
+
         if self.opts.noReservation:
             self.logger.info("Not reserving resources")
 
@@ -972,17 +978,12 @@ class StitchingHandler(object):
 
             raise StitchingError("Requested no reservation")
 
-        for am in self.ams_to_process:
-            # Hand each AM the slice credential, so we only read it once
-            am.slicecred = self.slicecred
-            # Also hand the timeout time
-            am.timeoutTime = self.config['timeoutTime']
-
         # Check current VLAN tag availability before doing allocations
         # Loop over AMs. If I update an AM, then go to AMs that depend on it and intersect there (but don't redo avail query), and recurse.
         for am in self.ams_to_process:
             # If doing the avail query at this AM doesn't work or wouldn't help or we did it recently, move on
             if not am.doAvail(self.opts):
+                self.logger.debug("Not checking VLAN availability at %s", am)
                 continue
 
             self.logger.debug("Checking current availabilty at %s", am)
@@ -993,12 +994,13 @@ class StitchingHandler(object):
                 if madeChange:
                     # Must intersect the new ranges with others in the chain
                     # We have already updated avail and checked request at this AM
-                    for hop in self.hops:
+                    for hop in am.hops:
                         self.logger.debug("Applying updated availability up the chain for %s", hop)
                         while hop.import_vlans:
                             newHop = hop.import_vlans_from
+                            oldRange = newHop._hop_link.vlan_range_request
                             newHop._hop_link.vlan_range_request = newHop._hop_link.vlan_range_request.intersection(hop._hop_link.vlan_range_request)
-                            self.logger.debug("Reset range of %s to %s", newHop, newHop._hop_link.vlan_range_request)
+                            self.logger.debug("Reset range of %s to '%s' from %s", newHop, newHop._hop_link.vlan_range_request, oldRange)
                             if len(newHop._hop_link.vlan_range_request) <= 0:
                                 self.logger.debug("New available range is empty!")
                                 raise StitchingCircuitFailedError("No VLANs possible at %s based on latest availability; Try again from the SCS" % newHop.aggregate)
@@ -1006,12 +1008,14 @@ class StitchingHandler(object):
                                 self.logger.debug("Suggested (%s) is not in reset available range - mark it unavailable and raise an error!")
                                 newHop.vlans_unavailable = newHop.vlans_unavailable.union(newHop._hop_link.vlan_suggested_request)
                                 raise StitchingCircuitFailedError("Requested VLAN unavailable at %s based on latest availability; Try again from the SCS" % newHop)
+                            else:
+                                self.logger.debug("Suggested (%s) still in reset available range", newHop._hop_link.vlan_suggested_request)
                             hop = newHop
                         # End of loop up the imports chain for this hop
                     # End of loop over all hops on this AM where we just updated availability
                     self.logger.debug("Done applying updated availabilities from %s", am)
                 else:
-                    self.logger.debug("%s availabilities did no change. Done with this AM", am)
+                    self.logger.debug("%s VLAN availabilities did not change. Done with this AM", am)
                 # End of block to only update avails up the chain if we updated availability on this AM
             except StitchingCircuitFailedError, se:
                 self.lastException = se
