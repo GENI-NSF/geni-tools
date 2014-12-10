@@ -24,6 +24,7 @@
 from __future__ import absolute_import
 
 import os
+import traceback
 
 from ...sfa.trust.gid import GID
 from ...sfa.trust.credential import Credential
@@ -126,6 +127,8 @@ class AMMethodContext:
                                            credentials, self._args, 
                                            self._options,
                                            requested_allocation_state)
+        except ApiErrorException, e:
+            self._result = self._api_error(e);
         except Exception, e:
             self._handleError(e)
         finally:
@@ -161,8 +164,28 @@ class AMMethodContext:
         return {'code' : code_dict, 'value' : '', 'output' : str(e) }
 
     def _handleError(self, e):
-        self._result = self._errorReturn(e)
+        traceback.print_exc()
+        self._result = self._exception_result(e)
         self._error = True
+
+    def _exception_result(self, exception):
+        output = str(exception)
+        self._logger.warning(output)
+        # *** Huh?
+        # XXX Code for no slice here?                                                                                                                                                                  
+        # *** Why geni_code=102?
+        return dict(code=dict(geni_code=102,
+                              am_type="gcf",
+                              am_code=0),
+                    value="",
+                    output=output)
+
+    # Handle AM API error
+    def _api_error(self, exception):
+        self._logger.warning(exception)
+        return dict(code=dict(geni_code=exception.code, am_type='gcf'), 
+                    value="", 
+                    output=exception.output)
 
 
 def isGeniCred(cred):

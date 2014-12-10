@@ -655,9 +655,14 @@ class ReferenceAggregateManager(object):
             return self.errorResult(AM_API.UNAVAILABLE,
                                     "No slivers available to provision at this time")
 
+        max_expiration = self.min_expire(creds, self.max_lease, 
+                                     ('geni_end_time' in options
+                                      and options['geni_end_time']))
         for sliver in slivers:
             # Extend the lease and set to PROVISIONED
-            sliver.setExpiration(sliver.endTime())
+            expiration = min(sliver.getEndTime(), max_expiration)
+            sliver.setEndTime(expiration)
+            sliver.setExpiration(expiration)
             sliver.setAllocationState(STATE_GENI_PROVISIONED)
             sliver.setOperationalState(OPSTATE_GENI_NOT_READY)
         result = dict(geni_rspec=self.manifest_rspec(the_slice.urn),
