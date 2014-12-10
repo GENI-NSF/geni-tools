@@ -979,8 +979,59 @@ class StitchingHandler(object):
             am.timeoutTime = self.config['timeoutTime']
 
         # Check current VLAN tag availability before doing allocations
-        # Loop over AMs. If I update an AM, then go to AMs that depend on it and intersect there (but don't redo avail query), and recurse
-        # FIXME!
+        # Loop over AMs. If I update an AM, then go to AMs that depend on it and intersect there (but don't redo avail query), and recurse.
+        for am in self.ams_to_process:
+            # If doing the avail query at this AM doesn't work or wouldn't help or we did it recently, move on
+            if not am.doAvail(self.opts):
+                continue
+
+            self.logger.debug("Checking current availabilty at %s", am)
+            madeChange = False
+            try:
+                madeChange = am.updateWithAvail(self.opts)
+
+                if madeChange:
+                    # Must intersect the new ranges with others in the chain
+                    # We have already updated avail and checked request at this AM
+                    for hop in self.hops:
+                        self.logger.debug("Applying updated availability up the chain for %s", hop)
+                        while hop.imports_vlans:
+                            newHop = hop.import_vlans_from
+                            newHop._hop_link.vlan_range_request = newHop._hop_link.vlan_range_request.intersection(hop._hop_link.vlan_range_request)
+                            self.logger.debug("Reset range of %s to %s", newHop, newHop._hop_link.vlan_range_request)
+                            if len(newHop._hop_link.vlan_range_request) <= 0:
+                                self.logger.debug("New available range is empty!")
+                                raise StitchingCircuitFailedError("No VLANs possible at %s based on latest availability; Try again from the SCS" % newHop.aggregate)
+                            if newHop._hop_link.vlan_suggested_request != VLANRange.fromString("any") and not newHop._hop_link.vlan_suggested_request <= newHop._hop_link.vlan_range_request:
+                                self.logger.debug("Suggested (%s) is not in reset available range - mark it unavailable and raise an error!")
+                                newHop.vlans_unavailable = newHop.vlans_unavailable.union(newHop._hop_link.vlan_suggested_request)
+                                raise StitchingCircuitFailedError("Requested VLAN unavailable at %s based on latest availability; Try again from the SCS" % newHop)
+                            hop = newHop
+                        # End of loop up the imports chain for this hop
+                    # End of loop over all hops on this AM where we just updated availability
+                    self.logger.debug("Done applying updated availabilities from %s", am)
+                else:
+                    self.logger.debug("%s availabilities did no change. Done with this AM", am)
+                # End of block to only update avails up the chain if we updated availability on this AM
+            except StitchingCircuitFailedError, se:
+                self.lastException = se
+                if self.scsCalls == self.maxSCSCalls:
+                    self.logger.error("Stitching max circuit failures reached")
+                    raise StitchingError("Stitching reservation failed %d times. Last error: %s" % (self.scsCalls, se))
+                self.logger.warn("Stitching failed but will retry: %s", se)
+
+                # Flush the cache of aggregates. Loses all state. Avoids
+                # double adding hops to aggregates, etc. But we lose the vlans_unavailable. And ?
+                aggs = copy.copy(self.ams_to_process)
+                self.ams_to_process = None # Clear local memory of AMs to avoid issues
+                Aggregate.clearCache()
+
+                # construct new SCS args
+                # redo SCS call et al
+                # FIXME FIXME: is this recursion here going to fall through correctly / the way I want? Or is this broken?
+                return self.mainStitchingLoop(sliceurn, requestDOM, aggs)
+
+        # End of loop over AMs getting current availability
 
         # The launcher handles calling the aggregates to do their allocation
         launcher = stitch.Launcher(self.opts, self.slicename, self.ams_to_process, self.config['timeoutTime'])
