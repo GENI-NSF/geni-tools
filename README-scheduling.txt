@@ -63,51 +63,78 @@ or it expires. There is no difference between the 'geni_end_time' and
 
 When the resource is allocated, 
      - geni_start_time = Now
-     - geni_end_time = geni_expires = Now + some small time delta (e.g. 5 min)
+     - geni_end_time = geni_expires = Now + some small time delta
+     (e.g. 5 min), when the allocated sliver will expire if not
+     renewed or provisioned. The experimenter may request a specific
+     geni_end_time, though it is not honored everywhere.
 
 When the resource is provisioned, 
      - geni_start_time = Time of allocation
-     - geni_end_time = geni_expires = time of sliver expiration
-     		   which will be typicaly many hours or days in the future
+     - geni_end_time = geni_expires = time of provisioned sliver expiration
+     		   which will be typically many hours or days in the future
 		   depending on the aggregate policy (max_lease) and
-		   the expiration of slice credentials
+		   the expiration of slice credentials. The
+		   experimenter may supply a desired geni_end_time as
+		   part of the call to Provision.
 
 When the resource is renewed, 
-     the geni_end_time and geni_expires to be moved in tandem to the time 
-     requrested by the user, bounded by aggregate policy
-     and the expiration of slice credentials.
+     the geni_end_time and geni_expires are to be moved in tandem to the time 
+     requested by the user, bounded by aggregate policy
+     and the expiration of slice credentials. 
 
 2. Future Allocation
 
 In the case of future (scheduled) allocation, the start_time is the
-requested start of the scheduled allocation and the end_time is the
-requested end of the scheduled allocation.  As above, there is a small window
+requested start of the scheduled allocation (when the experimenter
+wants the resources) and the end_time is the
+requested end of the scheduled allocation (when the experimenter wants
+the actual reservation to end; in the case of a call to Allocate or
+allocated slivers, this is a change from APIv3 and the Present
+Allocation case).  As above, there is a small window
 during which an allocated resource may be provisioned, indicated by the
-expiraiton time. If the resource is not provisioned by the end of that 
+geni_expires time. If the resource is not provisioned by the end of that 
 window (the expiration time), the resource expires and may not be 
 subsequently provisioned.
 
 When the resource is allocated,
-     - geni_start_time is provided to time in future
-     - geni_end_time is provided to time in future (the time that the
+     - geni_start_time is provided to specify a time in future when
+     the actual reservation should start
+     - geni_end_time is provided to specify a time in future (the time that the
      		   resource WILL expire once provisioned) bound by
-		   aggregate policy and slice credential expiraiton
+		   aggregate policy and slice credential
+		   expiraiton. Note that this is different from the
+		   Present Allocation case, when this time specifies
+		   when the allocated slivers will expire.
      - geni_expires is the time the allocated sliver will expire if not
-     		  provisioned, typically several minutes after geni_start_time
+     		  provisioned, typically several minutes after
+		  geni_start_time and well before geni_end_time.
 
 When resource is provisioned,
-     - geni_start_time is the time the resource is provisioned
+     - geni_start_time is the time the resource is provisioned; this
+     is when the resources actually began belonging to the experimenter
      - geni_end_time is the time indicated in the allocation call when 
-     		   the resource will expire
+     		   the resource will expire, or as modified by the
+		   experimenter with a new geni_end_time argument to Provision
      - geni_expires is the same as geni_end_time
 
 Resource renewal is different in the allocated and provisioned states:
-    - When renewing a resource in allocated state, the expires time is moved 
-    as requested (bound by slice credential expiraiton and aggregate policy) 
+    - When renewing a resource in the allocated state, the expires time is moved 
+    as requested (bound by slice credential expiration and aggregate policy) 
     and end_time is unchanged. 
-    - When renewing a resource in provisioned state, the end_time and expires
+    - When renewing a resource in the provisioned state, the end_time and expires
     time are changed together (bound by slice credential expiration and 
-    aggreate policy).
+    aggregate policy).
+
+Summarizing key differences from the Present Allocation case (and
+standard AM API v3):
+ - geni_start_time is supplied to Allocate for when the reservation
+ should start (when they will be Provisioned)
+ - geni_end_time as an argument always modifies when Provisioned
+ resources will expire, and there is no way to request when Allocated
+ slivers will expire before they are allocated; use Renew
+ - geni_expires and geni_end_time as return values are different for geni_allocated
+ slivers; geni_expires is when the slivers expire, and geni_end_time
+ is when the future reservation window closes
 
 Returns from Allocate, Provision and Details return all three times 
 (geni_start_time, geni_end_time, geni_expires) for all specified slivers.
@@ -117,18 +144,28 @@ Recommended Future Work
 
 This GCF implementation of resource scheduling is somewhat inconsistent with 
 the AM API as currently documented. In the AM API, providing a geni_end_time 
-argument modifies the expiration time of a slice: there is no distinction
+argument modifies the expiration time of slivers in their current state: there is no distinction
 between the end_time and expiration_time of a resource.
 
 We suggest one of two solutions:
    1. Modify the AM API to indicate that geni_expires be the flag provided
-to allocate, renew, provision to modify the expiration timke.
+to allocate, renew, provision to modify the expiration time.
 or 2. Modify the scheduling code to take an additional time argument (e.g.
 "geni_requested_end_time") to explicitly handle the time for which
-the resource is requessted to expire WHEN PROVISIONED.
+the resource is requessted to expire WHEN PROVISIONED (leaving
+   geni_end_time's meaning unchanged).
 
 In the current implementation, one cannot change the start time of a future 
-allocation: one must call delete and then re-allocate. Perhaps in the future
+reservation: one must call delete and then re-allocate. Perhaps in the future
 we can augment the AM API to move the scheduled time of an unprovisioned 
 resource.
+
+In the current implementation, it is assumed that an Allocated
+resource will be used as provided, and the resource is held for the
+experimenter. An experimenter that does not intend to use an
+allocation as provided must explicitly call Delete to avoid tying up
+future resources. An explicit 'Commit' call to be used between
+Allocate and Provision (with associated time windows and states) would
+allow AMs to require an explicit commitment from experimenters of
+their intent to use a future reservation.
 
