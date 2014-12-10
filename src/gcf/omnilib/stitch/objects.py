@@ -3712,6 +3712,9 @@ class Aggregate(object):
                             self.logger.debug("Found current available tags for %s", myHop._hop_link.urn)
                             newAvail = hLink.vlan_range_request
                             oldAvail = myHop._hop_link.vlan_range_request
+                            if newAvail == oldAvail:
+                                self.logger.debug("Availability is unchanged")
+                                continue
 
                             revisedAvail = newAvail.intersection(oldAvail)
                             if len(revisedAvail) > 0:
@@ -3733,7 +3736,9 @@ class Aggregate(object):
                                 myHop.vlans_unavailable = myHop.vlans_unavailable.union(markUnavail)
                             else:
                                 self.logger.debug("All calculated available tags still available: %s", revisedAvail)
-                            break
+                            # Cannot break here; If same hop is used by 2 paths, we need to update the range for both
+                        # End of block to check if this hop is the one from the Ad
+                    # End of loop over hops on this AM
                     if not foundHop:
                         self.logger.debug("Ignoring avail for unused hop %s", hLink.urn)
         for myHop in self._hops:
