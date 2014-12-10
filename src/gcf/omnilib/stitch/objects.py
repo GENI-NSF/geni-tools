@@ -3709,7 +3709,7 @@ class Aggregate(object):
                     for myHop in self._hops:
                         if myHop._hop_link.urn == hLink.urn:
                             foundHop = True
-                            self.logger.debug("Found current available tags for %s", myHop._hop_link.urn)
+                            self.logger.debug("Found current available tags for %s", myHop)
                             newAvail = hLink.vlan_range_request
                             oldAvail = myHop._hop_link.vlan_range_request
                             if newAvail == oldAvail:
