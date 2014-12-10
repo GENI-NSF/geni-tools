@@ -995,7 +995,7 @@ class StitchingHandler(object):
                     # We have already updated avail and checked request at this AM
                     for hop in self.hops:
                         self.logger.debug("Applying updated availability up the chain for %s", hop)
-                        while hop.imports_vlans:
+                        while hop.import_vlans:
                             newHop = hop.import_vlans_from
                             newHop._hop_link.vlan_range_request = newHop._hop_link.vlan_range_request.intersection(hop._hop_link.vlan_range_request)
                             self.logger.debug("Reset range of %s to %s", newHop, newHop._hop_link.vlan_range_request)
