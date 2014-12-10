@@ -1000,7 +1000,10 @@ class StitchingHandler(object):
                             newHop = hop.import_vlans_from
                             oldRange = newHop._hop_link.vlan_range_request
                             newHop._hop_link.vlan_range_request = newHop._hop_link.vlan_range_request.intersection(hop._hop_link.vlan_range_request)
-                            self.logger.debug("Reset range of %s to '%s' from %s", newHop, newHop._hop_link.vlan_range_request, oldRange)
+                            if oldRange != newHop._hop_link.vlan_range_request:
+                                self.logger.debug("Reset range of %s to '%s' from %s", newHop, newHop._hop_link.vlan_range_request, oldRange)
+                            else:
+                                self.logger.debug("Availability unchanged at %s", newHop)
                             if len(newHop._hop_link.vlan_range_request) <= 0:
                                 self.logger.debug("New available range is empty!")
                                 raise StitchingCircuitFailedError("No VLANs possible at %s based on latest availability; Try again from the SCS" % newHop.aggregate)
