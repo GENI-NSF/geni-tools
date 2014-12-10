@@ -428,6 +428,9 @@ class Aggregate(object):
         # Cache the stitcher timeout time
         self.timeoutTime = datetime.datetime.max
 
+        # Time when we last checked actual VLAN tag availability at this AM
+        self.lastAvailCheck = None
+
     def __str__(self):
         if self.nick:
             if self.inDebug:
