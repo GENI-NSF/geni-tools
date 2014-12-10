@@ -171,10 +171,9 @@ class AMMethodContext:
     def _exception_result(self, exception):
         output = str(exception)
         self._logger.warning(output)
-        # *** Huh?
-        # XXX Code for no slice here?                                                                                                                                                                  
-        # *** Why geni_code=102?
-        return dict(code=dict(geni_code=102,
+
+        # 2 = ERROR
+        return dict(code=dict(geni_code=2,
                               am_type="gcf",
                               am_code=0),
                     value="",
