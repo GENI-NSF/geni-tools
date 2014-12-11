@@ -232,8 +232,9 @@ class Link(object):
 def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
-    SCS_URL = "http://geni-scs.net.internet2.edu:8081/geni/xmlrpc"
-    # I2 SSL SCS_URL = "https://geni-scs.net.internet2.edu:8443/geni/xmlrpc"
+    # I2 SSL 
+    SCS_URL = "https://geni-scs.net.internet2.edu:8443/geni/xmlrpc"
+    # I2 non SSL (deprecated) SCS_URL = "http://geni-scs.net.internet2.edu:8081/geni/xmlrpc"
     # MAX SCS_URL = "https://oingo.dragon.maxgigapop.net:8443/geni/xmlrpc"
     # Dev SCS: http://geni.maxgigapop.net:8081/geni/xmlrpc
     # Test SCS: http://nutshell.maxgigapop.net:8081/geni/xmlrpc

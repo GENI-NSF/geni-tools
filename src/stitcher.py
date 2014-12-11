@@ -75,7 +75,7 @@ import gcf.omnilib.stitch.objects
 #from gcf.omnilib.stitch.objects import DCN_AM_RETRY_INTERVAL_SECS as DCN_AM_RETRY_INTERVAL_SECS
 
 # URL of the SCS service
-SCS_URL = "http://geni-scs.net.internet2.edu:8081/geni/xmlrpc"
+SCS_URL = "https://geni-scs.net.internet2.edu:8443/geni/xmlrpc"
 
 DEFAULT_CAPACITY = 20000 # in Kbps
 
