@@ -1,0 +1,10 @@
+{
+	"default" : ["/Users/mbrinn/.gcf/default_policies.json"],
+
+	"ch1.gpolab.bbn.com" : ["/Users/mbrinn/.gcf/default_policies.json",
+			       "/Users/mbrinn/.gcf/ch1_policies.json"],
+
+	"wall2.ilabt.iminds.be" : ["/Users/mbrinn/.gcf/default_policies.json",
+			       "/Users/mbrinn/.gcf/iminds_policies.json"]
+	
+}
