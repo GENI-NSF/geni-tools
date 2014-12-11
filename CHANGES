@@ -24,6 +24,9 @@ gcf 2.8:
   * Factor out determining if AM type supports requesting 'any' VLAN tag. (#758)
   * SCS requires a valid client certificate and uses SSL. (#757)
    * As a result, the SSL timeout on calls to the SCS should work. (#346)
+  * Check current VLAN tag availability at AMs before trying reservations, where it
+    works and will help. Disable this with new option `--noAvailCheck`. (#566,#545)
+
  * readyToLogin
   * Add --ansible-inventory option which creates a host file to use with Ansible. Works 
     with -o and --prefix. (#759)

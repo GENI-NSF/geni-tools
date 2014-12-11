@@ -277,6 +277,8 @@ Other options you should not need to use:
  by far most runs complete within 45 minutes, and usually much less. Some
  successful stitching runs take 90 minutes or more. On timeout,
  existing reservations are deleted.
+ - `--noAvailCheck`: Disable checking for currently available VLAN
+ tags at aggregates that support doing such checks.
 
 == Tips and Details ==
 
