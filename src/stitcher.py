@@ -138,6 +138,8 @@ def call(argv, options=None):
                       help="Max minutes to allow stitcher to run before killing a reservation attempt (default %default minutes, 0 means no timeout).")
     parser.add_option("--noAvailCheck", default=False, action="store_true",
                       help="Disable checking current VLAN availability where possible.")
+    parser.add_option("--genRequest", default=False, action="store_true",
+                      help="Generate and save an expanded request RSpec, but do no reservation.")
     parser.add_option("--fakeModeDir",
                       help="Developers only: If supplied, use canned server responses from this directory",
                       default=None)

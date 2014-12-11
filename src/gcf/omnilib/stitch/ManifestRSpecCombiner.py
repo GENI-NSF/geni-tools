@@ -57,8 +57,9 @@ PATH_ID = 'id'
 class ManifestRSpecCombiner:
 
     # Constructor
-    def __init__(self):
+    def __init__(self, useReqs=False):
         self.logger = logging.getLogger('stitch.ManifestRSpecCombiner')
+        self.useReqs = useReqs
 
     # Combine the manifest, replacing elements in the dom_template
     # with the appropriate pieces from the manifests
@@ -111,7 +112,12 @@ class ManifestRSpecCombiner:
 #            self.logger.debug("Template had element: '%s'...", cstr[:min(len(cstr), 60)])
 
         for am in ams_list:
-            am_manifest_dom = am.manifestDom
+            if self.useReqs:
+                if not am.requestDom:
+                    am.requestDom = am.getEditedRSpecDom(dom_template)
+                am_manifest_dom = am.requestDom
+            else:
+                am_manifest_dom = am.manifestDom
             if am_manifest_dom == dom_template:
                 continue
             am_doc_root = am_manifest_dom.documentElement
@@ -166,7 +172,12 @@ class ManifestRSpecCombiner:
             self.logger.debug("Couldn't find rspec in template!")
             return
         for am in ams_list:
-            am_manifest_dom = am.manifestDom
+            if self.useReqs:
+                if not am.requestDom:
+                    am.requestDom = am.getEditedRSpecDom(dom_template)
+                am_manifest_dom = am.requestDom
+            else:
+                am_manifest_dom = am.manifestDom
             if am_manifest_dom == dom_template:
                 continue
             am_doc_root = am_manifest_dom.documentElement
@@ -261,7 +272,12 @@ class ManifestRSpecCombiner:
         # Match the manifest from a given AMs manifest if that AM's urn is the 
         # component_manager_id attribute on that node and the client_ids match
         for am in ams_list:
-            am_manifest_dom = am.manifestDom
+            if self.useReqs:
+                if not am.requestDom:
+                    am.requestDom = am.getEditedRSpecDom(dom_template)
+                am_manifest_dom = am.requestDom
+            else:
+                am_manifest_dom = am.manifestDom
             am_doc_root = am_manifest_dom.documentElement
 
             # For each node in this AMs manifest for which this AM
@@ -312,7 +328,12 @@ class ManifestRSpecCombiner:
         # loop over AMs. If an AM has a link client_id not in template_link_ids
         # and the link has that AM as a component_manager, then append this link to the template
         for agg in ams_list:
-            man = agg.manifestDom
+            if self.useReqs:
+                if not agg.requestDom:
+                    agg.requestDom = agg.getEditedRSpecDom(dom_template)
+                man = agg.requestDom
+            else:
+                man = agg.manifestDom
             man_root = man.documentElement
             man_kids = man_root.childNodes
             for link2 in man_kids:
@@ -413,7 +434,12 @@ class ManifestRSpecCombiner:
 #                    else:
 #                        self.logger.debug("Looking at AM %s for link %s", agg.urn, client_id)
 
-                    man = agg.manifestDom
+                    if self.useReqs:
+                        if not agg.requestDom:
+                            agg.requestDom = agg.getEditedRSpecDom(dom_template)
+                        man = agg.requestDom
+                    else:
+                        man = agg.manifestDom
                     for link2 in man.documentElement.childNodes:
                         if link2.nodeType != Node.ELEMENT_NODE or \
                                 link2.localName != defs.LINK_TAG:
@@ -539,7 +565,13 @@ class ManifestRSpecCombiner:
             if am.dcn:
                 self.logger.debug("Pulling hops from a DCN AM: %s", am)
 
-            if am.manifestDom == dom_template:
+            if self.useReqs:
+                if not am.requestDom:
+                    am.requestDom = am.getEditedRSpecDom(dom_template)
+                am_manifest_dom = am.requestDom
+            else:
+                am_manifest_dom = am.manifestDom
+            if am_manifest_dom == dom_template:
                 self.logger.debug("AM %s's manifest is the dom_template- no need to do combineHops here.", am)
                 continue
 
@@ -562,7 +594,7 @@ class ManifestRSpecCombiner:
                 #self.logger.debug("Found path %s in template manifest: %s", path_id, template_path.toxml(encoding="utf-8"))
                 #                print "AGG " + str(am) + " HID " + str(hop_id)
                 if not am.isEG:
-                    self.replaceHopElement(template_path, self.getStitchingElement(am.manifestDom), hop_id, path_id)
+                    self.replaceHopElement(template_path, self.getStitchingElement(am_manifest_dom), hop_id, path_id)
 #                    for child in template_path.childNodes:
 #                        if child.nodeType == Node.ELEMENT_NODE and \
 #                                child.localName == HOP and \
@@ -571,7 +603,7 @@ class ManifestRSpecCombiner:
                 else:
                     self.logger.debug("Had EG AM in combineHops: %s", am)
                     link_id = hop._hop_link.urn
-                    self.replaceHopLinkElement(template_path, self.getStitchingElement(am.manifestDom), hop_id, path_id, link_id)
+                    self.replaceHopLinkElement(template_path, self.getStitchingElement(am_manifest_dom), hop_id, path_id, link_id)
 #            self.logger.debug("After swapping hops for %s, stitching extension is %s", am, stripBlankLines(template_stitching.toprettyxml(encoding="utf-8")))
 
     # Add details about allocations to each aggregate in a 
@@ -613,7 +645,10 @@ class ManifestRSpecCombiner:
         user_requested = am.userRequested
         hops_info = []
         for hop in am._hops:
-            tEntry = {'urn':hop._hop_link.urn, 'vlan_tag':str(hop._hop_link.vlan_suggested_manifest), 'path_id':hop.path.id, 'id':hop._id}
+            if self.useReqs:
+                tEntry = {'urn':hop._hop_link.urn, 'vlan_tag':str(hop._hop_link.vlan_suggested_request), 'vlan_range':str(hop._hop_link.vlan_range_request), 'path_id':hop.path.id, 'id':hop._id}
+            else:
+                tEntry = {'urn':hop._hop_link.urn, 'vlan_tag':str(hop._hop_link.vlan_suggested_manifest), 'path_id':hop.path.id, 'id':hop._id}
             if hop.globalId:
                 tEntry['path_global_id'] = hop.globalId
             if hop._hop_link.ofAMUrl:
@@ -740,8 +775,8 @@ class ManifestRSpecCombiner:
                     return child
         return None
 
-def combineManifestRSpecs(ams_list, dom_template):
+def combineManifestRSpecs(ams_list, dom_template, useReqs=False):
     '''Combine the manifests from the given Aggregate objects into the given DOM template (a manifest). Return a DOM'''
-    mrc = ManifestRSpecCombiner()
+    mrc = ManifestRSpecCombiner(useReqs)
     return mrc.combine(ams_list, dom_template)
 
