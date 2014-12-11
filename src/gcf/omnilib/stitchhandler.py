@@ -88,6 +88,8 @@ class StitchingHandler(object):
         self.lastException = None
         self.ams_to_process = []
         self.opts = opts # command line options as parsed
+        self.slicecred = None # Cached slice credential to avoid re-fetching
+        self.savedSliceCred = None # path to file with slice cred if any
 
         # Get the framework
         if not self.opts.debug:
@@ -420,7 +422,7 @@ class StitchingHandler(object):
             combinedManifest = self.combineManifests(self.ams_to_process, lastAM)
 
             # FIXME: Handle errors. Maybe make return use code/value/output struct
-            # If error and have an expanded rquest from SCS, include that in output.
+            # If error and have an expanded request from SCS, include that in output.
             #   Or if particular AM had errors, ID the AMs and errors
 
             # FIXME: This prepends a header on an RSpec that might already have a header
@@ -917,8 +919,9 @@ class StitchingHandler(object):
         self.changeRequestsToAny()
 
         for am in self.ams_to_process:
-            # Hand each AM the slice credential, so we only read it once
-            am.slicecred = self.slicecred
+            if self.slicecred:
+                # Hand each AM the slice credential, so we only read it once
+                am.slicecred = self.slicecred
             # Also hand the timeout time
             am.timeoutTime = self.config['timeoutTime']
 
@@ -982,6 +985,67 @@ class StitchingHandler(object):
         ret = self.updateAvailRanges(sliceurn, requestDOM)
         if ret is not None:
             return ret
+
+        if self.opts.genRequest:
+            # Write the fully expanded/updated request RSpec to a file
+
+            self.logger.debug("Generating updated combined request RSpec")
+            combinedRequestDom = combineManifestRSpecs(self.ams_to_process, self.parsedSCSRSpec.dom, useReqs=True)
+
+            try:
+                reqString = combinedRequestDom.toprettyxml(encoding="utf-8")
+            except Exception, xe:
+                self.logger.debug("Failed to XMLify combined Request RSpec: %s", xe)
+                self._raise_omni_error("Malformed combined request RSpec: %s" % xe)
+            reqString = stripBlankLines(reqString)
+
+            # set rspec to be UTF-8
+            if isinstance(reqString, unicode):
+                reqString = reqString.encode('utf-8')
+                self.logger.debug("Combined request RSpec was unicode")
+
+            # FIXME: Handle errors. Maybe make return use code/value/output struct
+            # If error and have an expanded request from SCS, include that in output.
+            #   Or if particular AM had errors, ID the AMs and errors
+
+            # FIXME: This prepends a header on an RSpec that might already have a header
+            # -- maybe replace any existing header
+
+            # FIXME: We force -o here and keep it from logging the
+            # RSpec. Do we need an option to not write the RSpec to a file?
+
+            ot = self.opts.output
+            if not self.opts.tostdout:
+                self.opts.output = True
+
+            if not self.opts.debug:
+                # Suppress all but WARN on console here
+                lvl = self.logger.getEffectiveLevel()
+                handlers = self.logger.handlers
+                if len(handlers) == 0:
+                    handlers = logging.getLogger().handlers
+                for handler in handlers:
+                    if isinstance(handler, logging.StreamHandler):
+                        lvl = handler.level
+                        handler.setLevel(logging.WARN)
+                        break
+
+            retVal, filename = handler_utils._writeRSpec(self.opts, self.logger, reqString, None, '%s-expanded-request'%self.slicename, '', None)
+            if not self.opts.debug:
+                handlers = self.logger.handlers
+                if len(handlers) == 0:
+                    handlers = logging.getLogger().handlers
+                for handler in handlers:
+                    if isinstance(handler, logging.StreamHandler):
+                        handler.setLevel(lvl)
+                        break
+            self.opts.output = ot
+
+            if filename:
+                msg = "Saved expanded request RSpec at %d AMs to file '%s'" % (len(self.ams_to_process), os.path.abspath(filename))
+                self.logger.info(msg)
+            raise StitchingError("Requested to only generate and save the expanded request")
+        # End of block to save the expanded request and exit
 
         # The launcher handles calling the aggregates to do their allocation
         launcher = stitch.Launcher(self.opts, self.slicename, self.ams_to_process, self.config['timeoutTime'])
@@ -1287,6 +1351,13 @@ class StitchingHandler(object):
             self.logger.info("Fake mode: not checking slice credential")
             return (sliceurn, naiveUTC(datetime.datetime.max))
 
+        if self.opts.noReservation:
+            self.logger.info("Requested noReservation: not checking slice credential")
+            return (sliceurn, naiveUTC(datetime.datetime.max))
+
+        if self.opts.genRequest:
+            self.logger.info("Requested only generate request: not checking slice credential")
+            return (sliceurn, naiveUTC(datetime.datetime.max))
 
         # Get slice cred
         (slicecred, message) = handler_utils._get_slice_cred(self, sliceurn)
