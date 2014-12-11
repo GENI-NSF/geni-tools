@@ -3722,8 +3722,8 @@ class Aggregate(object):
                                 if revisedAvail != oldAvail:
                                     myHop._hop_link.vlan_range_request = revisedAvail
                                     didUpdates = True
-                                else:
-                                    self.logger.debug("No change: All calculated request range tags still available: %s", revisedAvail)
+#                                else:
+#                                    self.logger.debug("No change: All calculated request range tags still available: %s", revisedAvail)
                             else:
                                 self.logger.debug("New available range is disjoint from old! Intersection is empty! New: %s; Old: %s", newAvail, oldAvail)
                                 # Back to the SCS
