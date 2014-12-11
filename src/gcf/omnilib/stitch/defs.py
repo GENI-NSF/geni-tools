@@ -25,6 +25,7 @@
 RSPEC_TAG = 'rspec'
 LINK_TAG = 'link'
 NODE_TAG = 'node'
+PORT_TAG = 'port'
 STITCHING_TAG = 'stitching'
 PATH_TAG = 'path'
 EXPIRES_ATTRIBUTE = 'expires'
@@ -63,3 +64,6 @@ STITCH_V1_SCHEMA = "http://hpn.east.isi.edu/rspec/ext/stitch/0.1/ http://hpn.eas
 STITCH_V1_NS = "http://hpn.east.isi.edu/rspec/ext/stitch/0.1"
 STITCH_V2_SCHEMA = "http://www.geni.net/resources/rspec/ext/stitch/2/ http://www.geni.net/resources/rspec/ext/stitch/2/stitch-schema.xsd"
 STITCH_V2_NS = "http://www.geni.net/resources/rspec/ext/stitch/2"
+
+# Minutes since last VLAN availability check before bothing to check again
+CHECK_AVAIL_INTERVAL_MINS=60
