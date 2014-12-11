@@ -1,6 +1,6 @@
 ### DO NOT MODIFY THIS FILE BY HAND ###
 # This file lives at: http://trac.gpolab.bbn.com/gcf/raw-attachment/wiki/Omni/agg_nick_cache
-# Last updated on October 2, 2014
+# Last updated on January 6, 2015
 
 [omni_defaults]
 # This section is for updating Omni defaults without updating Omni.
@@ -9,6 +9,7 @@
 
 # URL for the SCS server
 # May be over-ridden using the commandline option --scsURL
+# 1/6/2015: Use the SCS run by Internet2, not the old MAX instance as specified in the code
 scs_url=https://geni-scs.net.internet2.edu:8443/geni/xmlrpc
 
 #------AM nicknames
