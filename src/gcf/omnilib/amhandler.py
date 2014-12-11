@@ -1427,6 +1427,9 @@ class AMCallHandler(object):
         rspecCtr = 0
         savedFileDesc = ""
         for ((urn,url), rspecStruct) in rspecs.items():
+            amNick = _lookupAggNick(self, urn)
+            if amNick is None:
+                amNick = urn
             self.logger.debug("Getting RSpec items for AM urn %s (%s)", urn, url)
             rspecOnly, message = self._retrieve_value( rspecStruct, message, self.framework)
             if self.opts.api_version < 2:
@@ -1436,7 +1439,9 @@ class AMCallHandler(object):
 
             retVal, filename = _writeRSpec(self.opts, self.logger, rspecOnly, slicename, urn, url, None, len(rspecs))
             if filename:
-                savedFileDesc += "Saved listresources RSpec from '%s' (url '%s') to file %s; " % (urn, url, filename)
+                if not savedFileDesc.endswith(' ') and savedFileDesc != "" and not savedFileDesc.endswith('\n'):
+                    savedFileDesc += " "
+                savedFileDesc += "Saved listresources RSpec from '%s' (url '%s') to file %s; " % (amNick, url, filename)
 
             if rspecOnly and rspecOnly != "":
                 rspecCtr += 1
@@ -1445,11 +1450,13 @@ class AMCallHandler(object):
                     # Use a helper function in handler_utils that can be used elsewhere.
                     manExpires = expires_from_rspec(rspecOnly, self.logger)
                     if manExpires is not None:
-                        prstr = "Reservation at %s in slice %s expires at %s (UTC)." % (urn, slicename, manExpires)
+                        prstr = "Reservation at %s in slice %s expires at %s (UTC)." % (amNick, slicename, manExpires)
                         self.logger.info(prstr)
-                        if not savedFileDesc.endswith('.'):
+                        if not savedFileDesc.endswith('.') and savedFileDesc != "" and not savedFileDesc.endswith('; '):
                             savedFileDesc += '.'
-                        savedFileDesc += " " + prstr
+                        if not savedFileDesc.endswith(' ') and savedFileDesc != '':
+                            savedFileDesc += " "
+                        savedFileDesc += prstr
                     else:
                         self.logger.debug("Got None sliver expiration from manifest")
 
@@ -1471,7 +1478,10 @@ class AMCallHandler(object):
                 if self.opts.output:
                     retVal += "Wrote rspecs from %d aggregate(s)" % numAggs
                     retVal +=" to %d file(s)"% len(rspecs)
-                    retVal += "\n" + savedFileDesc
+                if savedFileDesc != "":
+                    if not retVal.endswith("\n"):
+                        retVal += "\n"
+                    retVal += savedFileDesc
             else:
                 retVal +="No Rspecs succesfully parsed from %d aggregate(s)." % numAggs
             if message:
