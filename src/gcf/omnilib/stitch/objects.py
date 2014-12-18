@@ -1533,6 +1533,17 @@ class Aggregate(object):
             self.logger.debug("Failed to XMLify requestDOM for sending to AM: %s", xe)
             raise StitchingError("%s: Constructed request RSpec malformed? Failed to XMLify" % self)
 
+        # For EG AMs: If we have >1 EG AM then we likely need to edit the
+        # request so each EG AM only processes pieces intended for it.
+        if self.isEG:
+            haveMultEGs = False
+            for agg in Aggregate.aggs:
+                if agg != self and agg.isEG:
+                    haveMultEGs = True
+                    break
+            if haveMultEGs:
+                requestString = self.editEGRequest(requestString)
+
         header = "<!-- Resource request for stitching for:\n\tSlice: %s\n\t at AM:\n\tURN: %s\n\tURL: %s\n -->" % (slicename, self.urn, self.url)
         if requestString and rspec_util.is_rspec_string( requestString, None, None, logger=self.logger ):
             content = stripBlankLines(string.replace(requestString, "\\n", '\n'))
@@ -2204,6 +2215,67 @@ class Aggregate(object):
         # Caller handles saving the manifest, comparing man sug with request, etc
         # FIXME: Not returning text here. Correct?
         return result
+
+    def editEGRequest(self, requestString):
+        # Edit a request to an EG AM so that URNs for other EG AMs
+        # are not recognized as EG AMs by this EG AM, so no errors
+
+        # build list of auths
+        agg_urns = Aggregate.aggs.keys()
+        agg_urn_syns = []
+        for urn in agg_urns:
+            agg_urn_syns += Aggregate.urn_syns(urn)
+        all_agg_urns = list(set(agg_urns + agg_urn_syns))
+        all_agg_urn_auths = []
+        for urn in all_agg_urns:
+            all_agg_urn_auths.append(extractAuth(urn))
+
+        idx = 0
+        while (idx < len(requestString) and "urn:publicid:IDN+exogeni.net" in requestString[idx:]):
+            idx = requestString.find("urn:publicid:IDN+exogeni.net", idx)
+            self.logger.debug("Found a URN at %d", idx)
+            # Use re to find the full urn, then extract the auth
+            match = re.match(r"urn:publicid:IDN\+exogeni\.net[^\+]*", test[idx:])
+            urn = None
+            if match:
+                urn = match.group(0)
+                auth = urn[len("urn:publicid:IDN+"):urn.find("+", urn[len("urn:publicid:IDN+exogeni.net"):])]
+                self.logger.debug("URN: %s", urn)
+            if not urn:
+                idx += len("urn:publicid:IDN+exogeni.net")
+                continue
+
+            if lower(str(urn)).startswith("urn:publicid:idn+exogeni.net"):
+                self.logger.debug("URN %s is an EG URN", urn[2])
+                isMine = False
+                for myurn in self.urn_syns:
+                    if myurn.startswith(urn):
+                        isMine=True
+                        self.logger.debug("request URN %s is for this AM (matches %s)", urn, myurn)
+                        break
+                if isMine:
+                    continue
+                # This URN is not for this AM. So in general, we want to edit
+                # But the ExoSM handles multiple AMs, so only edit those URNs
+                # If we have an Aggregate instance we're contacting
+                doEdit = not self.isExoSM
+                if self.isExoSM:
+                    for aggURN in all_agg_urns:
+                        if aggURN.startswith(urn):
+                            self.logger.debug("URN %s is a URN for an Aggregate we're contacting (%s), so edit", urn, aggURN)
+                            doEdit = True
+                            break
+                    if not doEdit:
+                        self.logger.debug("URN %s doesn't match any Aggregate instance we're contacting, so don't edit", urn)
+                    # else this URN doesn't have its own AM, so let the ExoSM handle it. so do not edit.
+                if doEdit:
+                    # idx points to the start of the URN
+                    # change exogeni to eg
+                    requestString = requestString[:idx-1] + requestString[idx:].replace("exogeni", "eg", 1)
+                    self.logger.debug("Edited substring: %s", requestString[idx-5:idx+len("urn:publicid:IDN+exogeni.net") + 30])
+            idx += len("urn:publicid:IDN+")
+
+        return requestString
 
     def handleDcnAM(self, opts, slicename, ctr):
         # DCN based AMs cannot really tell you if they succeeded until sliverstatus is ready or not
