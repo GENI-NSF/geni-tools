@@ -225,7 +225,9 @@ Additionally, these options are used for some topologies:
  - `--noExoSM`: Avoid using the ExoGENI ExoSM. If an aggregate is an
  ExoGENI aggregate and the URL we get is the ExoSM URL, then try to
  instead use the local rack URL, and therefore only local rack
- allocated VMs and VLANs. For this to work, your `omni_config` or the
+ allocated VMs and VLANs. This is inconsistent with `--useExoSM` and
+ implies `--noEGStitching` (use GENI stitching where possible).
+ For this to work, your `omni_config` or the
  base aggregate nicknames must have an entry for the local ExoGENI
  rack that specifies both the aggregate URN as well as the URL, EG:
 {{{
@@ -235,12 +237,15 @@ eg-fiu=urn:publicid:IDN+exogeni.net:fiuvmsite+authority+am,https://fiu-hn.exogen
 }}}
  - `--useExoSM`: Try to use the ExoGENI ExoSM for ExoGENI
  reservations. If we get an individual ExoGENI rack URL for an
- aggregate, then try to use the ExoSM URL. For this to work, your
+ aggregate, then try to use the ExoSM URL. This is inconsistent with
+ `--noExoSM` or `--noEGStitching`; ExoGENI stitching wil be used where
+ applicable. For this to work, your
  `omni_config`  or the base aggregate nicknames must have an entry for
  the ExoGENI rack that specifies the URN and URL, as well as an entry
  for the ExoSM.
  - `--noEGStitching`: Force use of GENI stitching (send the request to
- the SCS), and not ExoGENI stitching between EG aggregates.
+ the SCS), and not ExoGENI stitching between EG aggregates. This is
+ inconsistent with `--useExoSM`.
 
 Other options you should not need to use:
  - `--fileDir`: Save _all_ files to this directory, and not the usual
@@ -343,8 +348,10 @@ python src/gcf/omnilib/stitch/scs.py --listaggregates
   ExoSM's allocation of resources at that rack. You can control in
   stitcher whether you use the local racks or the ExoSM, by using the
   `--useExoSM` or `--noExoSM` options.
-  - If your request uses multiple ExoGENI sites, stitcher will get
-    those resources from the ExoSM (an ExoGENI requirement).
+  - By default, stitcher uses ExoGENI stitching between ExoGENI
+  aggregates, by submitting such requests to the ExoSM. Supplying
+  `--noEGStitching` forces stitcher to try to use GENI stitching
+  between such aggregates.
  - Be sure to see the list of Known Issues below.
 
 === Stitching Computation Service ===
@@ -649,7 +656,8 @@ Cannot find the set of paths for the RequestTopology. '.
  - Support stitch-to-aggregate at ProtoGENI based aggregates if supported
  - Support recreating the combined manifest RSpec
  - Clean up hard-coded aggregate-specific sliver expiration policy handling
- - Support AM API v3
+ - Support AM API v3; specifically, use `allocate` where supported to
+ more rapidly negotiate VLAN tags.
  - Consolidate constants
  - Fully handle negotiating among AMs for a VLAN tag to use
   - As in when the returned `suggestedVLANRange` is not what was requested
