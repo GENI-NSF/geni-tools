@@ -262,21 +262,27 @@ Other options you should not need to use:
   entry in the `agg_nick_cache`.
  - `--noReservation`: Do not try to reserve at aggregates; instead,
    just save the expanded request RSpec.
- - `--fakeModeDir <directory>`: When supplied, does not make any
- actual reservations at aggregates. For testing only.
- - `--savedSCSResults`: Use the specified JSON file of saved results
-   from calling the SCS, instead of actually calling the SCS.
  - `--logconfig` to use a non standard logging configuration. Stitcher
  expects one `StreamHandler` for the console. Default configuration is
  in `gcf\stitcher_logging.conf`.
- - `--useSCSugg`: Always use the VLAN tag suggested by the
- SCS. Usually stitcher asks the aggregate to pick, despite what the
- SCS suggested.
  - `--timeout`: Maximum number of minutes to allow stitcher to run,
  before timing out. Default is no timeout (`0` minutes). Note that
  by far most runs complete within 45 minutes, and usually much less. Some
  successful stitching runs take 90 minutes or more. On timeout,
  existing reservations are deleted.
+ - `--noAvailCheck`: Disable checking for currently available VLAN
+ tags at aggregates that support doing such checks.
+ - `--genRequest`: Generate the fully expanded request (including SCS
+ inputs and checking current availability), but do not do the
+ reservation. Instead, save that request to a file.
+ - `--fakeModeDir <directory>`: When supplied, does not make any
+ actual reservations at aggregates. For testing only.
+ - `--savedSCSResults`: Use the specified JSON file of saved results
+   from calling the SCS, instead of actually calling the SCS.
+ - `--useSCSugg`: Always use the VLAN tag suggested by the
+ SCS. Usually stitcher asks the aggregate to pick, despite what the
+ SCS suggested.
+
 
 == Tips and Details ==
 
@@ -651,7 +657,6 @@ Cannot find the set of paths for the RequestTopology. '.
  - Tune counters, sleep durations, etc
  - Return a struct with detailed results (not just comments in manifest)
  - Return a struct on errors
- - Use authentication with the SCS
  - `opts.warn` is used to suppress omni output. Clean that up. A `scriptMode` option?
  - Implement `confirmSafeRequest()` to ensure no dangerous requests are made
  - Expand to additional aggregates

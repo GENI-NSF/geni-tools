@@ -46,6 +46,7 @@ import gcf.geni.am
 import gcf.geni.am.am2
 import gcf.geni.am.am3
 from gcf.geni.config import read_config
+from gcf.geni.auth.util import getInstanceFromClassname
 
 
 def parse_args(argv):
@@ -123,6 +124,33 @@ def main(argv=None):
     if not os.path.getsize(keyfile) > 0:
         sys.exit("Aggregate keyfile %s is empty" % keyfile)
 
+    # Instantiate an argument guard that will reject or modify
+    # arguments and options provided to calls
+    argument_guard = None
+    if hasattr(opts, 'argument_guard'):
+        argument_guard = getInstanceFromClassname(opts.argument_guard)
+
+    # Instantiate authorizer from 'authorizer' config argument
+    # By default, use the SFA authorizer
+    if hasattr(opts, 'authorizer'):
+        authorizer_classname = opts.authorizer
+    else:
+        authorizer_classname = "gcf.geni.auth.sfa_authorizer.SFA_Authorizer"
+    authorizer = getInstanceFromClassname(authorizer_classname, 
+                                          getAbsPath(opts.rootcadir), opts, argument_guard)
+
+    # Use XMLRPC authorizer if opt.remote_authorizer is set
+    if hasattr(opts, 'remote_authorizer'):
+        import xmlrpclib
+        authorizer = xmlrpclib.Server(opts.remote_authorizer)
+
+    # Instantiate resource manager from 'authorizer_resource_manager' 
+    # config argument. Default = None
+    resource_manager = None
+    if hasattr(opts, 'authorizer_resource_manager'):
+        resource_manager = \
+            getInstanceFromClassname(opts.authorizer_resource_manager)
+
     # rootcadir is  dir of multiple certificates
     delegate = geni.ReferenceAggregateManager(getAbsPath(opts.rootcadir))
 
@@ -139,18 +167,22 @@ def main(argv=None):
                                           base_name=config['global']['base_name'])
     elif opts.api_version == 2:
         ams = gcf.geni.am.am2.AggregateManagerServer((opts.host, int(opts.port)),
-                                          keyfile=keyfile,
-                                          certfile=certfile,
-                                          trust_roots_dir=getAbsPath(opts.rootcadir),
-                                          ca_certs=comboCertsFile,
-                                          base_name=config['global']['base_name'])
+                                                     keyfile=keyfile,
+                                                     certfile=certfile,
+                                                     trust_roots_dir=getAbsPath(opts.rootcadir),
+                                                     ca_certs=comboCertsFile,
+                                                     base_name=config['global']['base_name'], 
+                                                     authorizer=authorizer,
+                                                     resource_manager=resource_manager)
     elif opts.api_version == 3:
         ams = gcf.geni.am.am3.AggregateManagerServer((opts.host, int(opts.port)),
-                                          keyfile=keyfile,
-                                          certfile=certfile,
-                                          trust_roots_dir=getAbsPath(opts.rootcadir),
-                                          ca_certs=comboCertsFile,
-                                          base_name=config['global']['base_name'])
+                                                     keyfile=keyfile,
+                                                     certfile=certfile,
+                                                     trust_roots_dir=getAbsPath(opts.rootcadir),
+                                                     ca_certs=comboCertsFile,
+                                                     base_name=config['global']['base_name'],
+                                                     authorizer=authorizer,
+                                                     resource_manager=resource_manager)
     else:
         msg = "Unknown API version: %d. Valid choices are \"1\", \"2\", or \"3\""
         sys.exit(msg % (opts.api_version))

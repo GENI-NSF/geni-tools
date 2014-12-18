@@ -55,6 +55,7 @@ from .stitch.VLANRange import *
 from ..geni.util import rspec_schema
 from ..geni.util.rspec_util import is_rspec_string, is_rspec_of_type, rspeclint_exists, validate_rspec
 
+from ..sfa.trust import gid
 from ..sfa.util.xrn import urn_to_hrn, get_leaf
 
 DCN_AM_TYPE = 'dcn' # geni_am_type value from AMs that use the DCN codebase
@@ -87,6 +88,8 @@ class StitchingHandler(object):
         self.lastException = None
         self.ams_to_process = []
         self.opts = opts # command line options as parsed
+        self.slicecred = None # Cached slice credential to avoid re-fetching
+        self.savedSliceCred = None # path to file with slice cred if any
 
         # Get the framework
         if not self.opts.debug:
@@ -384,9 +387,9 @@ class StitchingHandler(object):
         # longer necessary (or a good idea).
 
         if self.isStitching:
-            if not "oingo.dragon.maxgigapop.net:8081" in self.opts.scsURL:
+            if not "oingo.dragon.maxgigapop.net:8443" in self.opts.scsURL:
                 self.logger.info("Using SCS at %s", self.opts.scsURL)
-            self.scsService = scs.Service(self.opts.scsURL, self.opts.ssltimeout, self.opts.verbosessl)
+            self.scsService = scs.Service(self.opts.scsURL, key=self.framework.key, cert=self.framework.cert, timeout=self.opts.ssltimeout, verbose=self.opts.verbosessl)
         self.scsCalls = 0
 
         # Compare the list of AMs in the request with AMs known
@@ -419,7 +422,7 @@ class StitchingHandler(object):
             combinedManifest = self.combineManifests(self.ams_to_process, lastAM)
 
             # FIXME: Handle errors. Maybe make return use code/value/output struct
-            # If error and have an expanded rquest from SCS, include that in output.
+            # If error and have an expanded request from SCS, include that in output.
             #   Or if particular AM had errors, ID the AMs and errors
 
             # FIXME: This prepends a header on an RSpec that might already have a header
@@ -544,15 +547,17 @@ class StitchingHandler(object):
                 msg += ' ' + str(self.lastException)
             self.logger.error(msg)
 
-            class DumbLauncher():
-                def __init__(self, agglist):
-                    self.aggs = agglist
 
-            #result = self.deleteAllReservations(DumbLauncher(self.ams_to_process)
+            if self.ams_to_process is not None:
+                class DumbLauncher():
+                    def __init__(self, agglist):
+                        self.aggs = agglist
 
-            for am in self.ams_to_process:
-                if am.manifestDom:
-                    self.logger.warn("You have a reservation at %s", am)
+                result = self.deleteAllReservations(DumbLauncher(self.ams_to_process))
+
+                for am in self.ams_to_process:
+                    if am.manifestDom:
+                        self.logger.warn("You have a reservation at %s", am)
             sys.exit(-1)
         except StitchingError, se:
             if lvl:
@@ -913,6 +918,13 @@ class StitchingHandler(object):
         # The AM to pick from the currently available tags
         self.changeRequestsToAny()
 
+        for am in self.ams_to_process:
+            if self.slicecred:
+                # Hand each AM the slice credential, so we only read it once
+                am.slicecred = self.slicecred
+            # Also hand the timeout time
+            am.timeoutTime = self.config['timeoutTime']
+
         if self.opts.noReservation:
             self.logger.info("Not reserving resources")
 
@@ -969,11 +981,71 @@ class StitchingHandler(object):
 
             raise StitchingError("Requested no reservation")
 
-        for am in self.ams_to_process:
-            # Hand each AM the slice credential, so we only read it once
-            am.slicecred = self.slicecred
-            # Also hand the timeout time
-            am.timeoutTime = self.config['timeoutTime']
+        # Check current VLAN tag availability before doing allocations
+        ret = self.updateAvailRanges(sliceurn, requestDOM)
+        if ret is not None:
+            return ret
+
+        if self.opts.genRequest:
+            # Write the fully expanded/updated request RSpec to a file
+
+            self.logger.debug("Generating updated combined request RSpec")
+            combinedRequestDom = combineManifestRSpecs(self.ams_to_process, self.parsedSCSRSpec.dom, useReqs=True)
+
+            try:
+                reqString = combinedRequestDom.toprettyxml(encoding="utf-8")
+            except Exception, xe:
+                self.logger.debug("Failed to XMLify combined Request RSpec: %s", xe)
+                self._raise_omni_error("Malformed combined request RSpec: %s" % xe)
+            reqString = stripBlankLines(reqString)
+
+            # set rspec to be UTF-8
+            if isinstance(reqString, unicode):
+                reqString = reqString.encode('utf-8')
+                self.logger.debug("Combined request RSpec was unicode")
+
+            # FIXME: Handle errors. Maybe make return use code/value/output struct
+            # If error and have an expanded request from SCS, include that in output.
+            #   Or if particular AM had errors, ID the AMs and errors
+
+            # FIXME: This prepends a header on an RSpec that might already have a header
+            # -- maybe replace any existing header
+
+            # FIXME: We force -o here and keep it from logging the
+            # RSpec. Do we need an option to not write the RSpec to a file?
+
+            ot = self.opts.output
+            if not self.opts.tostdout:
+                self.opts.output = True
+
+            if not self.opts.debug:
+                # Suppress all but WARN on console here
+                lvl = self.logger.getEffectiveLevel()
+                handlers = self.logger.handlers
+                if len(handlers) == 0:
+                    handlers = logging.getLogger().handlers
+                for handler in handlers:
+                    if isinstance(handler, logging.StreamHandler):
+                        lvl = handler.level
+                        handler.setLevel(logging.WARN)
+                        break
+
+            retVal, filename = handler_utils._writeRSpec(self.opts, self.logger, reqString, None, '%s-expanded-request'%self.slicename, '', None)
+            if not self.opts.debug:
+                handlers = self.logger.handlers
+                if len(handlers) == 0:
+                    handlers = logging.getLogger().handlers
+                for handler in handlers:
+                    if isinstance(handler, logging.StreamHandler):
+                        handler.setLevel(lvl)
+                        break
+            self.opts.output = ot
+
+            if filename:
+                msg = "Saved expanded request RSpec at %d AMs to file '%s'" % (len(self.ams_to_process), os.path.abspath(filename))
+                self.logger.info(msg)
+            raise StitchingError("Requested to only generate and save the expanded request")
+        # End of block to save the expanded request and exit
 
         # The launcher handles calling the aggregates to do their allocation
         launcher = stitch.Launcher(self.opts, self.slicename, self.ams_to_process, self.config['timeoutTime'])
@@ -1044,6 +1116,69 @@ class StitchingHandler(object):
             raise se
         return lastAM
 
+    def updateAvailRanges(self, sliceurn, requestDOM):
+        # Check current VLAN tag availability before doing allocations
+        # Loop over AMs. If I update an AM, then go to AMs that depend on it and intersect there (but don't redo avail query), and recurse.
+        for am in self.ams_to_process:
+            # If doing the avail query at this AM doesn't work or wouldn't help or we did it recently, move on
+            if not am.doAvail(self.opts):
+                self.logger.debug("Not checking VLAN availability at %s", am)
+                continue
+
+            self.logger.debug("Checking current availabilty at %s", am)
+            madeChange = False
+            try:
+                madeChange = am.updateWithAvail(self.opts)
+
+                if madeChange:
+                    # Must intersect the new ranges with others in the chain
+                    # We have already updated avail and checked request at this AM
+                    for hop in am.hops:
+                        self.logger.debug("Applying updated availability up the chain for %s", hop)
+                        while hop.import_vlans:
+                            newHop = hop.import_vlans_from
+                            oldRange = newHop._hop_link.vlan_range_request
+                            newHop._hop_link.vlan_range_request = newHop._hop_link.vlan_range_request.intersection(hop._hop_link.vlan_range_request)
+                            if oldRange != newHop._hop_link.vlan_range_request:
+                                self.logger.debug("Reset range of %s to '%s' from %s", newHop, newHop._hop_link.vlan_range_request, oldRange)
+                            else:
+                                self.logger.debug("Availability unchanged at %s", newHop)
+                            if len(newHop._hop_link.vlan_range_request) <= 0:
+                                self.logger.debug("New available range is empty!")
+                                raise StitchingCircuitFailedError("No VLANs possible at %s based on latest availability; Try again from the SCS" % newHop.aggregate)
+                            if newHop._hop_link.vlan_suggested_request != VLANRange.fromString("any") and not newHop._hop_link.vlan_suggested_request <= newHop._hop_link.vlan_range_request:
+                                self.logger.debug("Suggested (%s) is not in reset available range - mark it unavailable and raise an error!", newHop._hop_link.vlan_suggested_request)
+                                newHop.vlans_unavailable = newHop.vlans_unavailable.union(newHop._hop_link.vlan_suggested_request)
+                                raise StitchingCircuitFailedError("Requested VLAN unavailable at %s based on latest availability; Try again from the SCS" % newHop)
+                            else:
+                                self.logger.debug("Suggested (%s) still in reset available range", newHop._hop_link.vlan_suggested_request)
+                            hop = newHop
+                        # End of loop up the imports chain for this hop
+                    # End of loop over all hops on this AM where we just updated availability
+                    self.logger.debug("Done applying updated availabilities from %s", am)
+                else:
+                    self.logger.debug("%s VLAN availabilities did not change. Done with this AM", am)
+                # End of block to only update avails up the chain if we updated availability on this AM
+            except StitchingCircuitFailedError, se:
+                self.lastException = se
+                if self.scsCalls == self.maxSCSCalls:
+                    self.logger.error("Stitching max circuit failures reached")
+                    raise StitchingError("Stitching reservation failed %d times. Last error: %s" % (self.scsCalls, se))
+                self.logger.warn("Stitching failed but will retry: %s", se)
+
+                # Flush the cache of aggregates. Loses all state. Avoids
+                # double adding hops to aggregates, etc. But we lose the vlans_unavailable. And ?
+                aggs = copy.copy(self.ams_to_process)
+                self.ams_to_process = None # Clear local memory of AMs to avoid issues
+                Aggregate.clearCache()
+
+                # construct new SCS args
+                # redo SCS call et al
+                return self.mainStitchingLoop(sliceurn, requestDOM, aggs)
+            # End of exception handling block
+        # End of loop over AMs getting current availability
+        return None # Not an AM return so don't return it in the main block
+
     def changeRequestsToAny(self):
         # Change requested VLAN tags to 'any' where appropriate
 
@@ -1066,7 +1201,7 @@ class StitchingHandler(object):
             if self.opts.useSCSSugg:
                 #self.logger.info("Per option, requesting SCS suggested VLAN tags")
                 continue
-            if am.isEG or am.isGRAM or am.isOESS or am.dcn:
+            if not am.supportsAny():
                 self.logger.debug("%s doesn't support requesting 'any' VLAN tag - move on", am)
                 continue
             # Could a complex topology have some hops producing VLANs and some accepting VLANs at the same AM?
@@ -1074,7 +1209,7 @@ class StitchingHandler(object):
 #                self.logger.debug("%s says it depends on no other AMs", am)
             for hop in am.hops:
                 # Init requestAny so we never request 'any' when option says not or it is one of the non-supported AMs
-                requestAny = not (self.opts.useSCSSugg or am.isEG or am.isGRAM or am.isOESS or am.dcn)
+                requestAny = not self.opts.useSCSSugg and am.supportsAny()
                 if not requestAny:
                     continue
                 isConsumer = False
@@ -1107,7 +1242,7 @@ class StitchingHandler(object):
                 if not hop._hop_link.vlan_producer:
                     if not imports and not isConsumer:
                         # See http://groups.geni.net/geni/ticket/1263 and http://groups.geni.net/geni/ticket/1262
-                        if am.isEG or am.isGRAM or am.isOESS or am.dcn:
+                        if not am.supportsAny():
                             self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG or GRAM or OESS or DCN AM, where we cannot assume 'any' works.", hop)
                             requestAny = False
                         else:
@@ -1125,7 +1260,7 @@ class StitchingHandler(object):
                     isProducer = True
                     self.logger.debug("%s marked as a VLAN producer", hop)
                 if not requestAny and not imports and not isConsumer and not isProducer:
-                    if am.isEG or am.isGRAM or am.isOESS or am.dcn:
+                    if not am.supportsAny():
                         self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG or GRAM or OESS or DCN AM, where we cannot assume 'any' works.", hop)
                     else:
                         # If this hop doesn't import and isn't explicitly marked as either a consumer or a producer, then
@@ -1216,6 +1351,13 @@ class StitchingHandler(object):
             self.logger.info("Fake mode: not checking slice credential")
             return (sliceurn, naiveUTC(datetime.datetime.max))
 
+        if self.opts.noReservation:
+            self.logger.info("Requested noReservation: not checking slice credential")
+            return (sliceurn, naiveUTC(datetime.datetime.max))
+
+        if self.opts.genRequest:
+            self.logger.info("Requested only generate request: not checking slice credential")
+            return (sliceurn, naiveUTC(datetime.datetime.max))
 
         # Get slice cred
         (slicecred, message) = handler_utils._get_slice_cred(self, sliceurn)
@@ -1518,8 +1660,40 @@ class StitchingHandler(object):
             self.logger.debug("Error from slice computation service: %s", e)
             raise 
         except Exception as e:
-            self.logger.error("Exception from slice computation service: %s", e)
-            raise StitchingError("SCS gave error: %s" % e)
+            # FIXME: If SCS used dossl then that might handle many of these errors.
+            # Alternatively, the SCS could handle these itself.
+            excName = e.__class__.__name__
+            strE = str(e)
+            if strE == '':
+                strE = excName
+            elif strE == "''":
+                strE = "%s: %s" % (excName, strE)
+            if strE.startswith('BadStatusLine'):
+                # Did you call scs with http when https was expected?
+                url = self.opts.scsURL.lower()
+                if '8443' in url and not url.startswith('https'):
+                    strE = "Bad SCS URL: Use https for a SCS requiring SSL (running on port 8443). (%s)" % strE
+            elif 'unknown protocol' in strE:
+                url = self.opts.scsURL.lower()
+                if url.startswith('https'):
+                    strE = "Bad SCS URL: Try using http not https. (%s)" % strE
+            elif '404 Not Found' in strE:
+                strE = 'Bad SCS URL (%s): %s' % (self.opts.scsURL, strE)
+            elif 'Name or service not known' in strE:
+                strE = 'Bad SCS host (%s): %s' % (self.opts.scsURL, strE)
+            elif 'alert unknown ca' in strE:
+                try:
+                    certObj = gid.GID(filename=self.framework.cert)
+                    certiss = certObj.get_issuer()
+                    certsubj = certObj.get_urn()
+                    self.logger.debug("SCS gave exception: %s", strE)
+                    strE = "SCS does not trust the CA (%s) that signed your (%s) user certificate! Use an account at another clearinghouse or find another SCS server." % (certiss, certsubj)
+                except:
+                    strE = 'SCS does not trust your certificate. (%s)' % strE
+            self.logger.error("Exception from slice computation service: %s", strE)
+            import traceback
+            self.logger.debug("%s", traceback.format_exc())
+            raise StitchingError("SCS gave error: %s" % strE)
 
         self.logger.debug("SCS successfully returned.");
 

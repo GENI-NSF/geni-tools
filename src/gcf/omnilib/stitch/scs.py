@@ -30,6 +30,7 @@ import json
 import os.path
 import pprint
 import sys
+import urllib
 import xmlrpclib
 
 try:
@@ -77,13 +78,24 @@ class Result(object):
 
 # FIXME: Support authentication by the service at some point
 class Service(object):
-    def __init__(self, url, timeout=None, verbose=False):
+    def __init__(self, url, key=None, cert=None, timeout=None, verbose=False):
         self.url = url
         self.timeout=timeout
         self.verbose=verbose
+        if isinstance(url, unicode):
+            url2 = url.encode('ISO-8859-1')
+        else:
+            url2 = url
+        type, uri = urllib.splittype(url2.lower())
+        if type == "https":
+            self.key=key
+            self.cert=cert
+        else:
+            self.key=None
+            self.cert=None
 
     def GetVersion(self, printResult=True):
-        server = make_client(self.url, keyfile=None, certfile=None, verbose=self.verbose, timeout=self.timeout)
+        server = make_client(self.url, keyfile=self.key, certfile=self.cert, verbose=self.verbose, timeout=self.timeout)
         try:
             result = server.GetVersion()
         except xmlrpclib.Error as v:
@@ -97,7 +109,7 @@ class Service(object):
         return result
 
     def ListAggregates(self, printResult=True):
-        server = make_client(self.url, keyfile=None, certfile=None, verbose=self.verbose, timeout=self.timeout)
+        server = make_client(self.url, keyfile=self.key, certfile=self.cert, verbose=self.verbose, timeout=self.timeout)
         try:
             result = server.ListAggregates()
         except xmlrpclib.Error as v:
@@ -127,7 +139,7 @@ class Service(object):
                 print "ERROR", e, traceback.format_exc()
                 raise
         if result is None:
-            server = make_client(self.url, keyfile=None, certfile=None, verbose=self.verbose, timeout=self.timeout)
+            server = make_client(self.url, keyfile=self.key, certfile=self.cert, verbose=self.verbose, timeout=self.timeout)
             arg = dict(slice_urn=slice_urn, request_rspec=request_rspec,
                        request_options=options)
 #        import json
@@ -220,13 +232,25 @@ class Link(object):
 def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
-    SCS_URL = "http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc"
+    SCS_URL = "https://oingo.dragon.maxgigapop.net:8443/geni/xmlrpc"
     # Dev SCS: http://geni.maxgigapop.net:8081/geni/xmlrpc
     # Test SCS: http://nutshell.maxgigapop.net:8081/geni/xmlrpc
+    # oingo 8081 is deprecated; use oingo 8443
+    # Non SSL SCS_URL = "http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc"
+    # SSL Test SCS: https://nutshell.maxgigapop.net:8443/geni/xmlrpc
+
+    # FIXME: Ideally we'd support loading your omni_config and finding the cert/key that way
     
     ind = -1
     printR = True
     listAMs = False
+    keyfile=None
+    certfile=None
+    if "-h" in argv or "-?" in argv:
+        print "Usage: scs.py [--scs_url <URL of SCS server if not standard (%s)] [--monitoring to suppress printouts] --key <path-to-trusted-key> --cert <path-to-trusted-client-cert>" % SCS_URL
+        print "    Key and cert are not required for an SCS not running at an https URL."
+        print "    Supply --listaggregates to list known AMs at the SCS instead of running GetVersion"
+        return 0
     for arg in argv:
         ind = ind + 1
         if ("--scs_url" == arg or "--scsURL" == arg) and (ind+1) < len(argv):
@@ -235,8 +259,26 @@ def main(argv=None):
             printR = False
         if arg.lower() == "--listaggregates":
             listAMs = True
+        if ("--key" == arg or "--keyfile" == arg) and (ind+1) < len(argv):
+            keyfile = argv[ind+1]
+        if ("--cert" == arg or "--certfile" == arg) and (ind+1) < len(argv):
+            certfile = argv[ind+1]
+
+    if keyfile is not None:
+        # Ensure have a good path for it
+        if not os.path.exists(keyfile) or not os.path.getsize(keyfile) > 0:
+            print "ERROR: Key file %s doesn't exist or is empty" % keyfile
+            return 1
+        keyfile = os.path.expanduser(keyfile)
+    if certfile is not None:
+        # Ensure have a good path for it
+        if not os.path.exists(certfile) or not os.path.getsize(certfile) > 0:
+            print "ERROR: Cert file %s doesn't exist or is empty" % certfile
+            return 1
+        certfile = os.path.expanduser(certfile)
+
     try:
-        scsI = Service(SCS_URL)
+        scsI = Service(SCS_URL, key=keyfile, cert=certfile)
         if listAMs:
             result = scsI.ListAggregates(printR)
         else:

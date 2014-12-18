@@ -96,3 +96,9 @@ class SecureThreadedXMLRPCServer(SocketServer.ThreadingMixIn, SecureXMLRPCServer
                                         keyfile=keyfile, certfile=certfile, ca_certs=ca_certs)
 
 
+
+    # Threaded version of get_pem_cert: pull from 
+    # request_specific_info (per thread)
+    def get_pem_cert(self) :
+        return SecureThreadedXMLRPCRequestHandler.get_pem_cert()
+

@@ -47,6 +47,9 @@ New in v2.8:
  * Fix error message on expired user cert. (#756)
  * Remove ticket #722 workaround (bug fixed at ION AM). (#724)
  * Mac installer: remove old aliases before adding new ones. (#556)
+ * Clean up `listresources` summary string and include sliver expiration if known. (#704)
+ * Add support for `--start-time` option to specify a `geni_start_time` option
+   for any aggregates that support such a value. (#660)
  * Support `Update()` from AM APIv4 in any v3+ implementation. Support
    is only known at ProtoGENI, and is limited. (#589)
 
@@ -927,6 +930,9 @@ Options:
     --end-time=GENI_END_TIME
                         Requested end time for any newly allocated or
                         provisioned slivers - may be ignored by the AM
+    --start-time=GENI_START_TIME
+                        Requested start time for any allocated slivers
+                        - NOW if not provided, could be for future reservations
     --optionsfile=JSON_OPTIONS_FILENAME
                         Send all options defined in named JSON format file to
                         methods that take options

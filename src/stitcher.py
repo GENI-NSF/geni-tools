@@ -75,7 +75,7 @@ import gcf.omnilib.stitch.objects
 #from gcf.omnilib.stitch.objects import DCN_AM_RETRY_INTERVAL_SECS as DCN_AM_RETRY_INTERVAL_SECS
 
 # URL of the SCS service
-SCS_URL = "http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc"
+SCS_URL = "https://oingo.dragon.maxgigapop.net:8443/geni/xmlrpc"
 
 DEFAULT_CAPACITY = 20000 # in Kbps
 
@@ -136,6 +136,10 @@ def call(argv, options=None):
                       default=None)
     parser.add_option("--timeout", default=0, type="int",
                       help="Max minutes to allow stitcher to run before killing a reservation attempt (default %default minutes, 0 means no timeout).")
+    parser.add_option("--noAvailCheck", default=False, action="store_true",
+                      help="Disable checking current VLAN availability where possible.")
+    parser.add_option("--genRequest", default=False, action="store_true",
+                      help="Generate and save an expanded request RSpec, but do no reservation.")
     parser.add_option("--fakeModeDir",
                       help="Developers only: If supplied, use canned server responses from this directory",
                       default=None)

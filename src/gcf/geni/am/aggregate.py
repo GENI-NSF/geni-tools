@@ -60,7 +60,8 @@ class Aggregate(object):
                 self.containers[container].remove(r)
         elif container:
             # deallocate all the resources in the container
-            for r in self.containers[container]:
+            container_resources = list(self.containers[container])
+            for r in container_resources:
                 self.containers[container].remove(r)
         elif resources:
             # deallocate the resources from their container
