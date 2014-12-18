@@ -1960,7 +1960,7 @@ class StitchingHandler(object):
         return parsed_rspec, workflow_parser
 
     def ensureOneExoSM(self):
-        '''If 2 AMs in ams_to_process are ExoGENI, ensure we use the ExoSM. If 2 AMs use the ExoSM URL, combine them into a single AM.'''
+        '''If 2 AMs in ams_to_process are ExoGENI and share a path and no noEG Stitching, ensure we use the ExoSM. If 2 AMs use the ExoSM URL, combine them into a single AM.'''
         if len(self.ams_to_process) < 2:
             return
         exoSMCount = 0
@@ -1984,22 +1984,48 @@ class StitchingHandler(object):
             return
 
         if egAMCount > 1:
-            self.logger.debug("Request includes more than one ExoGENI AM. Must go through the ExoSM.")
-            if self.opts.devmode and self.opts.noExoSM:
-                self.logger.info("Multiple EG AMs but in dev mode requested no ExoSM, so continuing...")
+            self.logger.debug("Request includes more than one ExoGENI AM.")
+            # If there is a stitched link between 2 EG AMs and no noEGStitching, then we
+            # must change each to be the ExoSM so we use EG stitching for those AMs / links.
+            # If there is no stitched link between the 2 EG AMs or the user specified noEGStitching,
+            # then we do not change them to be the ExoSM.
+
+            if self.opts.noEGStitching:
+                self.logger.debug("Requested no EG stitching. Will edit requests to let this work later")
+                # And do not force the AMs to be the ExoSM
             else:
+                self.logger.debug("Will use EG stitching where applicable. Must go through the ExoSM.")
                 if self.opts.noExoSM:
-                    self.logger.warn("Requested resources from more than one ExoGENI AM, which requires use of the ExoSM. But also requested to not use the ExoSM - ignoring that.")
-                for anEGAM in egAMs:
-                    # Make anEGAM the ExoSM
-                    self.logger.debug("Making %s the ExoSM", anEGAM)
-                    anEGAM.alt_url = anEGAM.url
-                    anEGAM.url = defs.EXOSM_URL
-                    anEGAM.isExoSM = True
-                    anEGAM.nick = handler_utils._lookupAggNick(self, anEGAM.url)
-                    exoSMCount += 1
-                    exoSMs.append(anEGAM)
-                    nonExoSMs.remove(anEGAM)
+                    # We want to use EG stitching (default), but user asked for noExoSM.
+                    # I think that means do not force AMs to be the ExoSM
+                    self.logger.debug("Requested noExoSM. So not changing EG AMs to be the ExoSM. So using GENI stitching.")
+                else:
+                    for anEGAM in egAMs:
+                        # Only make this AM the ExoSM if it has a link to another EG AM
+                        # so that EG stitching applies.
+                        hasEGlink = False
+                        for path in anEGAM.paths:
+                            for am in path.aggregates:
+                                if am != anEGAM and am.isEG:
+                                    self.logger.debug("%s linked to other EG AM %s via %s", anEGAM, am, path)
+                                    hasEGlink = True
+                                    break
+                            if hasEGlink:
+                                break
+                        if not hasEGlink:
+                            self.logger.debug("%s is EG but has no links to EG AMs, so no need to make it the ExoSM", anEGAM)
+                            continue
+                        self.logger.debug("%s has a link that includes another EG AM. To use EG stitching between them, make this the ExoSM.", anEGAM)
+
+                        # Make anEGAM the ExoSM
+                        self.logger.debug("Making %s the ExoSM", anEGAM)
+                        anEGAM.alt_url = anEGAM.url
+                        anEGAM.url = defs.EXOSM_URL
+                        anEGAM.isExoSM = True
+                        anEGAM.nick = handler_utils._lookupAggNick(self, anEGAM.url)
+                        exoSMCount += 1
+                        exoSMs.append(anEGAM)
+                        nonExoSMs.remove(anEGAM)
 
         if exoSMCount == 0:
             self.logger.debug("Not using ExoSM")
