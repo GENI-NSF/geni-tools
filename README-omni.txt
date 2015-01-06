@@ -50,6 +50,7 @@ New in v2.8:
  * Clean up `listresources` summary string and include sliver expiration if known. (#704)
  * Add support for `--start-time` option to specify a `geni_start_time` option
    for any aggregates that support such a value. (#660)
+ * Update copyrights to 2015 (#764)
 
 New in v2.7:
  * Calls to `status` and `sliverstatus` will also call the CH
@@ -833,7 +834,7 @@ Omni supports the following command-line options.
 $ ~/gcf/src/omni.py -h                            
 Usage: 
 GENI Omni Command Line Aggregate Manager Tool Version 2.8
-Copyright (c) 2014 Raytheon BBN Technologies
+Copyright (c) 2011-2015 Raytheon BBN Technologies
 
 omni.py [options] [--project <proj_name>] <command and arguments> 
 
