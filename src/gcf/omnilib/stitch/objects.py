@@ -431,6 +431,8 @@ class Aggregate(object):
         # Time when we last checked actual VLAN tag availability at this AM
         self.lastAvailCheck = None
 
+        self.editedRequest = False # For EG AM, is the submitted request edited
+
     def __str__(self):
         if self.nick:
             if self.inDebug:
@@ -620,6 +622,18 @@ class Aggregate(object):
         # This method handles fakeMode, retrying on BUSY, polling SliverStatus for DCN AMs,
         # VLAN_UNAVAILABLE errors, other errors
         manifestString = self.doReservation(opts, slicename, scsCallCount)
+
+        # If we edited the request, then edit it back now before doing anything with it
+        # Ticket #738
+        if self.editedRequest:
+            self.logger.debug("Undo edits from request changing exogeni.net to eg.net if any preserved in manifest (may not be).")
+            # Swap any urn:publicid:IDN+eg.net to be urn:publicid:IDN+exogeni.net
+            newman = manifestString.replace("urn:publicid:IDN+eg.net", "urn:publicid:IDN+exogeni.net")
+            if newman != manifestString:
+                self.logger.debug("Undid eg.net from exogeni.net")
+                lendif = len(newman) - len(manifestString)
+                difcnt = lendif / (len("urn:publicid:IDN+exogeni.net") - len("urn:publicid:IDN+eg.net"))
+                self.logger.debug("Apparently undid %d substitutions", difcnt)
 
         # Look for and save any sliver expiration
         self.setSliverExpirations(expires_from_rspec(manifestString, self.logger))
@@ -1535,9 +1549,10 @@ class Aggregate(object):
 
         # For EG AMs: If we have >1 EG AM then we likely need to edit the
         # request so each EG AM only processes pieces intended for it.
+        # Ticket #738
         if self.isEG:
             haveMultEGs = False
-            for agg in Aggregate.aggs:
+            for agg in Aggregate.all_aggregates():
                 if agg != self and agg.isEG:
                     haveMultEGs = True
                     break
@@ -2219,6 +2234,11 @@ class Aggregate(object):
     def editEGRequest(self, requestString):
         # Edit a request to an EG AM so that URNs for other EG AMs
         # are not recognized as EG AMs by this EG AM, so no errors
+        # Ticket #738
+
+        import re
+
+        self.editedRequest = False
 
         # build list of auths
         agg_urns = Aggregate.aggs.keys()
@@ -2226,34 +2246,33 @@ class Aggregate(object):
         for urn in agg_urns:
             agg_urn_syns += Aggregate.urn_syns(urn)
         all_agg_urns = list(set(agg_urns + agg_urn_syns))
-        all_agg_urn_auths = []
-        for urn in all_agg_urns:
-            all_agg_urn_auths.append(extractAuth(urn))
+
+        difcnt = 0
 
         idx = 0
         while (idx < len(requestString) and "urn:publicid:IDN+exogeni.net" in requestString[idx:]):
             idx = requestString.find("urn:publicid:IDN+exogeni.net", idx)
-            self.logger.debug("Found a URN at %d", idx)
+            self.logger.debug("Found a URN at pos %d", idx)
             # Use re to find the full urn, then extract the auth
-            match = re.match(r"urn:publicid:IDN\+exogeni\.net[^\+]*", test[idx:])
+            match = re.match(r"urn:publicid:IDN\+exogeni\.net[^\+]*", requestString[idx:])
             urn = None
             if match:
                 urn = match.group(0)
-                auth = urn[len("urn:publicid:IDN+"):urn.find("+", urn[len("urn:publicid:IDN+exogeni.net"):])]
                 self.logger.debug("URN: %s", urn)
             if not urn:
                 idx += len("urn:publicid:IDN+exogeni.net")
                 continue
 
-            if lower(str(urn)).startswith("urn:publicid:idn+exogeni.net"):
-                self.logger.debug("URN %s is an EG URN", urn[2])
+            if str(urn).lower().startswith("urn:publicid:idn+exogeni.net"):
+                self.logger.debug("URN '%s' is an EG URN", urn)
                 isMine = False
                 for myurn in self.urn_syns:
                     if myurn.startswith(urn):
                         isMine=True
-                        self.logger.debug("request URN %s is for this AM (matches %s)", urn, myurn)
+                        self.logger.debug("request URN '%s' is for this AM (matches '%s')", urn, myurn)
                         break
                 if isMine:
+                    idx += len("urn:publicid:IDN+")
                     continue
                 # This URN is not for this AM. So in general, we want to edit
                 # But the ExoSM handles multiple AMs, so only edit those URNs
@@ -2262,19 +2281,22 @@ class Aggregate(object):
                 if self.isExoSM:
                     for aggURN in all_agg_urns:
                         if aggURN.startswith(urn):
-                            self.logger.debug("URN %s is a URN for an Aggregate we're contacting (%s), so edit", urn, aggURN)
+                            self.logger.debug("URN '%s' is a URN for an Aggregate we're contacting (%s), so edit", urn, aggURN)
                             doEdit = True
                             break
                     if not doEdit:
-                        self.logger.debug("URN %s doesn't match any Aggregate instance we're contacting, so don't edit", urn)
+                        self.logger.debug("URN '%s' doesn't match any Aggregate instance we're contacting, so don't edit", urn)
                     # else this URN doesn't have its own AM, so let the ExoSM handle it. so do not edit.
                 if doEdit:
                     # idx points to the start of the URN
                     # change exogeni to eg
-                    requestString = requestString[:idx-1] + requestString[idx:].replace("exogeni", "eg", 1)
+                    requestString = requestString[:idx] + requestString[idx:].replace("exogeni", "eg", 1)
+                    self.editedRequest = True
                     self.logger.debug("Edited substring: %s", requestString[idx-5:idx+len("urn:publicid:IDN+exogeni.net") + 30])
+                    difcnt += 1
             idx += len("urn:publicid:IDN+")
 
+        self.logger.debug("Made %d changes of exogeni to eg", difcnt)
         return requestString
 
     def handleDcnAM(self, opts, slicename, ctr):

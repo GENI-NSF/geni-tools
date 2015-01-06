@@ -800,6 +800,7 @@ class StitchingHandler(object):
             # Also mark each hop with what hop it imports VLANs from,
             # And check for AM dependency loops
             workflow_parser.parse({}, self.parsedSCSRSpec)
+#            self.logger.debug("Did fake workflow parsing")
 
         if existingAggs:
             # Copy existingAggs.hops.vlans_unavailable to workflow_parser.aggs.hops.vlans_unavailable? Other state?
@@ -1164,6 +1165,12 @@ class StitchingHandler(object):
                 if self.scsCalls == self.maxSCSCalls:
                     self.logger.error("Stitching max circuit failures reached")
                     raise StitchingError("Stitching reservation failed %d times. Last error: %s" % (self.scsCalls, se))
+                # FIXME: If we aren't doing stitching so won't be calling the SCS, then does it ever make sense
+                # to try this again here? For example, EG Embedding workflow ERROR?
+#                if not self.isStitching:
+#                    self.logger.error("Reservation failed and not reasonable to retry - not a stitching request.")
+#                    raise StitchingError("Multi AM reservation failed. Not stitching so cannot retry with new path. %s" % se)
+
                 self.logger.warn("Stitching failed but will retry: %s", se)
 
                 # Flush the cache of aggregates. Loses all state. Avoids
@@ -2003,19 +2010,40 @@ class StitchingHandler(object):
                     for anEGAM in egAMs:
                         # Only make this AM the ExoSM if it has a link to another EG AM
                         # so that EG stitching applies.
-                        hasEGlink = False
-                        for path in anEGAM.paths:
-                            for am in path.aggregates:
-                                if am != anEGAM and am.isEG:
-                                    self.logger.debug("%s linked to other EG AM %s via %s", anEGAM, am, path)
-                                    hasEGlink = True
+
+                        # Note: If we get here we said use EG stitching
+                        # So we may not have called the SCS (check self.isStitching)
+                        # So we may have no paths from the workflow
+                        # But also that would mean GENI Stitching is not an option
+
+                        if self.isStitching:
+                            # We called the SCS, so we know paths
+                            # And so using GENI stitching is an option still
+                            hasEGlink = False
+                            for path in anEGAM.paths:
+                                self.logger.debug("Looking at %s on %s", path, anEGAM)
+                                for am in path.aggregates:
+                                    self.logger.debug("Looking at %s on %s", am, path)
+                                    if am != anEGAM and am.isEG:
+                                        self.logger.debug("%s linked to other EG AM %s via %s", anEGAM, am, path)
+                                        hasEGlink = True
+                                        break
+                                if hasEGlink:
                                     break
-                            if hasEGlink:
-                                break
-                        if not hasEGlink:
-                            self.logger.debug("%s is EG but has no links to EG AMs, so no need to make it the ExoSM", anEGAM)
-                            continue
-                        self.logger.debug("%s has a link that includes another EG AM. To use EG stitching between them, make this the ExoSM.", anEGAM)
+                            if not hasEGlink:
+                                self.logger.debug("%s is EG but has no links to EG AMs, so no need to make it the ExoSM", anEGAM)
+                                continue
+                            self.logger.debug("%s has a link that includes another EG AM. To use EG stitching between them, make this the ExoSM.", anEGAM)
+                        else:
+                            # If we didn't call the SCS, then we can't use GENI stitching, and so
+                            # whether or not a path has another EG AM is irrelevant to whether we make the AM the ExoSM
+                            # If we got here, they didn't set noExoSM.
+
+                            # If useExoSM then do the change
+                            # If there are links among EG AMs, then we need the change
+                            # safest though is just to always do the change
+                            # Else if an EG AM has a link
+                            self.logger.debug("Not a GENI stitching request. Make this the EG AM.")
 
                         # Make anEGAM the ExoSM
                         self.logger.debug("Making %s the ExoSM", anEGAM)
