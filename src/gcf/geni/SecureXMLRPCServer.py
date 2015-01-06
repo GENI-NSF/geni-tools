@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2010-2014 Raytheon BBN Technologies
+# Copyright (c) 2010-2015 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -109,3 +109,9 @@ class SecureXMLRPCServer(SimpleXMLRPCServer):
             # Catch for clearer error message?
             self.server_bind()
             self.server_activate()
+
+    # Return the PEM cert for current XMLRPC client connection
+    # This works for the single threaded case. Need to override
+    # This method for the threaded case
+    def get_pem_cert(self):
+        return self.pem_cert

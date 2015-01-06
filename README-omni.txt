@@ -48,6 +48,9 @@ New in v2.8:
  * Remove ticket #722 workaround (bug fixed at ION AM). (#724)
  * Mac installer: remove old aliases before adding new ones. (#556)
  * Clean up `listresources` summary string and include sliver expiration if known. (#704)
+ * Add support for `--start-time` option to specify a `geni_start_time` option
+   for any aggregates that support such a value. (#660)
+ * Update copyrights to 2015 (#764)
 
 New in v2.7:
  * Calls to `status` and `sliverstatus` will also call the CH
@@ -831,7 +834,7 @@ Omni supports the following command-line options.
 $ ~/gcf/src/omni.py -h                            
 Usage: 
 GENI Omni Command Line Aggregate Manager Tool Version 2.8
-Copyright (c) 2014 Raytheon BBN Technologies
+Copyright (c) 2011-2015 Raytheon BBN Technologies
 
 omni.py [options] [--project <proj_name>] <command and arguments> 
 
@@ -925,6 +928,9 @@ Options:
     --end-time=GENI_END_TIME
                         Requested end time for any newly allocated or
                         provisioned slivers - may be ignored by the AM
+    --start-time=GENI_START_TIME
+                        Requested start time for any allocated slivers
+                        - NOW if not provided, could be for future reservations
     --optionsfile=JSON_OPTIONS_FILENAME
                         Send all options defined in named JSON format file to
                         methods that take options

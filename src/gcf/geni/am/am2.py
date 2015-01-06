@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2014 Raytheon BBN Technologies
+# Copyright (c) 2011-2015 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -27,6 +27,12 @@ Invoked from gcf-am.py
 The GENI AM API is defined in the AggregateManager class.
 """
 
+# Note: This AM uses SFA authorization to check that the caller
+# has appropriate credentials to make the call. If this AM is used in 
+# conjunction with the policy-based authorization capability (in gcf.geni.auth)
+# then this code needs to only extract expiration times from the credentials
+# which can be done using the gcf.sfa.credential module
+
 from __future__ import absolute_import
 
 import base64
@@ -47,7 +53,8 @@ from ... import geni
 from ..util.urn_util import publicid_to_urn, URN
 from ..util.tz_util import tzd
 from ..SecureXMLRPCServer import SecureXMLRPCServer
-
+from ..auth.base_authorizer import *
+from .am_method_context import AMMethodContext
 
 # See sfa/trust/rights.py
 # These are names of operations
@@ -79,6 +86,8 @@ class Slice(object):
         self.expiration = expiration
         self.resources = dict()
 
+    def getURN(self) : return self.urn
+
     def status(self, resources):
         """Determine the status of the sliver by examining the status
         of each resource in the sliver.
@@ -101,6 +110,12 @@ class Slice(object):
         else:
             return Resource.STATUS_UNKNOWN
 
+# Simple class to hold a sliver urn to be compatible with V3 calls
+class Sliver(object):
+    def __init__(self, urn):
+        self._urn = urn
+
+    def urn(self): return self._urn
 
 class ReferenceAggregateManager(object):
     '''A reference Aggregate Manager that manages fake resources.'''
@@ -173,7 +188,7 @@ class ReferenceAggregateManager(object):
         # from the https connection by the SecureXMLRPCServer
         # to identify the caller.
         try:
-            self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                     credentials,
                                                     None,
                                                     privileges,
@@ -264,14 +279,18 @@ class ReferenceAggregateManager(object):
         # Use the client PEM format cert as retrieved
         # from the https connection by the SecureXMLRPCServer
         # to identify the caller.
+
         try:
-            creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            creds = self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                             credentials,
                                                             slice_urn,
                                                             privileges,
                                                             options)
         except Exception, e:
             raise xmlrpclib.Fault('Insufficient privileges', str(e))
+
+        # Grab the user_urn
+        user_urn = gid.GID(string=options['geni_true_caller_cert']).get_urn()
 
         # If we get here, the credentials give the caller
         # all needed privileges to act on the given target.
@@ -324,6 +343,7 @@ class ReferenceAggregateManager(object):
 
         newslice = Slice(slice_urn, expiration)
         self._agg.allocate(slice_urn, resources.values())
+        self._agg.allocate(user_urn, resources.values())
         for cid, r in resources.items():
             newslice.resources[cid] = r.id
             r.status = Resource.STATUS_READY
@@ -357,13 +377,17 @@ class ReferenceAggregateManager(object):
         # from the https connection by the SecureXMLRPCServer
         # to identify the caller.
         try:
-            self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                     credentials,
                                                     slice_urn,
                                                     privileges,
                                                     options)
         except Exception, e:
             raise xmlrpclib.Fault('Insufficient privileges', str(e))
+
+        # Grab the user_urn
+        user_urn = gid.GID(string=options['geni_true_caller_cert']).get_urn()
+
 
         # If we get here, the credentials give the caller
         # all needed privileges to act on the given target.
@@ -375,6 +399,7 @@ class ReferenceAggregateManager(object):
                                  slice_urn)
                 return self.errorResult(11, "Unavailable: Slice %s is unavailable." % (slice_urn))
             self._agg.deallocate(slice_urn, None)
+            self._agg.deallocate(user_urn, None)
             for r in resources:
                 r.status = Resource.STATUS_UNKNOWN
             del self._slices[slice_urn]
@@ -382,6 +407,7 @@ class ReferenceAggregateManager(object):
             return self.successResult(True)
         else:
             return self._no_such_slice(slice_urn)
+
 
 
     def SliverStatus(self, slice_urn, credentials, options):
@@ -399,7 +425,7 @@ class ReferenceAggregateManager(object):
         # listslices, listnodes, policy
         privileges = (SLIVERSTATUSPRIV,)
         try:
-            self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                     credentials,
                                                     slice_urn,
                                                     privileges,
@@ -465,7 +491,7 @@ class ReferenceAggregateManager(object):
         self.logger.info('RenewSliver(%r, %r)' % (slice_urn, expiration_time))
         privileges = (RENEWSLIVERPRIV,)
         try:
-            creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            creds = self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                             credentials,
                                                             slice_urn,
                                                             privileges,
@@ -515,7 +541,7 @@ class ReferenceAggregateManager(object):
         self.logger.info('Shutdown(%r)' % (slice_urn))
         privileges = (SHUTDOWNSLIVERPRIV,)
         try:
-            self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                     credentials,
                                                     slice_urn,
                                                     privileges,
@@ -532,6 +558,17 @@ class ReferenceAggregateManager(object):
         else:
             self.logger.info("Shutdown: No such slice: %s.", slice_urn)
             return self._no_such_slice(slice_urn)
+
+    # Return a slice and list slivers
+    def decode_urns(self, urns):
+        slice_urn = urns[0]
+        if slice_urn not in self._slices:
+            raise ApiErrorException(AM_API.SEARCH_FAILED, 
+                                    'Unknown slice "%s%' % (slice_urn))
+        slice_obj = self._slices[slice_urn]
+        slivers = [Sliver(sliver_urn) \
+                       for sliver_urn in slice_obj.resources.values()]
+        return slice_obj, slivers
 
     def successResult(self, value, output=""):
         code_dict = dict(geni_code=0,
@@ -659,9 +696,13 @@ class AggregateManager(object):
     XMLRPC interface and invokes a delegate for all the operations.
     """
 
-    def __init__(self, delegate):
+    def __init__(self, trust_roots_dir, delegate, authorizer=None,
+                 resource_manager=None):
+        self._trust_roots_dir = trust_roots_dir
         self._delegate = delegate
         self.logger = logging.getLogger('gcf.am2')
+        self.authorizer = authorizer
+        self.resource_manager = resource_manager
 
     def _exception_result(self, exception):
         output = str(exception)
@@ -690,11 +731,20 @@ class AggregateManager(object):
         to that slice. If geni_available is specified in the options,
         then only report available resources. And if geni_compressed
         option is specified, then compress the result.'''
-        try:
-            return self._delegate.ListResources(credentials, options)
-        except Exception as e:
-            self.logger.exception("Error in ListResources:")
-            return self._exception_result(e)
+        args = {}
+        method = AM_Methods.LIST_RESOURCES_V2
+        if 'geni_slice_urn' in options:
+            method = AM_Methods.LIST_RESOURCES_FOR_SLICE_V2
+            args['slice_urn'] = options['geni_slice_urn']
+        with AMMethodContext(self, method,
+                             self.logger, self.authorizer, 
+                             self.resource_manager,
+                             credentials,
+                             args, options) as amc:
+            if not amc._error:
+                amc._result = \
+                    self._delegate.ListResources(credentials, amc._options)
+        return amc._result
 
     def CreateSliver(self, slice_urn, credentials, rspec, users, options):
         """Create a sliver with the given URN from the resources in
@@ -703,48 +753,84 @@ class AggregateManager(object):
         users argument provides extra information on configuring the resources
         for runtime access.
         """
-        try:
-            return self._delegate.CreateSliver(slice_urn, credentials, rspec,
-                                               users, options)
-        except Exception as e:
-            self.logger.exception("Error in CreateSliver:")
-            return self._exception_result(e)
+        args = {'slice_urn' : slice_urn, 'rspec' : rspec,  'users' : users}
+        with AMMethodContext(self, AM_Methods.CREATE_SLIVER_V2, 
+                             self.logger, self.authorizer, 
+                             self.resource_manager,
+                             credentials, 
+                             args, options, resource_bindings=True) as amc:
+            if not amc._error:
+                slice_urn = amc._args['slice_urn']
+                rspec = amc._args['rspec']
+                users = amc._args['users']
+                amc._result = self._delegate.CreateSliver(slice_urn, 
+                                                          credentials,
+                                                          rspec, users, 
+                                                          amc._options)
+        return amc._result
 
     def DeleteSliver(self, slice_urn, credentials, options):
         """Delete the given sliver. Return true on success."""
-        try:
-            return self._delegate.DeleteSliver(slice_urn, credentials, options)
-        except Exception as e:
-            self.logger.exception("Error in DeleteSliver:")
-            return self._exception_result(e)
+        args = {'slice_urn' : slice_urn}
+        with AMMethodContext(self, AM_Methods.DELETE_SLIVER_V2,
+                             self.logger, self.authorizer, 
+                             self.resource_manager,
+                             credentials,
+                             args, options) as amc:
+            if not amc._error:
+                slice_urn = amc._args['slice_urn']
+                amc._result = \
+                    self._delegate.DeleteSliver(slice_urn, credentials, 
+                                                amc._options)
+        return amc._result
 
     def SliverStatus(self, slice_urn, credentials, options):
         '''Report as much as is known about the status of the resources
         in the sliver. The AM may not know.'''
-        try:
-            return self._delegate.SliverStatus(slice_urn, credentials, options)
-        except Exception as e:
-            self.logger.exception("Error in SliverStatus:")
-            return self._exception_result(e)
+        args = {'slice_urn' : slice_urn}
+        with AMMethodContext(self, AM_Methods.SLIVER_STATUS_V2,
+                             self.logger, self.authorizer, 
+                             self.resource_manager,
+                             credentials,
+                             args, options) as amc:
+            if not amc._error:
+                slice_urn = amc._args['slice_urn']
+                amc._result = \
+                    self._delegate.SliverStatus(slice_urn, credentials, 
+                                                amc._options)
+        return amc._result
 
     def RenewSliver(self, slice_urn, credentials, expiration_time, options):
         """Extend the life of the given sliver until the given
         expiration time. Return False on error."""
-        try:
-            return self._delegate.RenewSliver(slice_urn, credentials,
-                                              expiration_time, options)
-        except Exception as e:
-            self.logger.exception("Error in RenewSliver:")
-            return self._exception_result(e)
+        args = {'slice_urn' : slice_urn, 'expiration_time' : expiration_time}
+        with AMMethodContext(self, AM_Methods.RENEW_SLIVER_V2,
+                             self.logger, self.authorizer, 
+                             self.resource_manager, credentials,
+                             args, options, resource_bindings=True) as amc:
+            if not amc._error:
+                slice_urn = amc._args['slice_urn']
+                expiration_time = amc._args['expiration_time']
+                amc._result = \
+                    self._delegate.RenewSliver(slice_urn, credentials, 
+                                               expiration_time, amc._options)
+        return amc._result
 
     def Shutdown(self, slice_urn, credentials, options):
         '''For Management Authority / operator use: shut down a badly
         behaving sliver, without deleting it to allow for forensics.'''
-        try:
-            return self._delegate.Shutdown(slice_urn, credentials, options)
-        except Exception as e:
-            self.logger.exception("Error in Shutdown:")
-            return self._exception_result(e)
+        args = {'slice_urn' : slice_urn}
+        with AMMethodContext(self, AM_Methods.SHUTDOWN_V2,
+                             self.logger, self.authorizer, 
+                             self.resource_manager,
+                             credentials,
+                             args, options) as amc:
+            if not amc._error:
+                slice_urn = amc._args['slice_urn']
+                amc._result = \
+                    self._delegate.Shutdown(slice_urn, credentials, 
+                                            amc._options)
+        return amc._result
 
 
 class AggregateManagerServer(object):
@@ -753,7 +839,8 @@ class AggregateManagerServer(object):
 
     def __init__(self, addr, keyfile=None, certfile=None,
                  trust_roots_dir=None,
-                 ca_certs=None, base_name=None):
+                 ca_certs=None, base_name=None,
+                 authorizer=None, resource_manager=None):
         # ca_certs arg here must be a file of concatenated certs
         if ca_certs is None:
             raise Exception('Missing CA Certs')
@@ -767,7 +854,9 @@ class AggregateManagerServer(object):
         # FIXME: set logRequests=true if --debug
         self._server = SecureXMLRPCServer(addr, keyfile=keyfile,
                                           certfile=certfile, ca_certs=ca_certs)
-        self._server.register_instance(AggregateManager(delegate))
+        aggregate_manager = AggregateManager(trust_roots_dir, delegate, 
+                                             authorizer, resource_manager)
+        self._server.register_instance(aggregate_manager)
         # Set the server on the delegate so it can access the
         # client certificate.
         delegate._server = self._server
