@@ -16,7 +16,7 @@ License
 http://git.planet-lab.org/?p=sfa.git;a=blob_plain;f=LICENSE.txt;hb=HEAD
 
 Copyright (c) 2008-2014 Board of Trustees, Princeton University
-Copyright (c) 2010-2013 INRIA, Institut National d'Informatique et Automatique
+Copyright (c) 2010-2014 INRIA, Institut National d'Informatique et Automatique
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and/or hardware specification (the "Work") to
