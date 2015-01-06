@@ -1,7 +1,7 @@
 [Setup]
 OutputDir=C:\Users\local_user\gcf\executables
 OutputBaseFilename=omniTools-2.8-win-setup
-AppCopyright=2010-2014
+AppCopyright=2010-2015
 AppName=omniTools-2.8
 AppVerName=omniTools-2.8
 InfoAfterFile=C:\Users\local_user\gcf\windows_install\infoAfterFile.rtf

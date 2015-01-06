@@ -8,3 +8,14 @@ gcf_config
 omni_config
 syncm
 *.sw*
+gcf-*.tar
+gcf-*.tar.gz
+getversion-*.json
+ahtest*-*.xml
+ahtest*-*.json
+ahelsing-*.xml
+ln*.xml
+working/
+hold/
+dist/
+build/

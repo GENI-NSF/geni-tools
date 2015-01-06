@@ -10,6 +10,7 @@ gcf 2.8:
   * Clean up `listresources` summary string and include sliver expiration if known. (#704)
   * Add support for `--start-time` option to specify a `geni_start_time` option
     for any aggregates that support such a value. (#660)
+  * Update copyrights to 2015 (#764)
 
  * Stitcher
   * Limit available range on a hop that doesn't import to tags available at hops that 
