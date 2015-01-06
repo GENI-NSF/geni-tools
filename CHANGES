@@ -10,6 +10,7 @@ gcf 2.8:
   * Clean up `listresources` summary string and include sliver expiration if known. (#704)
   * Add support for `--start-time` option to specify a `geni_start_time` option
     for any aggregates that support such a value. (#660)
+  * Update copyrights to 2015 (#764)
   * Support `Update()` from AM APIv4 in any v3+ implementation. Support
     is only known at ProtoGENI, and is limited. (#589)
 
