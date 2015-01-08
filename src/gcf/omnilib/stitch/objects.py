@@ -625,6 +625,9 @@ class Aggregate(object):
 
         # If we edited the request, then edit it back now before doing anything with it
         # Ticket #738
+        # Note however that we are undoing edits in stuff that is not relevant to this AM.
+        # ExoGENI drops stuff not relevant to the local AM.
+        # So in general, there should be none. But logically, this is the correct thing to do...
         if self.editedRequest:
             self.logger.debug("Undo edits from request changing exogeni.net to eg.net if any preserved in manifest (may not be).")
             # Swap any urn:publicid:IDN+eg.net to be urn:publicid:IDN+exogeni.net
@@ -634,6 +637,7 @@ class Aggregate(object):
                 lendif = len(newman) - len(manifestString)
                 difcnt = lendif / (len("urn:publicid:IDN+exogeni.net") - len("urn:publicid:IDN+eg.net"))
                 self.logger.debug("Apparently undid %d substitutions", difcnt)
+                manifestString = newman
 
         # Look for and save any sliver expiration
         self.setSliverExpirations(expires_from_rspec(manifestString, self.logger))
