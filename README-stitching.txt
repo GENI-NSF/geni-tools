@@ -614,9 +614,11 @@ Cannot find the set of paths for the RequestTopology. '.
  current aggregates, and VLAN translation support is limited. VLAN
  tags available at each aggregate are limited, and may run out.
  - Stitching to ExoGENI is limited:
-  - Reservations at ExoGENI AMs work. If you request resources at
-  multiple ExoGENI AMs, you must use the ExoSM. Stitcher will ensure
-  this.
+  - Reservations at ExoGENI AMs work.
+   - Previously if you requested resources at
+  multiple ExoGENI AMs, Stitcher would use the ExoSM for all ExoGENI
+  reservations. Currently, stitcher allows you to continue using the
+  individual ExoGENI racks, unless you specify --useExoSM.
   - Stitching within ExoGENI, by submitting a request to the ExoSM
   with only ExoGENI resources, works fine.
   - Stitching between ExoGENI and non ExoGENI resources only works at
@@ -639,7 +641,7 @@ Cannot find the set of paths for the RequestTopology. '.
  an existing reservation.
  - Some fatal errors at aggregates are not recognized, so the script keeps trying longer
  than it should.
- - In order to make resources expire at rougly the same time, stitcher
+ - In order to make resources expire at roughly the same time, stitcher
  currently hard-codes expected new sliver expiration times as of
  September, 2014. This should be retrieved dynamically somehow
  instead. New aggregate types or local policies may cause problems.
