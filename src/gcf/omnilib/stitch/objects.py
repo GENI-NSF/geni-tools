@@ -3880,7 +3880,7 @@ class Aggregate(object):
                     if not isinstance(result, dict) or len(result.values()) != 1:
                         raise StitchingError("Failed to list resources at %s (malformed APIv2 return): %s" % (self, text))
                     myResult = result.values()[0]
-                    if not isinstance(myResult, dict) and myResult.has_key("value"):
+                    if not (isinstance(myResult, dict) and myResult.has_key("value")):
                         raise StitchingError("Failed to list resources at %s (malformed APIv2 return didn't have a value): %s" % (self, text))
                     rspec = myResult["value"]
                 else:
