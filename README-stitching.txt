@@ -238,14 +238,18 @@ eg-fiu=urn:publicid:IDN+exogeni.net:fiuvmsite+authority+am,https://fiu-hn.exogen
  - `--useExoSM`: Try to use the ExoGENI ExoSM for ExoGENI
  reservations. If we get an individual ExoGENI rack URL for an
  aggregate, then try to use the ExoSM URL. This is inconsistent with
- `--noExoSM` or `--noEGStitching`; ExoGENI stitching wil be used where
+ `--noExoSM` or `--noEGStitching` or `--noEGStitchingOnLink`; ExoGENI stitching wil be used where
  applicable. For this to work, your
  `omni_config`  or the base aggregate nicknames must have an entry for
  the ExoGENI rack that specifies the URN and URL, as well as an entry
  for the ExoSM.
  - `--noEGStitching`: Force use of GENI stitching (send the request to
- the SCS), and not ExoGENI stitching between EG aggregates. This is
+ the SCS) on all links, and not ExoGENI stitching between EG aggregates. This is
  inconsistent with `--useExoSM`.
+ - `--noEGStitchingOnLink <link clien_id>`: Force use of GENI stitching (send the request to
+ the SCS) only on the named Link, and do not use ExoGENI stitching on
+ this link. This is inconsistent with `--useExoSM`. You can supply
+ this argument many times for multiple links between ExoGENI resources.
 
 Other options you should not need to use:
  - `--fileDir`: Save _all_ files to this directory, and not the usual
@@ -351,7 +355,8 @@ python src/gcf/omnilib/stitch/scs.py --listaggregates
   - By default, stitcher uses ExoGENI stitching between ExoGENI
   aggregates, by submitting such requests to the ExoSM. Supplying
   `--noEGStitching` forces stitcher to try to use GENI stitching
-  between such aggregates.
+  between all such aggregates. Use `--noEGStitchingOnLink` to force
+  using GENI stitching only on the named link between ExoGENI racks.
  - Be sure to see the list of Known Issues below.
 
 === Stitching Computation Service ===

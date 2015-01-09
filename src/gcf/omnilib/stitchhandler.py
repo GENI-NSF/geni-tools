@@ -1638,7 +1638,10 @@ class StitchingHandler(object):
                         if needSCS:
                             self.logger.debug("But we already decided we need the SCS.")
                         elif self.opts.noEGStitching and not needSCS:
-                            self.logger.info("Using GENI stitching instead of ExoGENI stitching")
+                            self.logger.info("But requested to use GENI stitching instead of ExoGENI stitching")
+                            needSCS = True
+                        elif self.opts.noEGStitchingOnLink and link.id in self.opts.noEGStitchingOnLink and not needSCS:
+                            self.logger.info("But requested to use GENI stitching on link %s instead of ExoGENI stitching", link.id)
                             needSCS = True
 
                     # FIXME: If the link includes the openflow rspec extension marking a desire to make the link
@@ -1728,6 +1731,11 @@ class StitchingHandler(object):
         # currently, and construct our own workflow
         options[scs.GENI_PATHS_MERGED_TAG] = True
 
+        if self.opts.noEGStitching:
+            # User requested no EG stitching. So ask SCS to find a GENI path
+            # for all EG links
+            options[scs.ATTEMPT_PATH_FINDING_TAG] = True
+
         # To exclude a hop, add a geni_routing_profile struct
         # This in turn should have a struct per path whose name is the path name
         # Each shuld have a hop_exclusion_list array, containing the names of hops
@@ -1786,9 +1794,11 @@ class StitchingHandler(object):
                         profile[path] = pathStruct
 
         # Exclude any hops given as an option from _all_ hops
+        # And add the right include hops and force GENI Stitching options
         links = None
         if (self.opts.excludehop and len(self.opts.excludehop) > 0) or (self.opts.includehop and len(self.opts.includehop) > 0) or \
-                (self.opts.includehoponpath and len(self.opts.includehoponpath) > 0):
+                (self.opts.includehoponpath and len(self.opts.includehoponpath) > 0) or \
+                (self.opts.noEGStitchingOnLink and len(self.opts.noEGStitchingOnLink) > 0):
             links = requestDOM.getElementsByTagName(defs.LINK_TAG)
         if links and len(links) > 0:
             if not self.opts.excludehop:
@@ -1797,7 +1807,9 @@ class StitchingHandler(object):
                 self.opts.includehop = []
             if not self.opts.includehoponpath:
                 self.opts.includehoponpath= []
-            self.logger.debug("Got links and option to exclude hops: %s, include hops: %s, include hops on paths: %s", self.opts.excludehop, self.opts.includehop, self.opts.includehoponpath)
+            if not self.opts.noEGStitchingOnLink:
+                self.opts.noEGStitchingOnLink= []
+            self.logger.debug("Got links and option to exclude hops: %s, include hops: %s, include hops on paths: %s, force GENI stitching on paths: %s", self.opts.excludehop, self.opts.includehop, self.opts.includehoponpath, self.opts.noEGStitchingOnLink)
             for exclude in self.opts.excludehop:
                 # For each path
                 for link in links:
@@ -1867,6 +1879,20 @@ class StitchingHandler(object):
 
                     # Put the new objects in the struct
                     pathStruct[scs.HOP_INCLUSION_TAG] = includes
+                    profile[path] = pathStruct
+
+            for noeglink in self.opts.noEGStitchingOnLink:
+                for link in links:
+                    path = link.getAttribute(Link.CLIENT_ID_TAG)
+                    path = str(path).strip()
+                    if not path.lower() == noeglink.lower():
+                        continue
+                    if profile.has_key(path):
+                        pathStruct = profile[path]
+                    else:
+                        pathStruct = {}
+                    pathStruct[scs.ATTEMPT_PATH_FINDING_TAG] = True
+                    self.logger.debug("Force SCS to find a GENI stitching path for link %s", noeglink)
                     profile[path] = pathStruct
 
         if profile != {}:
@@ -1997,89 +2023,64 @@ class StitchingHandler(object):
             # If there is no stitched link between the 2 EG AMs or the user specified noEGStitching,
             # then we do not change them to be the ExoSM.
 
+            # Note that earlier useExoSM changed EG AMs into the ExoSM
+
             if self.opts.noEGStitching:
+                # SCS will have tried to provide a GENI path and errored if not possible
                 self.logger.debug("Requested no EG stitching. Will edit requests to let this work later")
                 # And do not force the AMs to be the ExoSM
+            elif exoSMCount == egAMCount:
+                self.logger.debug("All EG AMs are already the ExoSM")
             else:
-                self.logger.debug("Will use EG stitching where applicable. Must go through the ExoSM.")
-                if self.opts.noExoSM:
-                    # We want to use EG stitching (default), but user asked for noExoSM.
-                    # I think that means do not force AMs to be the ExoSM
-                    self.logger.debug("Requested noExoSM. So not changing EG AMs to be the ExoSM. So using GENI stitching.")
-                else:
-                    for anEGAM in egAMs:
-                        # Only make this AM the ExoSM if it has a link to another EG AM
-                        # so that EG stitching applies.
+                # Now see if each EG AM should be made into the ExoSM or not.
 
-                        # Note: If we get here we said use EG stitching
-                        # So we may not have called the SCS (check self.isStitching)
-                        # So we may have no paths from the workflow
-                        # But also that would mean GENI Stitching is not an option
+                for anEGAM in egAMs:
+                    if self.opts.useExoSM:
+                        # Should not happen I believe.
+                        self.logger.debug("Asked to use the ExoSM for all EG AMs. So change this one.")
+                    else:
+                        self.logger.debug("Will use EG stitching where applicable. Must go through the ExoSM for EG only links.")
 
-                        if not self.opts.useExoSM and self.isStitching:
-                            # FIXME: If isStitching we still don't have paths for any EG only links.
-                            # And we said we want to use EG stitching but didn't say use the ExoSM everywhere.
-                            # So the goal here is to only change selected EG AMs into the ExoSM - only
-                            # those EG AMs that have a link so we need EG stitching and need the ExoSM.
-                            # HOWEVER, EG links are not (necessarily) in the paths,
-                            # So the code looking at paths is (likely) wrong.
-                            # The question is whether the SCS gives paths using GENI that I want to ignore.
-                            # If so, then I need to be careful - here, or earlier.
-                            # If not, then this should be fine (I think).
+                        # Does this AM participate in an EG only link? If so, convert it.
+                        # If not, continue
 
-                            # So look at the main body links.
-                            hasEGLink = False
-                            for link in self.parsedSCSRSpec.links:
-                                hasThisAgg = False
-                                hasOtherEGAgg = False
-                                hasNonEGAgg = False
-                                for agg in link.aggregates:
-                                    if anEGAM == agg:
-                                        hasThisAgg=True
-                                    elif agg.isEG:
-                                        hasOtherEGAgg = True
-                                    else:
-                                        hasNonEGAgg = True
-                                if hasThisAgg and hasOtherEGAgg:
-                                    # then this AM has an EG link
-                                    # Or FIXME, must it also not hasNonEGAgg?
-                                    self.logger.debug("Looking at links, %s uses this %s and also another EG AM", link.id, anEGAM)
-                                    if hasNonEGAgg:
-                                        self.logger.debug("FIXME: Also has a non EG AM. Should this case avoid setting hasEGLink to true and use GENI stitching? Assuming so...")
-                                    else:
-                                        hasEGLink = True
-                                        break
-
-                            if not hasEGLink:
-                                # We called the SCS, so we know paths
-                                # And so using GENI stitching is an option still
-                                for path in anEGAM.paths:
-                                    self.logger.debug("Looking at %s on %s", path, anEGAM)
-                                    for am in path.aggregates:
-                                        self.logger.debug("Looking at %s on %s", am, path)
-                                        if am != anEGAM and am.isEG:
-                                            self.logger.debug("%s linked to other EG AM %s via %s", anEGAM, am, path)
-                                            hasEGLink = True
-                                            break
-                                    if hasEGLink:
-                                        break
-
-                            if not hasEGLink:
-                                self.logger.debug("%s is EG but has no links to EG AMs, so no need to make it the ExoSM", anEGAM)
+                        # EG only links will not be in the stitching extension, so use the main body elements
+                        hasEGLink = False
+                        for link in self.parsedSCSRSpec.links:
+                            # If this link was explicitly marked for no EG stitching
+                            # via a commandline option, then log at debug and continue to next link
+                            if self.opts.noEGStitchingOnLink and link.id in self.opts.noEGStitchingOnLink:
+                                self.logger.debug("Requested no EG stitching on link %s, so this link cannot force this AM to be the ExoSM", link.id)
                                 continue
-                            self.logger.debug("%s has a link that includes another EG AM. To use EG stitching between them, make this the ExoSM.", anEGAM)
-                        elif not self.opts.useExoSM:
-                            # If we didn't call the SCS, then we can't use GENI stitching, and so
-                            # whether or not a path has another EG AM is irrelevant to whether we make the AM the ExoSM
-                            # If we got here, they didn't set noExoSM.
 
-                            # If useExoSM then do the change
-                            # If there are links among EG AMs, then we need the change
-                            # safest though is just to always do the change
-                            # Else if an EG AM has a link
-                            self.logger.debug("Not a GENI stitching request. Make this the EG ExoSM AM.")
-                        else:
-                            self.logger.debug("Asked to use the ExoSM for all EG AMs.")
+                            hasThisAgg = False
+                            hasOtherEGAgg = False
+                            hasNonEGAgg = False
+                            for agg in link.aggregates:
+                                if anEGAM == agg:
+                                    hasThisAgg=True
+                                elif agg.isEG:
+                                    hasOtherEGAgg = True
+                                else:
+                                    hasNonEGAgg = True
+                            if hasThisAgg and hasOtherEGAgg:
+                                # then this AM has an EG link
+                                # Or FIXME, must it also not hasNonEGAgg?
+                                self.logger.debug("Looking at links, %s uses this %s and also another EG AM", link.id, anEGAM)
+                                if hasNonEGAgg:
+                                    self.logger.debug("FIXME: Also has a non EG AM. Should this case avoid setting hasEGLink to true and use GENI stitching? Assuming so...")
+                                else:
+                                    hasEGLink = True
+                                    break # out of loop over links
+                        # End of loop over links in the RSpec
+
+                        if not hasEGLink:
+                            self.logger.debug("%s is EG but has no links to other EG AMs, so no need to make it the ExoSM", anEGAM)
+                            continue # to next EG AM
+
+                        self.logger.debug("%s has a link that to another EG AM. To use EG stitching between them, make this the ExoSM.", anEGAM)
+                        # At this point, we're going to make a non ExoSM EG AM into the ExoSM so the ExoSM
+                        # can handle the stitching.
 
                         # Make anEGAM the ExoSM
                         self.logger.debug("Making %s the ExoSM", anEGAM)
@@ -2090,6 +2091,10 @@ class StitchingHandler(object):
                         exoSMCount += 1
                         exoSMs.append(anEGAM)
                         nonExoSMs.remove(anEGAM)
+                    # End of block where didn't specify useExoSM
+                # End of loop over EG AMs
+            # End of else to see if each EG AM must be changed into the ExoSM
+        # End of block handling EG AM count > 1
 
         if exoSMCount == 0:
             self.logger.debug("Not using ExoSM")
