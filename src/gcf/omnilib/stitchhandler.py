@@ -915,6 +915,9 @@ class StitchingHandler(object):
         if self.opts.fixedEndpoint:
             self.addFakeNode()
 
+        # DCN AMs seem to require there be at least one sliver_type specified
+        self.ensureSliverType()
+
         # Change the requested VLAN tag to 'any' where we can, allowing
         # The AM to pick from the currently available tags
         self.changeRequestsToAny()
@@ -2829,6 +2832,38 @@ class StitchingHandler(object):
                     agg.url = oldAgg.url
                     agg.urn_syns = copy.deepcopy(oldAgg.urn_syns)
                     break
+
+    def ensureSliverType(self):
+        # DCN AMs seem to insist that there is at least one sliver_type specified
+        haveDCN = False
+        for am in self.ams_to_process:
+            if am.dcn:
+                haveDCN = True
+                break
+
+        if not haveDCN:
+            # Only have a problem if there is a DCN AM. Nothing to do.
+            return
+
+        # Do we have a sliver type?
+        slivtypes = self.parsedSCSRSpec.dom.getElementsByTagName(defs.SLIVER_TYPE_TAG)
+        if slivtypes and len(slivtypes) > 0:
+            # have at least one sliver type element. Nothing to do
+            return
+
+        slivTypeNode = self.parsedSCSRSpec.dom.createElement(defs.SLIVER_TYPE_TAG)
+        slivTypeNode.setAttribute("name", "default-vm")
+        # Find the rspec element from parsedSCSRSpec.dom
+        rspecs = self.parsedSCSRSpec.dom.getElementsByTagName(defs.RSPEC_TAG)
+        if rspecs and len(rspecs):
+            rspec = rspecs[0]
+            # Find a node and add a sliver type
+            for child in rspec.childNodes:
+                if child.localName == defs.NODE_TAG:
+                    id = child.getAttribute(Node.CLIENT_ID_TAG)
+                    child.appendChild(slivTypeNode)
+                    self.logger.debug("To keep DCN AMs happy, adding a default-vm sliver type to node %s", id)
+                    return
 
     # If we said this rspec needs a fake endpoint, add it here - so the SCS and other stuff
     # doesn't try to do anything with it

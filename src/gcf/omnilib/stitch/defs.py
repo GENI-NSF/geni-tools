@@ -28,6 +28,7 @@ NODE_TAG = 'node'
 PORT_TAG = 'port'
 STITCHING_TAG = 'stitching'
 PATH_TAG = 'path'
+SLIVER_TYPE_TAG = 'sliver_type'
 EXPIRES_ATTRIBUTE = 'expires'
 # Capabilities element names
 CAPABILITIES_TAG = 'capabilities'
