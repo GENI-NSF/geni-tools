@@ -66,6 +66,7 @@
        In AM API v3:
        [string dictionary] = omni.py shutdown SLICENAME
        [string dictionary] = omni.py update SLICENAME RSPEC_FILENAME # AM API V3+ only
+       [string dictionary] = omni.py cancel SLICENAME # AM API V3+ only
 
        Non-AM API functions exported by aggregates, supported by Omni:
        From ProtoGENI/InstaGENI:

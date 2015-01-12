@@ -69,6 +69,7 @@ from __future__ import absolute_import
        In AM API v3:
        [string dictionary] = omni.py shutdown SLICENAME
        [string dictionary] = omni.py update SLICENAME RSPEC_FILENAME # Some AM API V3+ AMs only
+       [string dictionary] = omni.py cancel SLICENAME # Some AM API V3+ AMs only
 
        Non-AM API functions exported by aggregates, supported by Omni:
        From ProtoGENI/InstaGENI:
@@ -957,6 +958,7 @@ def getParser():
  \t\t\t delete <slicename> [AM API V3 only] \n\
  \t\t\t shutdown <slicename> \n\
  \t\t\t update <slicename> <rspec URL, filename, or nickname> [Some AM API V3 AMs only] \n\
+ \t\t\t cancel <slicename> [Some AM API V3 AMs only] \n\
  \t\tNon AM API aggregate functions (supported by some aggregates): \n\
  \t\t\t createimage <slicename> <imagename> [optional: false (keep image private)] -u <sliver urn> [ProtoGENI/InstaGENI only] \n\
  \t\t\t snapshotimage <slicename> <imagename> [optional: false (keep image private)] -u <sliver urn> [ProtoGENI/InstaGENI only] \n\
