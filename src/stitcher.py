@@ -149,6 +149,8 @@ def call(argv, options=None):
                       help="Developers only: Always use the VLAN tags the SCS suggests, not 'any'.")
     parser.add_option("--noEGStitching", default=False, action="store_true",
                       help="Developers only: Use GENI stitching, not ExoGENI stitching.")
+    parser.add_option("--noEGStitchingOnLink", metavar="LINK_ID", action="append",
+                      help="Developers only: Use GENI stitching on this particular link only, not ExoGENI stitching.")
     #  parser.add_option("--script",
     #                    help="If supplied, a script is calling this",
     #                    action="store_true", default=False)
@@ -404,6 +406,23 @@ def call(argv, options=None):
     if options.defaultCapacity < 1:
         logger.warn("Specified a tiny default link capacity of %dKbps!", options.defaultCapacity)
     # FIXME: Warn about really big capacities too?
+
+    if options.useExoSM and options.noExoSM:
+        sys.exit("Cannot specify both useExoSM and noExoSM")
+
+    if options.useExoSM and options.noEGStitching:
+        sys.exit("Cannot specify both useExoSM and noEGStitching")
+
+    if options.useExoSM and options.noEGStitchingOnLink:
+        sys.exit("Cannot specify both useExoSM and noEGStitchingOnLink")
+
+    if options.noExoSM:
+        if not options.noEGStitching:
+            logger.debug("Per options avoiding ExoSM. Therefore, not using EG Stitching")
+            options.noEGStitching = True
+            # Note that the converse is not true: You can require noEGStitching and still use
+            # the ExoSM, assuming we edit the request to the ExoSM carefully.
+
     handler = StitchingHandler(options, config, logger)
     return handler.doStitching(args)
 

@@ -36,6 +36,22 @@ gcf 2.8:
    * Supply new option `--genRequest`.
    * No reservation is done, and no slice credential check is done.
    * Includes SCS expansion and checking current availability.
+  * Better support for requests using multiple ExoGENI sites. (#738)
+   * Use ExoGENI stitching between ExoGENI sites by default (as before).
+   * Allow reserving resources from multiple individual ExoGENI sites,
+     not through the ExoSM. This is a change.
+   * Allow using GENI stitching between ExoGENI sites by going through individual
+     ExoGENI sites and not the ExoSM. This is a change.
+     * A request with no link among ExoGENI sites will not use the ExoSM, unless
+       you specify `--useExoSM`. This is a change - previously, you would get the ExoSM.
+     * A request that does include a link among ExoGENI sites will by default continue to
+       use the ExoSM and ExoGENI stitching. But you can choose to use GENI stitching: 
+       supply `--noExoSM` or `--noEGStitching` or `--noEGStitchingOnLink`.
+     * Note however that passing options `--noExoSM` or `--noEGStitching` means that any links between ExoGENI
+       sites will attempt to use a GENI stitched link, which may not be possible. Using
+       `--noEGStitchingOnLink` means that only the named links between ExoGENI sites will attempt
+       to use a GENI stitched link.
+     * See README-stitching.txt for more on `--noEGStitching` and `--noEGStitchingOnLink`.
 
  * readyToLogin
   * Add --ansible-inventory option which creates a host file to use with Ansible. Works 
