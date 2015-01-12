@@ -800,6 +800,7 @@ class StitchingHandler(object):
             # Also mark each hop with what hop it imports VLANs from,
             # And check for AM dependency loops
             workflow_parser.parse({}, self.parsedSCSRSpec)
+#            self.logger.debug("Did fake workflow parsing")
 
         if existingAggs:
             # Copy existingAggs.hops.vlans_unavailable to workflow_parser.aggs.hops.vlans_unavailable? Other state?
@@ -913,6 +914,9 @@ class StitchingHandler(object):
         # doesn't try to do anything with it
         if self.opts.fixedEndpoint:
             self.addFakeNode()
+
+        # DCN AMs seem to require there be at least one sliver_type specified
+        self.ensureSliverType()
 
         # Change the requested VLAN tag to 'any' where we can, allowing
         # The AM to pick from the currently available tags
@@ -1164,6 +1168,12 @@ class StitchingHandler(object):
                 if self.scsCalls == self.maxSCSCalls:
                     self.logger.error("Stitching max circuit failures reached")
                     raise StitchingError("Stitching reservation failed %d times. Last error: %s" % (self.scsCalls, se))
+                # FIXME: If we aren't doing stitching so won't be calling the SCS, then does it ever make sense
+                # to try this again here? For example, EG Embedding workflow ERROR?
+#                if not self.isStitching:
+#                    self.logger.error("Reservation failed and not reasonable to retry - not a stitching request.")
+#                    raise StitchingError("Multi AM reservation failed. Not stitching so cannot retry with new path. %s" % se)
+
                 self.logger.warn("Stitching failed but will retry: %s", se)
 
                 # Flush the cache of aggregates. Loses all state. Avoids
@@ -1631,7 +1641,10 @@ class StitchingHandler(object):
                         if needSCS:
                             self.logger.debug("But we already decided we need the SCS.")
                         elif self.opts.noEGStitching and not needSCS:
-                            self.logger.info("Using GENI stitching instead of ExoGENI stitching")
+                            self.logger.info("But requested to use GENI stitching instead of ExoGENI stitching")
+                            needSCS = True
+                        elif self.opts.noEGStitchingOnLink and link.id in self.opts.noEGStitchingOnLink and not needSCS:
+                            self.logger.info("But requested to use GENI stitching on link %s instead of ExoGENI stitching", link.id)
                             needSCS = True
 
                     # FIXME: If the link includes the openflow rspec extension marking a desire to make the link
@@ -1721,6 +1734,11 @@ class StitchingHandler(object):
         # currently, and construct our own workflow
         options[scs.GENI_PATHS_MERGED_TAG] = True
 
+        if self.opts.noEGStitching:
+            # User requested no EG stitching. So ask SCS to find a GENI path
+            # for all EG links
+            options[scs.ATTEMPT_PATH_FINDING_TAG] = True
+
         # To exclude a hop, add a geni_routing_profile struct
         # This in turn should have a struct per path whose name is the path name
         # Each shuld have a hop_exclusion_list array, containing the names of hops
@@ -1779,9 +1797,11 @@ class StitchingHandler(object):
                         profile[path] = pathStruct
 
         # Exclude any hops given as an option from _all_ hops
+        # And add the right include hops and force GENI Stitching options
         links = None
         if (self.opts.excludehop and len(self.opts.excludehop) > 0) or (self.opts.includehop and len(self.opts.includehop) > 0) or \
-                (self.opts.includehoponpath and len(self.opts.includehoponpath) > 0):
+                (self.opts.includehoponpath and len(self.opts.includehoponpath) > 0) or \
+                (self.opts.noEGStitchingOnLink and len(self.opts.noEGStitchingOnLink) > 0):
             links = requestDOM.getElementsByTagName(defs.LINK_TAG)
         if links and len(links) > 0:
             if not self.opts.excludehop:
@@ -1790,7 +1810,9 @@ class StitchingHandler(object):
                 self.opts.includehop = []
             if not self.opts.includehoponpath:
                 self.opts.includehoponpath= []
-            self.logger.debug("Got links and option to exclude hops: %s, include hops: %s, include hops on paths: %s", self.opts.excludehop, self.opts.includehop, self.opts.includehoponpath)
+            if not self.opts.noEGStitchingOnLink:
+                self.opts.noEGStitchingOnLink= []
+            self.logger.debug("Got links and option to exclude hops: %s, include hops: %s, include hops on paths: %s, force GENI stitching on paths: %s", self.opts.excludehop, self.opts.includehop, self.opts.includehoponpath, self.opts.noEGStitchingOnLink)
             for exclude in self.opts.excludehop:
                 # For each path
                 for link in links:
@@ -1860,6 +1882,20 @@ class StitchingHandler(object):
 
                     # Put the new objects in the struct
                     pathStruct[scs.HOP_INCLUSION_TAG] = includes
+                    profile[path] = pathStruct
+
+            for noeglink in self.opts.noEGStitchingOnLink:
+                for link in links:
+                    path = link.getAttribute(Link.CLIENT_ID_TAG)
+                    path = str(path).strip()
+                    if not path.lower() == noeglink.lower():
+                        continue
+                    if profile.has_key(path):
+                        pathStruct = profile[path]
+                    else:
+                        pathStruct = {}
+                    pathStruct[scs.ATTEMPT_PATH_FINDING_TAG] = True
+                    self.logger.debug("Force SCS to find a GENI stitching path for link %s", noeglink)
                     profile[path] = pathStruct
 
         if profile != {}:
@@ -1960,7 +1996,7 @@ class StitchingHandler(object):
         return parsed_rspec, workflow_parser
 
     def ensureOneExoSM(self):
-        '''If 2 AMs in ams_to_process are ExoGENI, ensure we use the ExoSM. If 2 AMs use the ExoSM URL, combine them into a single AM.'''
+        '''If 2 AMs in ams_to_process are ExoGENI and share a path and no noEG Stitching, ensure we use the ExoSM. If 2 AMs use the ExoSM URL, combine them into a single AM.'''
         if len(self.ams_to_process) < 2:
             return
         exoSMCount = 0
@@ -1984,22 +2020,84 @@ class StitchingHandler(object):
             return
 
         if egAMCount > 1:
-            self.logger.debug("Request includes more than one ExoGENI AM. Must go through the ExoSM.")
-            if self.opts.devmode and self.opts.noExoSM:
-                self.logger.info("Multiple EG AMs but in dev mode requested no ExoSM, so continuing...")
+            self.logger.debug("Request includes more than one ExoGENI AM.")
+            # If there is a stitched link between 2 EG AMs and no noEGStitching, then we
+            # must change each to be the ExoSM so we use EG stitching for those AMs / links.
+            # If there is no stitched link between the 2 EG AMs or the user specified noEGStitching,
+            # then we do not change them to be the ExoSM.
+
+            # Note that earlier useExoSM changed EG AMs into the ExoSM
+
+            if self.opts.noEGStitching:
+                # SCS will have tried to provide a GENI path and errored if not possible
+                self.logger.debug("Requested no EG stitching. Will edit requests to let this work later")
+                # And do not force the AMs to be the ExoSM
+            elif exoSMCount == egAMCount:
+                self.logger.debug("All EG AMs are already the ExoSM")
             else:
-                if self.opts.noExoSM:
-                    self.logger.warn("Requested resources from more than one ExoGENI AM, which requires use of the ExoSM. But also requested to not use the ExoSM - ignoring that.")
+                # Now see if each EG AM should be made into the ExoSM or not.
+
                 for anEGAM in egAMs:
-                    # Make anEGAM the ExoSM
-                    self.logger.debug("Making %s the ExoSM", anEGAM)
-                    anEGAM.alt_url = anEGAM.url
-                    anEGAM.url = defs.EXOSM_URL
-                    anEGAM.isExoSM = True
-                    anEGAM.nick = handler_utils._lookupAggNick(self, anEGAM.url)
-                    exoSMCount += 1
-                    exoSMs.append(anEGAM)
-                    nonExoSMs.remove(anEGAM)
+                    if self.opts.useExoSM:
+                        # Should not happen I believe.
+                        self.logger.debug("Asked to use the ExoSM for all EG AMs. So change this one.")
+                    else:
+                        self.logger.debug("Will use EG stitching where applicable. Must go through the ExoSM for EG only links.")
+
+                        # Does this AM participate in an EG only link? If so, convert it.
+                        # If not, continue
+
+                        # EG only links will not be in the stitching extension, so use the main body elements
+                        hasEGLink = False
+                        for link in self.parsedSCSRSpec.links:
+                            # If this link was explicitly marked for no EG stitching
+                            # via a commandline option, then log at debug and continue to next link
+                            if self.opts.noEGStitchingOnLink and link.id in self.opts.noEGStitchingOnLink:
+                                self.logger.debug("Requested no EG stitching on link %s, so this link cannot force this AM to be the ExoSM", link.id)
+                                continue
+
+                            hasThisAgg = False
+                            hasOtherEGAgg = False
+                            hasNonEGAgg = False
+                            for agg in link.aggregates:
+                                if anEGAM == agg:
+                                    hasThisAgg=True
+                                elif agg.isEG:
+                                    hasOtherEGAgg = True
+                                else:
+                                    hasNonEGAgg = True
+                            if hasThisAgg and hasOtherEGAgg:
+                                # then this AM has an EG link
+                                # Or FIXME, must it also not hasNonEGAgg?
+                                self.logger.debug("Looking at links, %s uses this %s and also another EG AM", link.id, anEGAM)
+                                if hasNonEGAgg:
+                                    self.logger.debug("FIXME: Also has a non EG AM. Should this case avoid setting hasEGLink to true and use GENI stitching? Assuming so...")
+                                else:
+                                    hasEGLink = True
+                                    break # out of loop over links
+                        # End of loop over links in the RSpec
+
+                        if not hasEGLink:
+                            self.logger.debug("%s is EG but has no links to other EG AMs, so no need to make it the ExoSM", anEGAM)
+                            continue # to next EG AM
+
+                        self.logger.debug("%s has a link that to another EG AM. To use EG stitching between them, make this the ExoSM.", anEGAM)
+                        # At this point, we're going to make a non ExoSM EG AM into the ExoSM so the ExoSM
+                        # can handle the stitching.
+
+                        # Make anEGAM the ExoSM
+                        self.logger.debug("Making %s the ExoSM", anEGAM)
+                        anEGAM.alt_url = anEGAM.url
+                        anEGAM.url = defs.EXOSM_URL
+                        anEGAM.isExoSM = True
+                        anEGAM.nick = handler_utils._lookupAggNick(self, anEGAM.url)
+                        exoSMCount += 1
+                        exoSMs.append(anEGAM)
+                        nonExoSMs.remove(anEGAM)
+                    # End of block where didn't specify useExoSM
+                # End of loop over EG AMs
+            # End of else to see if each EG AM must be changed into the ExoSM
+        # End of block handling EG AM count > 1
 
         if exoSMCount == 0:
             self.logger.debug("Not using ExoSM")
@@ -2734,6 +2832,38 @@ class StitchingHandler(object):
                     agg.url = oldAgg.url
                     agg.urn_syns = copy.deepcopy(oldAgg.urn_syns)
                     break
+
+    def ensureSliverType(self):
+        # DCN AMs seem to insist that there is at least one sliver_type specified
+        haveDCN = False
+        for am in self.ams_to_process:
+            if am.dcn:
+                haveDCN = True
+                break
+
+        if not haveDCN:
+            # Only have a problem if there is a DCN AM. Nothing to do.
+            return
+
+        # Do we have a sliver type?
+        slivtypes = self.parsedSCSRSpec.dom.getElementsByTagName(defs.SLIVER_TYPE_TAG)
+        if slivtypes and len(slivtypes) > 0:
+            # have at least one sliver type element. Nothing to do
+            return
+
+        slivTypeNode = self.parsedSCSRSpec.dom.createElement(defs.SLIVER_TYPE_TAG)
+        slivTypeNode.setAttribute("name", "default-vm")
+        # Find the rspec element from parsedSCSRSpec.dom
+        rspecs = self.parsedSCSRSpec.dom.getElementsByTagName(defs.RSPEC_TAG)
+        if rspecs and len(rspecs):
+            rspec = rspecs[0]
+            # Find a node and add a sliver type
+            for child in rspec.childNodes:
+                if child.localName == defs.NODE_TAG:
+                    id = child.getAttribute(Node.CLIENT_ID_TAG)
+                    child.appendChild(slivTypeNode)
+                    self.logger.debug("To keep DCN AMs happy, adding a default-vm sliver type to node %s", id)
+                    return
 
     # If we said this rspec needs a fake endpoint, add it here - so the SCS and other stuff
     # doesn't try to do anything with it

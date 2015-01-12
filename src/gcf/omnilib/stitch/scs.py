@@ -49,6 +49,7 @@ HOP_EXCLUSION_TAG = 'hop_exclusion_list'
 HOP_INCLUSION_TAG = 'hop_inclusion_list'
 GENI_PROFILE_TAG = 'geni_routing_profile'
 GENI_PATHS_MERGED_TAG = 'geni_workflow_paths_merged'
+ATTEMPT_PATH_FINDING_TAG = 'attempt_path_finding'
 
 class Result(object):
     '''Hold and parse the raw result from the SCS'''
@@ -233,11 +234,12 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
     SCS_URL = "https://oingo.dragon.maxgigapop.net:8443/geni/xmlrpc"
-    # Dev SCS: http://geni.maxgigapop.net:8081/geni/xmlrpc
-    # Test SCS: http://nutshell.maxgigapop.net:8081/geni/xmlrpc
-    # oingo 8081 is deprecated; use oingo 8443
+    # Test SCS (for untested AMs): https://nutshell.maxgigapop.net:8443/geni/xmlrpc
+    # Non SSL Test SCS: http://nutshell.maxgigapop.net:8081/geni/xmlrpc
+    # - nutshell 8081 is deprecated
     # Non SSL SCS_URL = "http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc"
-    # SSL Test SCS: https://nutshell.maxgigapop.net:8443/geni/xmlrpc
+    # - oingo 8081 is deprecated; use oingo 8443
+    # Dev (usually down) SCS: http://geni.maxgigapop.net:8081/geni/xmlrpc
 
     # FIXME: Ideally we'd support loading your omni_config and finding the cert/key that way
     
