@@ -364,6 +364,8 @@ class Aggregate(object):
         return aggs2
 
     def __init__(self, urn, url=None):
+        # FIXME: See stitchhandler.saveAggregateState whenever a new attribute is added here
+
         self.urn = urn
 
         # Produce a list of URN synonyms for the AM
@@ -408,6 +410,8 @@ class Aggregate(object):
         # Used by stitchhandler to decide which AMs were tried the last time through, 
         # particularly if any were DCN
         self.triedRes = False
+
+        # FIXME: See stitchhandler.saveAggregateState whenever a new attribute is added here
 
         # Ugly hack
         # If we have a stream handler for which the log level is Debug,
