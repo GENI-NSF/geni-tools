@@ -1555,6 +1555,7 @@ class StitchingHandler(object):
 
         # return the slice urn, slice expiration (datetime)
         return (sliceurn, sliceexp)
+    # End of confirmSliceOK
 
     # Ensure the link has 2 well formed property elements each with a capacity
     def addCapacityOneLink(self, link):
@@ -1643,6 +1644,7 @@ class StitchingHandler(object):
                     prop.capacity = self.opts.defaultCapacity
                 # FIXME: Warn about really small or big capacities?
             return
+        # End of handling have 2 current properties
 
         # There is a single property tag
         prop = link.properties[0]
@@ -1660,6 +1662,7 @@ class StitchingHandler(object):
         prop2 = LinkProperty(prop.dest_id, prop.source_id, prop.latency, prop.packet_loss, prop.capacity)
         link.properties = [prop, prop2]
         self.logger.debug("Link '%s' added missing reverse property", link.id)
+    # End of addCapacityOneLink
 
     # Ensure all implicit AMs (from interface_ref->node->component_manager_id) are explicit on the link
     def ensureLinkListsAMs(self, link, requestRSpecObject):
@@ -1685,107 +1688,125 @@ class StitchingHandler(object):
             if am not in link.aggregates:
                 self.logger.debug("Adding missing AM %s to link '%s'", amURN, link.id)
                 link.aggregates.append(am)
+    # End of ensureLinkListsAMs
 
     def hasGRELink(self, requestRSpecObject):
+        # Does the given RSpec have a GRE link
+        # Side effect: ensure all links list all known component_managers
+        # Return boolean
+
+        if not requestRSpecObject:
+            return False
+
         isGRE = False
 
-        # Make sure links explicitly lists all its aggregates, so this test is valid
-        if requestRSpecObject:
-            for link in requestRSpecObject.links:
-                self.ensureLinkListsAMs(link, requestRSpecObject)
+        for link in requestRSpecObject.links:
+            # Make sure links explicitly lists all its aggregates, so this test is valid
+            self.ensureLinkListsAMs(link, requestRSpecObject)
 
-        # has a link that has 2 interface_refs and has a link type of *gre_tunnel and endpoint nodes are PG
-        if requestRSpecObject:
-            for link in requestRSpecObject.links:
-                if not (link.typeName == link.GRE_LINK_TYPE or link.typeName == link.EGRE_LINK_TYPE):
-                    # Not GRE
+            # has a link that has 2 interface_refs and has a link type of *gre_tunnel and endpoint nodes are PG
+            if not (link.typeName == link.GRE_LINK_TYPE or link.typeName == link.EGRE_LINK_TYPE):
+                # Not GRE
 #                    self.logger.debug("Link %s not GRE but %s", link.id, link.typeName)
-                    continue
-                if len(link.aggregates) != 2:
-                    self.logger.warn("Link '%s' is a GRE link with %d AMs?", link.id, len(link.aggregates))
-                    continue
-                if len(link.interfaces) != 2:
-                    self.logger.warn("Link '%s' is a GRE link with %d interfaces?", link.id, len(link.interfaces))
-                    continue
-                isGRE = True
-                for ifc in link.interfaces:
-                    found = False
-                    for node in requestRSpecObject.nodes:
-                        if ifc.client_id in node.interface_ids:
-                            found = True
-                            # This is the node
+                continue
+            if len(link.aggregates) != 2:
+                self.logger.warn("Link '%s' is a GRE link with %d AMs?", link.id, len(link.aggregates))
+                continue
+            if len(link.interfaces) != 2:
+                self.logger.warn("Link '%s' is a GRE link with %d interfaces?", link.id, len(link.interfaces))
+                continue
+            isGRE = True
+            for ifc in link.interfaces:
+                found = False
+                for node in requestRSpecObject.nodes:
+                    if ifc.client_id in node.interface_ids:
+                        found = True
+                        # This is the node
 
-                            # I'd like to ensure the node is a PG node.
-                            # But at this point we haven't called getversion yet
-                            # So we don't really know if this is a PG node
+                        # I'd like to ensure the node is a PG node.
+                        # But at this point we haven't called getversion yet
+                        # So we don't really know if this is a PG node
 #                            am = Aggregate.find(node.amURN)
 #                            if not am.isPG:
 #                                self.logger.warn("Bad GRE link %s: interface_ref %s is on a non PG node: %s", link.id, ifc.client_id, am)
 #                                isGRE = False
 
-                            # We do not currently parse sliver-type off of nodes to validate that
-                            break
-                    if not found:
-                        self.logger.warn("GRE link '%s' has unknown interface_ref '%s' - assuming it is OK", link.id, ifc.client_id)
-                if isGRE:
-                    self.logger.debug("Link '%s' is GRE", link.id)
+                        # We do not currently parse sliver-type off of nodes to validate that
+                        break
+                if not found:
+                    self.logger.warn("GRE link '%s' has unknown interface_ref '%s' - assuming it is OK", link.id, ifc.client_id)
+            if isGRE:
+                self.logger.debug("Link '%s' is GRE", link.id)
 
-        # Extra: ensure endpoints are xen for link type egre, openvz or rawpc for gre
+            # Extra: ensure endpoints are xen for link type egre, openvz or rawpc for gre
+        # End of loop over links
 
         return isGRE
+    # End of hasGRELink
 
     def mustCallSCS(self, requestRSpecObject):
         '''Does this request actually require stitching?
         Check: >=1 link in main body with >= 2 diff component_manager
         names and no shared_vlan extension and no non-VLAN link_type
         '''
+        # side effects
+        # - links list known component_managers
+        # - links have 2 well formed property elements with explicit capacities
+
+        if not requestRSpecObject:
+            return False
+
         needSCS = False
-        # Make sure links explicitly lists all its aggregates, so this test is valid
-        if requestRSpecObject:
-            for link in requestRSpecObject.links:
-                self.ensureLinkListsAMs(link, requestRSpecObject)
+        for link in requestRSpecObject.links:
+            # Make sure links explicitly lists all its aggregates, so this test is valid
+            self.ensureLinkListsAMs(link, requestRSpecObject)
 
-        if requestRSpecObject:
-            for link in requestRSpecObject.links:
-                if len(link.aggregates) > 1 and not link.hasSharedVlan and link.typeName == link.VLAN_LINK_TYPE:
-                    # Ensure this link has 2 well formed property elements with explicity capacities
-                    self.addCapacityOneLink(link)
-                    self.logger.debug("Requested link '%s' is stitching", link.id)
+            if len(link.aggregates) > 1 and not link.hasSharedVlan and link.typeName == link.VLAN_LINK_TYPE:
+                # Ensure this link has 2 well formed property elements with explicit capacities
+                self.addCapacityOneLink(link)
+                self.logger.debug("Requested link '%s' is stitching", link.id)
 
-                    # Links that are ExoGENI only use ExoGENI stitching, not the SCS
-                    # So only if the link includes anything non-ExoGENI, we use the SCS
-                    egOnly = True
-                    for am in link.aggregates:
-                        # I wish I could do am.isEG but we don't get that info until later.
-                        # Hack!
-                        if 'exogeni' not in am.urn:
-                            needSCS = True
-                            egOnly = False
-                            break
+                # Links that are ExoGENI only use ExoGENI stitching, not the SCS
+                # So only if the link includes anything non-ExoGENI, we use the SCS
+                egOnly = True
+                for am in link.aggregates:
+                    # I wish I could do am.isEG but we don't get that info until later.
+                    # Hack!
+                    if 'exogeni' not in am.urn:
+                        needSCS = True
+                        egOnly = False
+                        break
 
-                    if egOnly:
-                        self.logger.debug("Link '%s' is only ExoGENI, so can use ExoGENI stitching.", link.id)
-                        if needSCS:
-                            self.logger.debug("But we already decided we need the SCS.")
-                        elif self.opts.noEGStitching and not needSCS:
-                            self.logger.info("But requested to use GENI stitching instead of ExoGENI stitching")
-                            needSCS = True
-                        elif self.opts.noEGStitchingOnLink and link.id in self.opts.noEGStitchingOnLink and not needSCS:
-                            self.logger.info("But requested to use GENI stitching on link %s instead of ExoGENI stitching", link.id)
-                            needSCS = True
+                if egOnly:
+                    self.logger.debug("Link '%s' is only ExoGENI, so can use ExoGENI stitching.", link.id)
+                    if needSCS:
+                        self.logger.debug("But we already decided we need the SCS.")
+                    elif self.opts.noEGStitching and not needSCS:
+                        self.logger.info("But requested to use GENI stitching instead of ExoGENI stitching")
+                        needSCS = True
+                    elif self.opts.noEGStitchingOnLink and link.id in self.opts.noEGStitchingOnLink and not needSCS:
+                        self.logger.info("But requested to use GENI stitching on link %s instead of ExoGENI stitching", link.id)
+                        needSCS = True
 
-                    # FIXME: If the link includes the openflow rspec extension marking a desire to make the link
-                    # be OF controlled, then use the SCS and GENI stitching?
+                # FIXME: If the link includes the openflow rspec extension marking a desire to make the link
+                # be OF controlled, then use the SCS and GENI stitching?
+            # End of block to handle likely stitching link
 
-            # FIXME: Can we be robust to malformed requests, and stop and warn the user?
-                # EG the link has 2+ interface_ref elements that are on 2+ nodes belonging to 2+ AMs?
-                # Currently the parser only saves the IRefs on Links - no attempt to link to Nodes
-                # And for Nodes, we don't even look at the Interface sub-elements
+        # FIXME: Can we be robust to malformed requests, and stop and warn the user?
+        # EG the link has 2+ interface_ref elements that are on 2+ nodes belonging to 2+ AMs?
+        # Currently the parser only saves the IRefs on Links - no attempt to link to Nodes
+        # And for Nodes, we don't even look at the Interface sub-elements
+        # End of loop over links
 
         return needSCS
 
     def callSCS(self, sliceurn, requestDOM, existingAggs):
         '''Construct SCS args, call the SCS service'''
+        # - Construct the args
+        # - Call ComputePath
+        # - raise an informative error if necessary
+        # - if --debug, save scs-result.json
+        # - return scsResponse
 
         requestString, scsOptions = self.constructSCSArgs(requestDOM, existingAggs)
         existingAggs = None # Clear to note we are done
@@ -1834,6 +1855,7 @@ class StitchingHandler(object):
             import traceback
             self.logger.debug("%s", traceback.format_exc())
             raise StitchingError("SCS gave error: %s" % strE)
+        # Done SCS call error handling
 
         self.logger.debug("SCS successfully returned.");
 
@@ -1845,10 +1867,13 @@ class StitchingHandler(object):
 
         self.scsService.result = None # Clear memory/state
         return scsResponse
+    # Done callSCS
 
     def constructSCSArgs(self, requestDOM, existingAggs=None):
-        '''Build and return the string rspec request and options arguments'''
+        '''Build and return the string rspec request and options arguments for calling the SCS.'''
         # return requestString and options
+        # Handles --noEGStitching, --includeHop, --excludeHop, --noEGSttichingOnLink, --includeHopOnPath
+        # Also handles requesting to avoid any VLAN tags found to be unavailable on the hops
 
         options = {}
         # options is a struct
@@ -1893,6 +1918,9 @@ class StitchingHandler(object):
 #        options["geni_routing_profile"]=profile
 
         profile = {}
+        # If we have existing AMs,
+        # Add the options to tell the SCS to exclude any hops marked for exclusion, or any VLANs
+        # marked unavailable
         if existingAggs and len(existingAggs) > 0:
             for agg in existingAggs:
                 for hop in agg.hops:
@@ -1922,8 +1950,12 @@ class StitchingHandler(object):
                         # Put the new objects in the struct
                         pathStruct[scs.HOP_EXCLUSION_TAG] = excludes
                         profile[path] = pathStruct
+                # Done loop over hops
+            # Done loop over AMs
+        # Done block to handle existing AMs
 
-        # Exclude any hops given as an option from _all_ hops
+        # Handle the commandline options to modify how links are processed.
+        # IE, Exclude any hops given as an option from _all_ hops
         # And add the right include hops and force GENI Stitching options
         links = None
         if (self.opts.excludehop and len(self.opts.excludehop) > 0) or (self.opts.includehop and len(self.opts.includehop) > 0) or \
@@ -1940,6 +1972,7 @@ class StitchingHandler(object):
             if not self.opts.noEGStitchingOnLink:
                 self.opts.noEGStitchingOnLink= []
             self.logger.debug("Got links and option to exclude hops: %s, include hops: %s, include hops on paths: %s, force GENI stitching on paths: %s", self.opts.excludehop, self.opts.includehop, self.opts.includehoponpath, self.opts.noEGStitchingOnLink)
+            # Handle any --excludeHop
             for exclude in self.opts.excludehop:
                 # For each path
                 for link in links:
@@ -1963,6 +1996,7 @@ class StitchingHandler(object):
                     pathStruct[scs.HOP_EXCLUSION_TAG] = excludes
                     profile[path] = pathStruct
 
+            # Handle any --includeHop
             for include in self.opts.includehop:
                 # For each path
                 for link in links:
@@ -1986,6 +2020,7 @@ class StitchingHandler(object):
                     pathStruct[scs.HOP_INCLUSION_TAG] = includes
                     profile[path] = pathStruct
 
+            # Handle any --includeHopOnPath
             for (includehop, includepath) in self.opts.includehoponpath:
                 # For each path
                 for link in links:
@@ -2011,6 +2046,7 @@ class StitchingHandler(object):
                     pathStruct[scs.HOP_INCLUSION_TAG] = includes
                     profile[path] = pathStruct
 
+            # Handle any --noEGStitchingOnLink
             for noeglink in self.opts.noEGStitchingOnLink:
                 for link in links:
                     path = link.getAttribute(Link.CLIENT_ID_TAG)
@@ -2024,6 +2060,7 @@ class StitchingHandler(object):
                     pathStruct[scs.ATTEMPT_PATH_FINDING_TAG] = True
                     self.logger.debug("Force SCS to find a GENI stitching path for link %s", noeglink)
                     profile[path] = pathStruct
+        # Done block to handle commandline per link arguments
 
         if profile != {}:
             options[scs.GENI_PROFILE_TAG] = profile
@@ -2036,8 +2073,15 @@ class StitchingHandler(object):
             self._raise_omni_error("Malformed request RSpec: %s" % xe)
 
         return xmlreq, options
+    # Done constructSCSArgs
         
     def parseSCSResponse(self, scsResponse):
+        # Parse the response from the SCS
+        # - print / save SCS expanded RSpec in debug mode
+        # - print SCS picked VLAN tags in debug mode
+        # - parse the RSpec, creating objects
+        # - parse the workflow, creating dependencies
+        # return the parsed RSpec object and the workflow parser
 
         expandedRSpec = scsResponse.rspec()
 
@@ -2121,9 +2165,11 @@ class StitchingHandler(object):
           # All AMs must be listed in workflow data at least once per path they are in
 
         return parsed_rspec, workflow_parser
+    # End of parseSCSResponse
 
     def ensureOneExoSM(self):
-        '''If 2 AMs in ams_to_process are ExoGENI and share a path and no noEG Stitching, ensure we use the ExoSM. If 2 AMs use the ExoSM URL, combine them into a single AM.'''
+        '''If 2 AMs in ams_to_process are ExoGENI and share a path and no noEGStitching specified, 
+        then ensure we use the ExoSM. If 2 AMs use the ExoSM URL, combine them into a single AM.'''
         if len(self.ams_to_process) < 2:
             return
         exoSMCount = 0
@@ -2231,6 +2277,7 @@ class StitchingHandler(object):
             return
 
         exoSM = None
+        # First ExoSM will be _the_ ExoSM
         if exoSMCount > 0:
             exoSM = exoSMs[0]
             exoSMURN = handler_utils._lookupAggURNFromURLInNicknames(self.logger, self.config, defs.EXOSM_URL)
@@ -2246,6 +2293,7 @@ class StitchingHandler(object):
             self.logger.debug("Only %d ExoSMs", exoSMCount)
             return
 
+        # Now merge other ExoSMs into _the_ ExoSM
         for am in exoSMs:
             if am == exoSM:
                 continue
@@ -2285,6 +2333,7 @@ class StitchingHandler(object):
                     if not exosM in am2.isDependencyFor:
                         self.logger.debug("Adding real ExosM %s to %s.isDependencyFor", exoSM, am2)
                         am2.isDependencyFor.add(exoSM)
+            # End of loop over AMs to merge dependsOn and isDependencyFor
 
             # merge isDependencyFor
             if am in exoSM.isDependencyFor:
@@ -2324,6 +2373,7 @@ class StitchingHandler(object):
             if exoSM.alt_url and handler_utils._extractURL(self.logger, exoSM.alt_url) == handler_utils._extractURL(self.logger, exoSM.url):
                 if handler_utils._extractURL(self.logger, exoSM.alt_url) != handler_utils._extractURL(self.logger, am.url):
                     exoSM.alt_url = am.alt_url
+        # End of loop over exoSMs, doing merge
 
         # ensure only one in cls.aggs
         newaggs = dict()
@@ -2401,6 +2451,7 @@ class StitchingHandler(object):
 #                except:
 #                    pass
 
+            # If --noExoSM then ensure this is not the ExoSM
             if agg.isExoSM and agg.alt_url and self.opts.noExoSM:
                 self.logger.warn("%s used ExoSM URL. Changing to %s", agg, agg.alt_url)
                 amURL = agg.url
@@ -2424,6 +2475,7 @@ class StitchingHandler(object):
                 aggurl = agg.url
                 if isinstance (version, dict) and version.has_key(aggurl) and isinstance(version[aggurl], dict) \
                         and version[aggurl].has_key('value') and isinstance(version[aggurl]['value'], dict):
+                    # First parse geni_am_type
                     if version[aggurl]['value'].has_key('geni_am_type') and isinstance(version[aggurl]['value']['geni_am_type'], list):
                         if DCN_AM_TYPE in version[aggurl]['value']['geni_am_type']:
                             self.logger.debug("AM %s is DCN", agg)
@@ -2440,6 +2492,7 @@ class StitchingHandler(object):
                     elif version[aggurl]['value'].has_key('geni_am_type') and ORCA_AM_TYPE in version[aggurl]['value']['geni_am_type']:
                             self.logger.debug("AM %s is Orca", agg)
                             agg.isEG = True
+
                     # This code block looks nice but doesn't work - the version object is not the full triple
 #                    elif version[aggurl].has_key['code'] and isinstance(version[aggurl]['code'], dict) and \
 #                            version[aggurl]['code'].has_key('am_type') and str(version[aggurl]['code']['am_type']).strip() != "":
@@ -2452,6 +2505,8 @@ class StitchingHandler(object):
 #                        elif version[aggurl]['code']['am_type'] == DCN_AM_TYPE:
 #                            self.logger.debug("AM %s is DCN", agg)
 #                            agg.dcn = True
+
+                    # Now parse geni_api_versions
                     if version[aggurl]['value'].has_key('geni_api_versions') and isinstance(version[aggurl]['value']['geni_api_versions'], dict):
                         maxVer = 1
                         hasV2 = False
@@ -2476,6 +2531,7 @@ class StitchingHandler(object):
 #                                    agg.url = version[aggurl]['value']['geni_api_versions'][key]
                             if int(key) > maxVer:
                                 maxVer = int(key)
+                        # Done loop over api versions
 
                         # This code is just to avoid ugly WARNs from Omni about changing URL to get the right API version.
                         # Added it for GRAM. But GRAM is manually fixed at the SCS now, so no need.
@@ -2508,6 +2564,8 @@ class StitchingHandler(object):
 #                            self.logger.warn("Testing v3 support")
 #                            agg.api_version = 3
 #                        agg.api_version = maxVer
+                    # Done handling geni_api_versions
+
                     if version[aggurl]['value'].has_key('GRAM_version'):
                         agg.isGRAM = True
                         self.logger.debug("AM %s is GRAM", agg)
@@ -2549,7 +2607,10 @@ class StitchingHandler(object):
                 pass
 #            finally:
 #                logging.disable(logging.NOTSET)
+            # Done with call to GetVersion
 
+            # If this is an EG AM and we said useExoSM, make this the ExoSM
+            # Later we'll use ensureOneExoSM to dedupe
             if agg.isEG and self.opts.useExoSM and not agg.isExoSM:
                 agg.alt_url = defs.EXOSM_URL
                 self.logger.info("%s is an EG AM and user asked for ExoSM. Changing to %s", agg, agg.alt_url)
@@ -2573,6 +2634,7 @@ class StitchingHandler(object):
             # Remember we got the extra info for this AM
             self.amURNsAddedInfo.append(agg.urn)
         # Done loop over aggs
+    # End add_am_info
 
     def dump_objects(self, rspec, aggs):
         '''Print out the hops, aggregates, and dependencies'''
@@ -2608,6 +2670,9 @@ class StitchingHandler(object):
                         self.logger.debug( "    Dependencies:")
                         for h in deps:
                             self.logger.debug( "      Hop %s" % (h))
+                # End of loop over hops
+            # End of loop over paths
+        # End of block to print hops if possible
 
         if aggs and len(aggs) > 0:
             self.logger.debug( "\n===== Aggregates =====")
@@ -2653,6 +2718,9 @@ class StitchingHandler(object):
                     self.logger.debug( "  Hop %s" % (h))
                 for ad in agg.dependsOn:
                     self.logger.debug( "  Depends on %s" % (ad))
+            # End of loop over aggregates
+        # End of block to print aggregates
+    # End of dump_objects
 
     def _raise_omni_error( self, msg, err=OmniError, triple=None ):
         msg2 = msg
@@ -2728,6 +2796,7 @@ class StitchingHandler(object):
             self.logger.error(e)
 
         return stripBlankLines(manString)
+    # End of combineManifest
 
     def saveAggregateList(self, sliceurn):
         '''Save a file with the list of aggregates used. Used as input
@@ -2760,7 +2829,8 @@ class StitchingHandler(object):
                 # Include am.userRequested? am.api_version? len(am._hops)?
 #                file.write("%s,%s,%s,%d,%d\n" % (am.url, am.urn, am.userRequested,
 #                           am.api_version, len(am._hops)))
-
+        # Done writing to file
+    # End of saveAggregateList
 
     def addAggregateOptions(self, args):
         '''Read a file with a list of aggregates, adding those as -a
@@ -2827,6 +2897,10 @@ class StitchingHandler(object):
                             self.opts.aggregate.append(url)
                         else:
                             self.logger.debug("NOTE not adding aggregate %s", url)
+                # Non-empty URL
+            # End of loop over lines
+        # End of block to read the file
+    # End of addAggregateOptions
 
     def addExpiresAttribute(self, rspecDOM, sliceexp):
         '''Set the expires attribute on the rspec to the slice
