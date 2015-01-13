@@ -222,118 +222,10 @@ class StitchingHandler(object):
         # If this is not a bound multi AM RSpec, just let Omni handle this.
         if not self.isBound or not self.isMultiAM:
             self.logger.info("Not a bound multi-aggregate request - let Omni handle this.")
-            if unboundNode is not None:
-                self.logger.info("Node '%s' is unbound in request - all nodes must be bound for stitcher, as all aggregates get the same request RSpec" % unboundNode)
 
-            if self.isBound:
-                if self.opts.aggregate is None or len(self.opts.aggregate) == 0:
-                    # A bound non multi AM RSpec but no AM specified. Fill in the -a appropriately
-                    if self.parsedUserRequest.amURNs and len(self.parsedUserRequest.amURNs) > 0:
-                        amURN = self.parsedUserRequest.amURNs.pop()
-                        (nick, url) = handler_utils._lookupAggNickURLFromURNInNicknames(self.logger, self.config, amURN)
-                        if url and url.strip() != '':
-                            self.logger.debug("Setting -a argument for Omni: Found RSpec AM %s in omni_config AM nicknames: %s", amURN, nick)
-                            self.opts.aggregate = [nick]
-                        else:
-                            self.logger.debug("Could not find AM from RSpec for URN %s - Omni will have no -a argument", amURN)
-                    #else:
-                        # weird and really shouldn't happen
-                elif len(self.opts.aggregate) == 1:
-                    # If the AM specified is not what it is bound to, then what? complain? fix it? do it anyhow?
-                    # else this is good
-                    if self.parsedUserRequest.amURNs and len(self.parsedUserRequest.amURNs) > 0:
-                        amURN = self.parsedUserRequest.amURNs.pop()
-                        (nick, url) = handler_utils._lookupAggNickURLFromURNInNicknames(self.logger, self.config, amURN)
-                        amNick = None
-                        amURL = None
-                        if url and url.strip() != '':
-                            self.logger.debug("Found RSpec AM %s in omni_config AM nicknames: %s", amURN, nick)
-                            amNick = nick
-                            amURL = url
-
-                        if not self.opts.debug:
-                            # Suppress most log messages on the console for doing the nickname lookup
-                            lvl = logging.INFO
-                            handlers = self.logger.handlers
-                            if len(handlers) == 0:
-                                handlers = logging.getLogger().handlers
-                            for handler in handlers:
-                                if isinstance(handler, logging.StreamHandler):
-                                    lvl = handler.level
-                                    handler.setLevel(logging.WARN)
-                                    break
-
-                        url1,urn1 = handler_utils._derefAggNick(self, self.opts.aggregate[0])
-
-                        if not self.opts.debug:
-                            handlers = self.logger.handlers
-                            if len(handlers) == 0:
-                                handlers = logging.getLogger().handlers
-                            for handler in handlers:
-                                if isinstance(handler, logging.StreamHandler):
-                                    handler.setLevel(lvl)
-                                    break
-
-                        if (amNick and amNick == self.opts.aggregate[0]) or (amURL and amURL == url1) or (amURN == urn1):
-                            self.logger.debug("Supplied -a matches the AM found in the RSpec: %s=%s", amURN, self.opts.aggregate[0])
-                        elif amNick and url1:
-                            # A valid comparison that didn't find anything
-                            self.logger.warn("RSpec appears bound to a different AM than you are submitting it to. RSpec specifies AM %s (%s) but -a argument specifies %s (%s)! Continuing anyway....", amURN, amNick, self.opts.aggregate[0], url1)
-                            # FIXME: Correct it? Bail?
-                        # else:
-                            # Didn't get all the values for a proper comparison
-                    # else:
-                        # No AMs parsed out of the RSpec. I don't think this should happen
-                else:
-                    # the RSpec appeared to be single AM but multiple AMs specified.
-                    # Perhaps check if the bound AM is at least one of them?
-                    # Complain? Bail? Fix it? Continue?
-                    self.logger.debug("RSpec appeared bound to a single AM but multiple -a arguments specified?")
-
-                    if self.parsedUserRequest.amURNs and len(self.parsedUserRequest.amURNs) > 0:
-                        amURN = self.parsedUserRequest.amURNs.pop()
-                        (nick, url) = handler_utils._lookupAggNickURLFromURNInNicknames(self.logger, self.config, amURN)
-                        amNick = None
-                        amURL = None
-                        if url and url.strip() != '':
-                            self.logger.debug("Found RSpec AM %s URL from omni_config AM nicknames: %s", amURN, nick)
-                            amNick = nick
-                            amURL = url
-                        found = False
-                        for dasha in self.opts.aggregate:
-                            if not self.opts.debug:
-                                # Suppress most log messages on the console for doing the nickname lookup
-                                lvl = logging.INFO
-                                handlers = self.logger.handlers
-                                if len(handlers) == 0:
-                                    handlers = logging.getLogger().handlers
-                                for handler in handlers:
-                                    if isinstance(handler, logging.StreamHandler):
-                                        lvl = handler.level
-                                        handler.setLevel(logging.WARN)
-                                        break
-
-                            url1,urn1 = handler_utils._derefAggNick(self, dasha)
-
-                            if not self.opts.debug:
-                                handlers = self.logger.handlers
-                                if len(handlers) == 0:
-                                    handlers = logging.getLogger().handlers
-                                for handler in handlers:
-                                    if isinstance(handler, logging.StreamHandler):
-                                        handler.setLevel(lvl)
-                                        break
-
-                            if (amNick and amNick == dasha) or (amURL and amURL == url1) or (amURN == urn1):
-                                self.logger.debug("1 of the supplied -a args matches the AM found in the RSpec: %s", amURN)
-                                found = True
-                                break
-                        if not found:
-                            self.logger.warn("RSpec appears bound to a different AM than the multiple AMs you are submitting it to. RSpec specifies AM %s (%s) but -a argument specifies %s! Continuing anyway....", amURN, amNick, self.opts.aggregate)
-                        else:
-                            self.logger.warn("RSpec appeared bound to a single AM (%s) but multiple -a arguments specified? %s", amURN, self.opts.aggregate)
-                            self.logger.info("... continuing anyway")
-                            # FIXME: Correct it? Bail?
+            # Check the -a arguments and compare with the AMs inferred from the request RSpec
+            # Log on problems and try to set the -a arguments appropriately
+            self.cleanDashAArgs(unboundNode)
 
             if self.opts.noReservation:
                 self.logger.info("Not reserving resources")
@@ -403,132 +295,11 @@ class StitchingHandler(object):
             # Passing in the request as a DOM - after allowing edits as necessary. OK?
             lastAM = self.mainStitchingLoop(sliceurn, self.parsedUserRequest.getLinkEditedDom())
 
-            # Construct a unified manifest
-            # include AMs, URLs, API versions
-            # Avoid EG manifests - they are incomplete
-            # Avoid DCN manifests - they do funny things with namespaces (ticket #549)
-            # GRAM AMs seems to also miss nodes. Avoid if possible.
-            if lastAM.isEG or lastAM.dcn or lastAM.isGRAM:
-                self.logger.debug("Last AM was an EG or DCN or GRAM AM. Find another for the template.")
-                i = 1
-                while (lastAM.isEG or lastAM.dcn or lastAM.isGRAM) and i <= len(self.ams_to_process):
-                    # This has lost some hops and messed up hop IDs. Don't use it as the template
-                    # I'd like to find another AM we did recently
-                    lastAM = self.ams_to_process[-i]
-                    i = i + 1
-                if lastAM.isEG or lastAM.dcn or lastAM.isGRAM:
-                    self.logger.debug("Still had an EG or DCN or GRAM template AM - use the raw SCS request")
-                    lastAM = None
-            combinedManifest = self.combineManifests(self.ams_to_process, lastAM)
-
-            # FIXME: Handle errors. Maybe make return use code/value/output struct
-            # If error and have an expanded request from SCS, include that in output.
-            #   Or if particular AM had errors, ID the AMs and errors
-
-            # FIXME: This prepends a header on an RSpec that might already have a header
-            # -- maybe replace any existing header
-
-            # FIXME: We force -o here and keep it from logging the
-            # RSpec. Do we need an option to not write the RSpec to a file?
-
-            ot = self.opts.output
-            if not self.opts.tostdout:
-                self.opts.output = True
-
-            if not self.opts.debug:
-                # Suppress all but WARN on console here
-                lvl = self.logger.getEffectiveLevel()
-                handlers = self.logger.handlers
-                if len(handlers) == 0:
-                    handlers = logging.getLogger().handlers
-                for handler in handlers:
-                    if isinstance(handler, logging.StreamHandler):
-                        lvl = handler.level
-                        handler.setLevel(logging.WARN)
-                        break
-
-            retVal, filename = handler_utils._writeRSpec(self.opts, self.logger, combinedManifest, self.slicename, 'multiam-combined', '', None)
-            if not self.opts.debug:
-                handlers = self.logger.handlers
-                if len(handlers) == 0:
-                    handlers = logging.getLogger().handlers
-                for handler in handlers:
-                    if isinstance(handler, logging.StreamHandler):
-                        handler.setLevel(lvl)
-                        break
-            self.opts.output = ot
+            # Construct and save out a combined manifest
+            combinedManifest, filename, retVal = self.getAndSaveCombinedManifest(lastAM)
 
             # Print something about sliver expiration times
-
-            # FIXME: 15min? 30min?
-            # FIXME: Old code printed per agg exp at debug level
-
-            sortedAggs = Aggregate.sortAggsByExpirations(15) # 15min apart counts as same
-            firstTime = None
-            firstCount = 0
-            firstLabel = ""
-            secondTime = None
-            secondCount = 0
-            secondLabel = ""
-            noPrint = False
-            msgAdd = ''
-            msg = None
-            if len(sortedAggs) == 0:
-                msg = "No aggregates"
-                self.logger.debug("Got no aggregates?")
-                noPrint = True
-            else:
-                self.logger.debug("AMs expire at %d time(s).", len(sortedAggs))
-                firstSlotTimes = sortedAggs[0][0].sliverExpirations
-                skipFirst = False
-                if firstSlotTimes is None or len(firstSlotTimes) == 0:
-                    skipFirst = True
-                    if len(sortedAggs) == 1:
-                        msg = "Aggregates did not report sliver expiration"
-                        self.logger.debug("Only expiration timeslot has an agg with no expirations")
-                        noPrint = True
-                    else:
-                        msgAdd = "Resource expiration unknown at %d aggregate(s)" % len(sortedAggs[0])
-                        self.logger.debug("First slot had no times, but there are other slots")
-                ind = -1
-                for slot in sortedAggs:
-                    ind += 1
-                    if skipFirst and ind == 0:
-                        continue
-                    if firstTime is None:
-                        firstTime = slot[0].sliverExpirations[0]
-                        firstCount = len(slot)
-                        firstLabel = str(slot[0])
-                        if len(sortedAggs) > 1:
-                            self.logger.debug("First expiration is at %s UTC at %s, at %d total AM(s).", firstTime.isoformat(), firstLabel, firstCount)
-                        else:
-                            self.logger.debug("Resource expiration is at %s UTC, at %d total AM(s).", firstTime.isoformat(), firstCount)
-                        if firstCount == 1:
-                            continue
-                        elif firstCount == 2:
-                            firstLabel += " and " + str(slot[1])
-                        else:
-                            firstLabel += " and %d other AM(s)" % (firstCount - 1)
-                        continue
-                    elif secondTime is None:
-                        secondTime = slot[0].sliverExpirations[0]
-                        secondCount = len(slot)
-                        secondLabel = str(slot[0])
-                        self.logger.debug("Second expiration at %s UTC at %s, at %d total AM(s)", secondTime.isoformat(), secondLabel, secondCount)
-                        if secondCount == 1:
-                            break
-                        elif secondCount == 2:
-                            secondLabel += " and " + str(slot[1])
-                        else:
-                            secondLabel += " and %d other AM(s)" % (secondCount - 1)
-                        break
-                # Done looping over agg exp times in sortedAggs
-            # Done handling sortedAggs
-            if not noPrint:
-                if len(sortedAggs) == 1:
-                    msg = "Your resources expire at %s (UTC). %s" % (firstTime.isoformat(), msgAdd)
-                else:
-                    msg = "Your resources expire at %d different times. The first resources expire at %s (UTC) at %s. The second expiration time is %s (UTC) at %s. %s" % (len(sortedAggs), firstTime.isoformat(), firstLabel, secondTime.isoformat(), secondLabel, msgAdd)
+            msg = self.getExpirationMessage()
 
             if msg:
                 self.logger.info(msg)
@@ -627,6 +398,260 @@ class StitchingHandler(object):
         self.logger.debug(retMsg)
         return (retMsg, combinedManifest)
 
+    def cleanDashAArgs(self, unboundNode):
+        # Check and clean the -a args relative to the request RSpec
+        # logging on issues found
+
+        if unboundNode is not None:
+            self.logger.info("Node '%s' is unbound in request - all nodes must be bound for stitcher, as all aggregates get the same request RSpec" % unboundNode)
+
+        if self.isBound:
+            if self.opts.aggregate is None or len(self.opts.aggregate) == 0:
+                # A bound non multi AM RSpec but no AM specified. Fill in the -a appropriately
+                if self.parsedUserRequest.amURNs and len(self.parsedUserRequest.amURNs) > 0:
+                    amURN = self.parsedUserRequest.amURNs.pop()
+                    (nick, url) = handler_utils._lookupAggNickURLFromURNInNicknames(self.logger, self.config, amURN)
+                    if url and url.strip() != '':
+                        self.logger.debug("Setting -a argument for Omni: Found RSpec AM %s in omni_config AM nicknames: %s", amURN, nick)
+                        self.opts.aggregate = [nick]
+                    else:
+                        self.logger.debug("Could not find AM from RSpec for URN %s - Omni will have no -a argument", amURN)
+                #else:
+                    # weird and really shouldn't happen
+            elif len(self.opts.aggregate) == 1:
+                # If the AM specified is not what it is bound to, then what? complain? fix it? do it anyhow?
+                # else this is good
+                if self.parsedUserRequest.amURNs and len(self.parsedUserRequest.amURNs) > 0:
+                    amURN = self.parsedUserRequest.amURNs.pop()
+                    (nick, url) = handler_utils._lookupAggNickURLFromURNInNicknames(self.logger, self.config, amURN)
+                    amNick = None
+                    amURL = None
+                    if url and url.strip() != '':
+                        self.logger.debug("Found RSpec AM %s in omni_config AM nicknames: %s", amURN, nick)
+                        amNick = nick
+                        amURL = url
+
+                    if not self.opts.debug:
+                        # Suppress most log messages on the console for doing the nickname lookup
+                        lvl = logging.INFO
+                        handlers = self.logger.handlers
+                        if len(handlers) == 0:
+                            handlers = logging.getLogger().handlers
+                        for handler in handlers:
+                            if isinstance(handler, logging.StreamHandler):
+                                lvl = handler.level
+                                handler.setLevel(logging.WARN)
+                                break
+
+                    url1,urn1 = handler_utils._derefAggNick(self, self.opts.aggregate[0])
+
+                    if not self.opts.debug:
+                        handlers = self.logger.handlers
+                        if len(handlers) == 0:
+                            handlers = logging.getLogger().handlers
+                        for handler in handlers:
+                            if isinstance(handler, logging.StreamHandler):
+                                handler.setLevel(lvl)
+                                break
+
+                    if (amNick and amNick == self.opts.aggregate[0]) or (amURL and amURL == url1) or (amURN == urn1):
+                        self.logger.debug("Supplied -a matches the AM found in the RSpec: %s=%s", amURN, self.opts.aggregate[0])
+                    elif amNick and url1:
+                        # A valid comparison that didn't find anything
+                        self.logger.warn("RSpec appears bound to a different AM than you are submitting it to. RSpec specifies AM %s (%s) but -a argument specifies %s (%s)! Continuing anyway....", amURN, amNick, self.opts.aggregate[0], url1)
+                        # FIXME: Correct it? Bail?
+                    # else:
+                        # Didn't get all the values for a proper comparison
+                # else:
+                    # No AMs parsed out of the RSpec. I don't think this should happen
+            else:
+                # the RSpec appeared to be single AM but multiple AMs specified.
+                # Perhaps check if the bound AM is at least one of them?
+                # Complain? Bail? Fix it? Continue?
+                self.logger.debug("RSpec appeared bound to a single AM but multiple -a arguments specified?")
+
+                if self.parsedUserRequest.amURNs and len(self.parsedUserRequest.amURNs) > 0:
+                    amURN = self.parsedUserRequest.amURNs.pop()
+                    (nick, url) = handler_utils._lookupAggNickURLFromURNInNicknames(self.logger, self.config, amURN)
+                    amNick = None
+                    amURL = None
+                    if url and url.strip() != '':
+                        self.logger.debug("Found RSpec AM %s URL from omni_config AM nicknames: %s", amURN, nick)
+                        amNick = nick
+                        amURL = url
+
+                    # Get the urn,urn for each -a and see if it is in the RSpec
+                    found = False
+                    for dasha in self.opts.aggregate:
+                        if not self.opts.debug:
+                            # Suppress most log messages on the console for doing the nickname lookup
+                            lvl = logging.INFO
+                            handlers = self.logger.handlers
+                            if len(handlers) == 0:
+                                handlers = logging.getLogger().handlers
+                            for handler in handlers:
+                                if isinstance(handler, logging.StreamHandler):
+                                    lvl = handler.level
+                                    handler.setLevel(logging.WARN)
+                                    break
+
+                        url1,urn1 = handler_utils._derefAggNick(self, dasha)
+
+                        if not self.opts.debug:
+                            handlers = self.logger.handlers
+                            if len(handlers) == 0:
+                                handlers = logging.getLogger().handlers
+                            for handler in handlers:
+                                if isinstance(handler, logging.StreamHandler):
+                                    handler.setLevel(lvl)
+                                    break
+
+                        if (amNick and amNick == dasha) or (amURL and amURL == url1) or (amURN == urn1):
+                            self.logger.debug("1 of the supplied -a args matches the AM found in the RSpec: %s", amURN)
+                            found = True
+                            break
+                    # End of loop over -a args
+
+                    if not found:
+                        self.logger.warn("RSpec appears bound to a different AM than the multiple AMs you are submitting it to. RSpec specifies AM %s (%s) but -a argument specifies %s! Continuing anyway....", amURN, amNick, self.opts.aggregate)
+                    else:
+                        self.logger.warn("RSpec appeared bound to a single AM (%s) but multiple -a arguments specified? %s", amURN, self.opts.aggregate)
+                        self.logger.info("... continuing anyway")
+                        # FIXME: Correct it? Bail?
+                # end of multiple AMs found in parsed RSpec
+            # end of multi AMs specified with -a
+        # end of if self.isBound
+
+    def getAndSaveCombinedManifest(self, lastAM):
+        # Construct a unified manifest
+        # include AMs, URLs, API versions
+        # Avoid EG manifests - they are incomplete
+        # Avoid DCN manifests - they do funny things with namespaces (ticket #549)
+        # GRAM AMs seems to also miss nodes. Avoid if possible.
+        if lastAM is not None and (lastAM.isEG or lastAM.dcn or lastAM.isGRAM):
+            self.logger.debug("Last AM was an EG or DCN or GRAM AM. Find another for the template.")
+            i = 1
+            while (lastAM.isEG or lastAM.dcn or lastAM.isGRAM) and i <= len(self.ams_to_process):
+                # This has lost some hops and messed up hop IDs. Don't use it as the template
+                # I'd like to find another AM we did recently
+                lastAM = self.ams_to_process[-i]
+                i = i + 1
+            if lastAM.isEG or lastAM.dcn or lastAM.isGRAM:
+                self.logger.debug("Still had an EG or DCN or GRAM template AM - use the raw SCS request")
+                lastAM = None
+        combinedManifest = self.combineManifests(self.ams_to_process, lastAM)
+
+        # FIXME: Handle errors. Maybe make return use code/value/output struct
+        # If error and have an expanded request from SCS, include that in output.
+        #   Or if particular AM had errors, ID the AMs and errors
+
+        # FIXME: This prepends a header on an RSpec that might already have a header
+        # -- maybe replace any existing header
+
+        # FIXME: We force -o here and keep it from logging the
+        # RSpec. Do we need an option to not write the RSpec to a file?
+
+        ot = self.opts.output
+        if not self.opts.tostdout:
+            self.opts.output = True
+
+        if not self.opts.debug:
+            # Suppress all but WARN on console here
+            lvl = self.logger.getEffectiveLevel()
+            handlers = self.logger.handlers
+            if len(handlers) == 0:
+                handlers = logging.getLogger().handlers
+            for handler in handlers:
+                if isinstance(handler, logging.StreamHandler):
+                    lvl = handler.level
+                    handler.setLevel(logging.WARN)
+                    break
+
+        retVal, filename = handler_utils._writeRSpec(self.opts, self.logger, combinedManifest, self.slicename, 'multiam-combined', '', None)
+        if not self.opts.debug:
+            handlers = self.logger.handlers
+            if len(handlers) == 0:
+                handlers = logging.getLogger().handlers
+            for handler in handlers:
+                if isinstance(handler, logging.StreamHandler):
+                    handler.setLevel(lvl)
+                    break
+        self.opts.output = ot
+
+        return combinedManifest, filename, retVal
+
+    def getExpirationMessage(self):
+        # FIXME: 15min? 30min?
+        # FIXME: Old code printed per agg exp at debug level
+
+        sortedAggs = Aggregate.sortAggsByExpirations(15) # 15min apart counts as same
+        firstTime = None
+        firstCount = 0
+        firstLabel = ""
+        secondTime = None
+        secondCount = 0
+        secondLabel = ""
+        noPrint = False
+        msgAdd = ''
+        msg = None
+        if len(sortedAggs) == 0:
+            msg = "No aggregates"
+            self.logger.debug("Got no aggregates?")
+            noPrint = True
+        else:
+            self.logger.debug("AMs expire at %d time(s).", len(sortedAggs))
+            firstSlotTimes = sortedAggs[0][0].sliverExpirations
+            skipFirst = False
+            if firstSlotTimes is None or len(firstSlotTimes) == 0:
+                skipFirst = True
+                if len(sortedAggs) == 1:
+                    msg = "Aggregates did not report sliver expiration"
+                    self.logger.debug("Only expiration timeslot has an agg with no expirations")
+                    noPrint = True
+                else:
+                    msgAdd = "Resource expiration unknown at %d aggregate(s)" % len(sortedAggs[0])
+                    self.logger.debug("First slot had no times, but there are other slots")
+            ind = -1
+            for slot in sortedAggs:
+                ind += 1
+                if skipFirst and ind == 0:
+                    continue
+                if firstTime is None:
+                    firstTime = slot[0].sliverExpirations[0]
+                    firstCount = len(slot)
+                    firstLabel = str(slot[0])
+                    if len(sortedAggs) > 1:
+                        self.logger.debug("First expiration is at %s UTC at %s, at %d total AM(s).", firstTime.isoformat(), firstLabel, firstCount)
+                    else:
+                        self.logger.debug("Resource expiration is at %s UTC, at %d total AM(s).", firstTime.isoformat(), firstCount)
+                    if firstCount == 1:
+                        continue
+                    elif firstCount == 2:
+                        firstLabel += " and " + str(slot[1])
+                    else:
+                        firstLabel += " and %d other AM(s)" % (firstCount - 1)
+                    continue
+                elif secondTime is None:
+                    secondTime = slot[0].sliverExpirations[0]
+                    secondCount = len(slot)
+                    secondLabel = str(slot[0])
+                    self.logger.debug("Second expiration at %s UTC at %s, at %d total AM(s)", secondTime.isoformat(), secondLabel, secondCount)
+                    if secondCount == 1:
+                        break
+                    elif secondCount == 2:
+                        secondLabel += " and " + str(slot[1])
+                    else:
+                        secondLabel += " and %d other AM(s)" % (secondCount - 1)
+                    break
+            # Done looping over agg exp times in sortedAggs
+        # Done handling sortedAggs
+        if not noPrint:
+            if len(sortedAggs) == 1:
+                msg = "Your resources expire at %s (UTC). %s" % (firstTime.isoformat(), msgAdd)
+            else:
+                msg = "Your resources expire at %d different times. The first resources expire at %s (UTC) at %s. The second expiration time is %s (UTC) at %s. %s" % (len(sortedAggs), firstTime.isoformat(), firstLabel, secondTime.isoformat(), secondLabel, msgAdd)
+        return msg
+
     # Compare the list of AMs in the request with AMs known
     # to the SCS. Any that the SCS does not know means the request
     # cannot succeed if those are AMs in a stitched link
@@ -703,6 +728,7 @@ class StitchingHandler(object):
     def mainStitchingLoop(self, sliceurn, requestDOM, existingAggs=None):
         # existingAggs are Aggregate objects
 
+        # Time out stitcher call if needed
         if datetime.datetime.utcnow() >= self.config['timeoutTime']:
             msg = "Reservation attempt timed out after %d minutes." % self.opts.timeout
             self.logger.warn("%s Deleting any reservations...")
@@ -722,6 +748,7 @@ class StitchingHandler(object):
                         self.logger.warn("You have a reservation at %s", am)
             raise SticherError(msg)
 
+        # Call SCS if needed
         self.scsCalls = self.scsCalls + 1
         if self.isStitching:
             if self.scsCalls == 1:
@@ -740,6 +767,7 @@ class StitchingHandler(object):
             scsResponse = self.callSCS(sliceurn, requestDOM, existingAggs)
         self.lastException = None # Clear any last exception from the last run through
 
+        # If needed, pause to let AMs free up resources; recheck the timeout if needed
         if self.scsCalls > 1 and existingAggs:
             # We are doing another call.
             # Let AMs recover. Is this long enough?
@@ -784,7 +812,7 @@ class StitchingHandler(object):
             self.parsedSCSRSpec, workflow_parser = self.parseSCSResponse(scsResponse)
             scsResponse = None # Just to note we are done with this here (keep no state)
         else:
-            # FIXME: with the user rspec
+            # Fake out the data structures using the original user request RSpec
             try:
                 xmlreq = requestDOM.toxml()
             except Exception, xe:
@@ -802,6 +830,7 @@ class StitchingHandler(object):
             workflow_parser.parse({}, self.parsedSCSRSpec)
 #            self.logger.debug("Did fake workflow parsing")
 
+        # Save off existing Aggregate object state
         if existingAggs:
             # Copy existingAggs.hops.vlans_unavailable to workflow_parser.aggs.hops.vlans_unavailable? Other state?
             self.saveAggregateState(existingAggs, workflow_parser.aggs)
@@ -818,73 +847,8 @@ class StitchingHandler(object):
             for am in self.ams_to_process:
                 self.logger.debug("\t%s", am)
 
-        addedAMs = []
-        for amURN in self.parsedSCSRSpec.amURNs:
-#            self.logger.debug("Looking at SCS returned amURN %s", amURN)
-            found = False
-            for agg in self.ams_to_process:
-                if agg.urn == amURN:
-                    found = True
-#                    self.logger.debug(" .. was already in ams_to_process")
-                    break
-                # For EG there are multiple URNs that are really the same
-                # If find one, found them all
-                for urn2 in agg.urn_syns:
-                    if urn2 == amURN:
-#                        self.logger.debug(" .. was in ams_to_process under synonym. Ams_to_process had %s", agg.urn)
-                        found = True
-                        break
-            if found:
-                continue
-            else:
-                # AM URN was not in the workflow from the SCS
-#                # If this URN was on a stitching link, then this isn't going to work
-#                for link in self.parsedSCSRSpec.links:
-#                    if len(link.aggregates) > 1 and not link.hasSharedVlan and link.typeName == link.VLAN_LINK_TYPE:
-#                        # This is a link that needs stitching
-#                        for linkagg in link.aggregates:
-#                            if linkagg.urn == amURN or amURN in linkagg.urn_syns:
-#                                self.logger.debug("Found AM %s on stitching link %s that is not in SCS Workflow. URL: %s", amURN, link.id, linkagg.url)
-#                                stitching = self.parsedSCSRSpec.stitching
-#                                slink = None
-#                                if stitching:
-#                                    slink = stitching.find_path(link.id)
-#                                if not slink:
-#                                    self.logger.debug("No path in stitching section of rspec for link %s that seems to need stitching", link.id)
-#                                raise StitchingError("SCS did not handle link %s - perhaps AM %s is unknown?", link.id, amURN)
-
-                am = Aggregate.find(amURN)
-                addedAMs.append(am)
-                if not am.url:
-                    # FIXME: Avoid apparent v1 URLs
-                    for urn in am.urn_syns:
-                        (nick, url) = handler_utils._lookupAggNickURLFromURNInNicknames(self.logger, self.config, urn)
-                        if url and url.strip() != '':
-                            self.logger.debug("Found AM %s URL using URN %s from omni_config AM nicknames: %s", amURN, urn, nick)
-                            am.url = url
-                            am.nick = nick
-                            break
-
-                if not am.url:
-                    # Try asking our CH for AMs to get the URL for the
-                    # given URN
-                    fw_ams = dict()
-                    try:
-                        fw_ams = self.framework.list_aggregates()
-                        for fw_am_urn in fw_ams.keys():
-                            if fw_am_urn and fw_am_urn.strip() in am.urn_syns and fw_ams[fw_am_urn].strip() != '':
-                                am.url = fw_ams[fw_am_urn]
-                                self.logger.debug("Found AM %s URL from CH ListAggs: %s", amURN, am.url)
-                                break
-                    except:
-                        pass
-                if not am.url:
-                    raise StitchingError("RSpec requires AM '%s' which is not in workflow and URL is unknown!" % amURN)
-                else:
-                    self.logger.debug("Adding am to ams_to_process from URN %s, with url %s", amURN, am.url)
-                    self.ams_to_process.append(am)
-        # Done adding user requested non linked AMs to list of AMs to
-        # process
+        # Ensure all AM URNs we found in the RSpec are Aggregate objects in ams_to_process
+        self.createObjectsFromParsedAMURNs()
 
         # Add extra info about the aggregates to the AM objects
         self.add_am_info(self.ams_to_process)
@@ -1119,6 +1083,81 @@ class StitchingHandler(object):
                 #raise
             raise se
         return lastAM
+
+    def createObjectsFromParsedAMURNs(self):
+        # Ensure all AM URNs we found in the RSpec are Aggregate objects in ams_to_process
+        for amURN in self.parsedSCSRSpec.amURNs:
+#            self.logger.debug("Looking at SCS returned amURN %s", amURN)
+
+            # If the AM URN we parsed from the RSpec is already in the list of aggregates to process,
+            # skip to the next parsed URN
+            found = False
+            for agg in self.ams_to_process:
+                if agg.urn == amURN:
+                    found = True
+#                    self.logger.debug(" .. was already in ams_to_process")
+                    break
+                # For EG there are multiple URNs that are really the same
+                # If find one, found them all
+                for urn2 in agg.urn_syns:
+                    if urn2 == amURN:
+#                        self.logger.debug(" .. was in ams_to_process under synonym. Ams_to_process had %s", agg.urn)
+                        found = True
+                        break
+            if found:
+                continue # to next parsed URN
+
+            # AM URN was not in the workflow from the SCS
+
+#            # If this URN was on a stitching link, then this isn't going to work
+#            for link in self.parsedSCSRSpec.links:
+#                if len(link.aggregates) > 1 and not link.hasSharedVlan and link.typeName == link.VLAN_LINK_TYPE:
+#                    # This is a link that needs stitching
+#                    for linkagg in link.aggregates:
+#                        if linkagg.urn == amURN or amURN in linkagg.urn_syns:
+#                            self.logger.debug("Found AM %s on stitching link %s that is not in SCS Workflow. URL: %s", amURN, link.id, linkagg.url)
+#                            stitching = self.parsedSCSRSpec.stitching
+#                            slink = None
+#                            if stitching:
+#                                slink = stitching.find_path(link.id)
+#                            if not slink:
+#                                self.logger.debug("No path in stitching section of rspec for link %s that seems to need stitching", link.id)
+#                            raise StitchingError("SCS did not handle link %s - perhaps AM %s is unknown?", link.id, amURN)
+
+            am = Aggregate.find(amURN)
+
+            # Fill in a URL for this AM
+            # First, find it in the agg_nick_cache
+            if not am.url:
+                # FIXME: Avoid apparent v1 URLs
+                for urn in am.urn_syns:
+                    (nick, url) = handler_utils._lookupAggNickURLFromURNInNicknames(self.logger, self.config, urn)
+                    if url and url.strip() != '':
+                        self.logger.debug("Found AM %s URL using URN %s from omni_config AM nicknames: %s", amURN, urn, nick)
+                        am.url = url
+                        am.nick = nick
+                        break
+
+            # If that failed, try asking the CH
+            if not am.url:
+                # Try asking our CH for AMs to get the URL for the
+                # given URN
+                fw_ams = dict()
+                try:
+                    fw_ams = self.framework.list_aggregates()
+                    for fw_am_urn in fw_ams.keys():
+                        if fw_am_urn and fw_am_urn.strip() in am.urn_syns and fw_ams[fw_am_urn].strip() != '':
+                            am.url = fw_ams[fw_am_urn]
+                            self.logger.debug("Found AM %s URL from CH ListAggs: %s", amURN, am.url)
+                            break
+                except:
+                    pass
+            if not am.url:
+                raise StitchingError("RSpec requires AM '%s' which is not in workflow and URL is unknown!" % amURN)
+            else:
+                self.logger.debug("Adding am to ams_to_process from URN %s, with url %s", amURN, am.url)
+                self.ams_to_process.append(am)
+        # Done adding user requested non linked AMs to list of AMs to process
 
     def updateAvailRanges(self, sliceurn, requestDOM):
         # Check current VLAN tag availability before doing allocations
@@ -1366,7 +1405,7 @@ class StitchingHandler(object):
             return (sliceurn, naiveUTC(datetime.datetime.max))
 
         if self.opts.genRequest:
-            self.logger.info("Requested only generate request: not checking slice credential")
+            self.logger.info("Requested to only generate the request: not checking slice credential")
             return (sliceurn, naiveUTC(datetime.datetime.max))
 
         # Get slice cred
