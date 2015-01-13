@@ -1,6 +1,6 @@
 ### DO NOT MODIFY THIS FILE BY HAND ###
 # This file lives at: http://trac.gpolab.bbn.com/gcf/raw-attachment/wiki/Omni/agg_nick_cache
-# Last updated on October 2, 2014
+# Last updated on January 13, 2015
 
 [omni_defaults]
 # This section is for updating Omni defaults without updating Omni.
@@ -510,3 +510,23 @@ clemson-og3=urn:publicid:IDN+clemson-clemson-control-1.clemson.edu+authority+am,
 gpo-og=urn:publicid:IDN+bbn-cam-ctrl-1.gpolab.bbn.com+authority+am,https://bbn-cam-ctrl-1.gpolab.bbn.com:5002
 gpo-og2=urn:publicid:IDN+bbn-cam-ctrl-1.gpolab.bbn.com+authority+am,https://bbn-cam-ctrl-1.gpolab.bbn.com:5002
 gpo-og3=urn:publicid:IDN+bbn-cam-ctrl-1.gpolab.bbn.com+authority+am,https://bbn-cam-ctrl-1.gpolab.bbn.com:5001/
+
+# January, 2015
+# ======
+# Texas A&M ExoGENI
+# ======
+tamu-eg=urn:publicid:IDN+exogeni.net:tamuvmsite+authority+am,https://tamu-hn.exogeni.net:11443/orca/xmlrpc
+tamu-eg2=urn:publicid:IDN+exogeni.net:tamuvmsite+authority+am,https://tamu-hn.exogeni.net:11443/orca/xmlrpc
+tamu-eg-of=urn:publicid:IDN+openflow:foam:tamu-hn.exogeni.net+authority+am,https://tamu-hn.exogeni.net:3626/foam/gapi/2
+tamu-eg-of1=urn:publicid:IDN+openflow:foam:tamu-hn.exogeni.net+authority+am,https://tamu-hn.exogeni.net:3626/foam/gapi/1
+tamu-eg-of2=urn:publicid:IDN+openflow:foam:tamu-hn.exogeni.net+authority+am,https://tamu-hn.exogeni.net:3626/foam/gapi/2
+
+# ======
+# Wayne State ExoGENI
+# ======
+wsu-eg=urn:publicid:IDN+exogeni.net:wsuvmsite+authority+am,https://wsu-hn.exogeni.net:11443/orca/xmlrpc
+wsu-eg2=urn:publicid:IDN+exogeni.net:wsuvmsite+authority+am,https://wsu-hn.exogeni.net:11443/orca/xmlrpc
+wsu-eg-of=urn:publicid:IDN+openflow:foam:wsu-hn.exogeni.net+authority+am,https://wsu-hn.exogeni.net:3626/foam/gapi/2
+wsu-eg-of1=urn:publicid:IDN+openflow:foam:wsu-hn.exogeni.net+authority+am,https://wsu-hn.exogeni.net:3626/foam/gapi/1
+wsu-eg-of2=urn:publicid:IDN+openflow:foam:wsu-hn.exogeni.net+authority+am,https://wsu-hn.exogeni.net:3626/foam/gapi/2
+
