@@ -1030,9 +1030,11 @@ class Aggregate(object):
                     hop._hop_link.vlan_suggested_request = new_suggested
                     # if however the previous suggested_manifest == new_suggested, then maybe this is OK?
                     if hop._hop_link.vlan_suggested_manifest == new_suggested:
-                        self.logger.info("%s VLAN suggested request %s != new request %s, but had manifest that is the new request, so leave it alone", hop, hop._hop_link.vlan_suggested_request, new_suggested)
+                        self.logger.debug("%s VLAN suggested request %s != new request %s, but had manifest that is the new request, so leave it alone - no need to redo reservation", hop, hop._hop_link.vlan_suggested_request, new_suggested)
                     else:
-                        self.logger.info("Redo %s: had previous different suggested VLAN for hop %s (old request/manifest %s != new request %s)", self, hop, hop._hop_link.vlan_suggested_request, new_suggested)
+                        if not mustDelete:
+                            self.logger.info("Must redo reservation at %s (picked new suggested VLAN)", self)
+                        self.logger.debug("... had previous different suggested VLAN for hop %s (old request/manifest %s != new request %s)", hop, hop._hop_link.vlan_suggested_manifest, new_suggested)
                         mustDelete = True
                         alreadyDone = False
                 else:
@@ -1061,19 +1063,20 @@ class Aggregate(object):
                     if hop._hop_link.vlan_suggested_manifest and not hop._hop_link.vlan_suggested_manifest <= new_avail:
                         # new avail doesn't contain the previous manifest suggested. So new avail would have precluded
                         # using the suggested we picked before. So we have to redo
+                        if not mustDelete:
+                            self.logger.info("Must redo reservation at %s (previously picked VLAN no longer available)", self)
+                        self.logger.debug("%s previous availRange '%s' not same as new, and previous manifest suggested %s not in new avail '%s' - redo this AM", hop, hop._hop_link.vlan_range_request, hop._hop_link.vlan_suggested_manifest, new_avail)
                         mustDelete = True
                         alreadyDone = False
-                        self.logger.warn("%s previous availRange '%s' not same as new, and previous manifest suggested %s not in new avail '%s' - redo this AM", hop, hop._hop_link.vlan_range_request, hop._hop_link.vlan_suggested_manifest, new_avail)
                     else:
                         # what we picked before still works, so leave it alone
-                        self.logger.info("%s had manifest suggested %s that works with new/different availRange %s - don't redo", hop, hop._hop_link.vlan_suggested_manifest, new_avail)
+                        self.logger.debug("%s had manifest suggested %s that works with new/different availRange %s - don't redo", hop, hop._hop_link.vlan_suggested_manifest, new_avail)
                         #self.logger.debug("%s had avail range manifest %s, and previous avail range request (%s) != new (%s), but previous suggested manifest %s is in the new avail range, so it is still good - no redo", hop, hop._hop_link.vlan_range_manifest, hop._hop_link.vlan_range_request, new_avail, hop._hop_link.vlan_suggested_manifest)
 
                     # Either way, record what we want the new request to be, so later if we redo we use the right thing
                     hop._hop_link.vlan_range_request = new_avail
                 else:
-                    # FIXME: move to debug?
-                    self.logger.info("%s had previous manifest range and used same avail VLAN range request '%s' - no redo", hop, hop._hop_link.vlan_range_request)
+                    self.logger.debug("%s had previous manifest range and used same avail VLAN range request '%s' - no redo", hop, hop._hop_link.vlan_range_request)
             else:
                 alreadydone = False
                 # No previous result
