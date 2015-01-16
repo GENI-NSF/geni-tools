@@ -29,6 +29,8 @@ gcf 2.8:
   * Factor out determining if AM type supports requesting 'any' VLAN tag. (#758)
   * SCS requires a valid client certificate and uses SSL. (#757)
    * As a result, the SSL timeout on calls to the SCS should work. (#346)
+   * When calling `scs.py` directly, you must now provide the `--key` and `--cert`
+     arguments to reach the default SCS or any SCS that uses https.
   * Check current VLAN tag availability at AMs before trying reservations, where it
     works and will help. Disable this with new option `--noAvailCheck`. (#566,#545)
   * Support only generating and saving the expanded request. (#763)
@@ -51,6 +53,8 @@ gcf 2.8:
        `--noEGStitchingOnLink` means that only the named links between ExoGENI sites will attempt
        to use a GENI stitched link.
      * See README-stitching.txt for more on `--noEGStitching` and `--noEGStitchingOnLink`.
+  * Increase sleep before retrying reservations from 30 to 45 seconds. (#769)
+   * PG based nodes now return quicker but take that long to finish deleting.
   * Use the SCS instance maintained by Internet2 by default. (#761)
 
  * readyToLogin
