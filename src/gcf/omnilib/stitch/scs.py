@@ -266,6 +266,10 @@ def main(argv=None):
         if ("--cert" == arg or "--certfile" == arg) and (ind+1) < len(argv):
             certfile = argv[ind+1]
 
+    if SCS_URL.lower().strip().startswith('https') and (keyfile is None or certfile is None):
+        print "ERROR: When using an SCS with an https URL, you must supply the --key and --cert arguments to provide the paths to your key file and certificate"
+        return 1
+
     if keyfile is not None:
         # Ensure have a good path for it
         if not os.path.exists(keyfile) or not os.path.getsize(keyfile) > 0:
