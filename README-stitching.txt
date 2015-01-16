@@ -303,7 +303,7 @@ In running stitcher, follow these various tips:
  - Be sure all nodes in the request are bound to specific aggregates.
  - This script can take a while - it must make reservations at all the
  aggregates, and keeps retrying at aggregates that can't provide
- matching VLAN tags. Stitcher must pause 30 seconds or more between
+ matching VLAN tags. Stitcher must pause 45 seconds or more between
  retries. Be patient.
  - Stitcher will retry when something goes wrong, up to a point. If
  the failure is isolated to a single aggregate failing to find a VLAN,
