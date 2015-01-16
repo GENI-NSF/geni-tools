@@ -185,7 +185,9 @@ class Aggregate(object):
     BUSY_POLL_INTERVAL_SEC = 10 # dossl does 10
     SLIVERSTATUS_MAX_TRIES = 10
     SLIVERSTATUS_POLL_INTERVAL_SEC = 30 # Xi says 10secs is short if ION is busy; per ticket 1045, even 20 may be too short
-    PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS = 30
+    # 1/15: 30 has been enough, but PG nodes now take 45 seconds to delete a node.
+    # Ideally we'd make this pause be time-from-node-delete-to-next-createsliver-call on a per AM basis.
+    PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS = 45
     # See DCN_AM_RETRY_INTERVAL_SECS for the DCN AM equiv of PAUSE_FOR_AM_TO_FREE...
     PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS = DCN_AM_RETRY_INTERVAL_SECS # Xi and Chad say ION routers take a long time to reset
     MAX_AGG_NEW_VLAN_TRIES = 50 # Max times to locally pick a new VLAN
