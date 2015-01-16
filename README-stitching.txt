@@ -341,7 +341,7 @@ In running stitcher, follow these various tips:
 {{{
 cd <omni install directory>
 export PYTHONPATH=$PYTHONPATH:.
-python src/gcf/omnilib/stitch/scs.py --listaggregates
+python src/gcf/omnilib/stitch/scs.py --listaggregates --key <path-to-key> --cert <path-to-cert>
 }}}
  - Stitching to fixed endpoints:
   - A fixed endpoint is any switch/port that happens to connect to
