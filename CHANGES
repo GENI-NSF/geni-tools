@@ -29,6 +29,8 @@ gcf 2.8:
   * Factor out determining if AM type supports requesting 'any' VLAN tag. (#758)
   * SCS requires a valid client certificate and uses SSL. (#757)
    * As a result, the SSL timeout on calls to the SCS should work. (#346)
+   * When calling `scs.py` directly, you must now provide the `--key` and `--cert`
+     arguments to reach the default SCS or any SCS that uses https.
   * Check current VLAN tag availability at AMs before trying reservations, where it
     works and will help. Disable this with new option `--noAvailCheck`. (#566,#545)
   * Support only generating and saving the expanded request. (#763)
