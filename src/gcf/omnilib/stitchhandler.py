@@ -54,6 +54,7 @@ from .stitch.VLANRange import *
 
 from ..geni.util import rspec_schema
 from ..geni.util.rspec_util import is_rspec_string, is_rspec_of_type, rspeclint_exists, validate_rspec
+from ..geni.util.urn_util import URN
 
 from ..sfa.trust import gid
 from ..sfa.util.xrn import urn_to_hrn, get_leaf
@@ -154,6 +155,27 @@ class StitchingHandler(object):
         self.slicename = None
         if len(args) > 0:
             command = args[0]
+        if len(args) > 1:
+            self.slicename = args[1]
+
+        if command and command.strip().lower() in ('describe', 'listresources') and self.slicename:
+            if not self.opts.aggregate or len(self.opts.aggregate) == 0:
+                self.addAggregateOptions(args)
+            if not self.opts.aggregate or len(self.opts.aggregate) == 0:
+                # Call the CH to get AMs in this slice
+                pass
+            if not self.opts.aggregate or len(self.opts.aggregate) == 0:
+                # No resources known to be in any AMs. Try again specifying explicit -a arguments.
+                msg = "No known reservations at any aggregates. Try again with explicit -a arguments."
+                self.logger.info(msg)
+                return (msg, None)
+            if self.opts.aggregate and len(self.opts.aggregate) == 1:
+                # Omni can handle this
+                return self.passToOmni(args)
+
+            # This is a case of multiple AMs whose manifests should be combined
+            return self.rebuildManifest()
+
         if not command or command.strip().lower() not in ('createsliver', 'allocate'):
             # Stitcher only handles createsliver or allocate. Hand off to Omni.
             if self.opts.fakeModeDir:
@@ -165,27 +187,10 @@ class StitchingHandler(object):
                 # Add -a options from the saved file, if none already supplied
                 self.addAggregateOptions(args)
 
-                # Try to force a call that falls through to omni to log at info level,
-                # or whatever level the main stitcher is using on the console
-                ologger = logging.getLogger("omni")
-                myLevel = logging.INFO
-                handlers = self.logger.handlers
-                if len(handlers) == 0:
-                    handlers = logging.getLogger().handlers
-                for handler in handlers:
-                    if isinstance(handler, logging.StreamHandler):
-                        myLevel = handler.level
-                        break
-                for handler in ologger.handlers:
-                    if isinstance(handler, logging.StreamHandler):
-                        handler.setLevel(myLevel)
-                        break
+                return self.passToOmni(args)
 
-                return omni.call(args, self.opts)
         # End of block to check the command
 
-        if len(args) > 1:
-            self.slicename = args[1]
         if len(args) > 2:
             request = args[2]
 
@@ -402,6 +407,237 @@ class StitchingHandler(object):
         self.logger.debug(retMsg)
         return (retMsg, combinedManifest)
     # End of doStitching()
+
+    def rebuildManifest(self):
+        # Process a listresources or describe call on a slice
+        # by fetching all the manifests and combining those into a new combined manifest
+
+        # Get username for slicecred filename
+        self.username = get_leaf(handler_utils._get_user_urn(self.logger, self.framework.config))
+        if not self.username:
+            raise OmniError("Failed to find your username to name your slice credential")
+
+        # Ensure the slice is valid before all those Omni calls use it
+        (sliceurn, sliceexp) = self.confirmSliceOK()
+
+        # We don't have any RSpecs
+        self.parsedUserRequest = None
+        self.parsedSCSRSpec = None
+
+        # Ensure all AM URNs in the commandline are Aggregate objects in ams_to_process
+        self.createObjectsFromOptArgs()
+
+        # Add extra info about the aggregates to the AM objects
+        self.add_am_info(self.ams_to_process)
+
+        # If requesting from >1 ExoGENI AM, then use ExoSM. And use ExoSM only once.
+        # FIXME!!
+        # Will this correctly query the ExoSM vs the individual rack?
+        # Or should I always query both the individual rack and the ExoSM (once)?
+        self.ensureOneExoSM()
+
+        # Save slice cred and timeoutTime on each AM
+        for am in self.ams_to_process:
+            if self.slicecred:
+                # Hand each AM the slice credential, so we only read it once
+                am.slicecred = self.slicecred
+            # Also hand the timeout time
+            am.timeoutTime = self.config['timeoutTime']
+
+            am.userRequested = True
+
+        # Init some data structures
+        lastAM = None
+        workflow_parser = WorkflowParser(self.logger)
+        self.rspecParser = RSpecParser(self.logger)
+
+        # Now actually get the manifest for each AM
+        for am in self.ams_to_process:
+            opts_copy = copy.deepcopy(self.opts)
+            opts_copy.aggregate = [(am.nick if am.nick else am.url)]
+            self.logger.info("Gathering current reservations at %s...", am)
+            rspec = None
+            try:
+                rspec = am.listResources(opts_copy, self.slicename)
+            except StitchingError, se:
+                self.logger.debug("Failed to list current reservation: %s", se)
+            if rspec is None:
+                continue
+
+            # Look for and save any sliver expiration
+            am.setSliverExpirations(handler_utils.expires_from_rspec(rspec, self.logger))
+
+            # Fill in more data structures using this RSpec to the extent it helps
+            parsedMan = self.rspecParser.parse(rspec)
+            if self.parsedUserRequest is None:
+                self.parsedUserRequest = parsedMan
+            if self.parsedSCSRSpec is None:
+                self.parsedSCSRSpec = parsedMan
+            # This next, if I had a workflow, would create the hops
+            # on the aggregates. As is, it does verly little
+            # Without the hops on the aggregates, we don't merge hops in the stitching extension
+            workflow_parser.parse({}, parsedMan)
+
+            for link in parsedMan.links:
+                self.logger.debug("Have a link %s", link.id)
+                for agg in link.aggregates:
+                    self.logger.debug(" .. which hits %s", agg)
+
+            # Try to use the info I do have to construct hops on aggregates
+            if parsedMan.stitching:
+                for path in parsedMan.stitching.paths:
+
+                    for hop in path.hops:
+                        if hop.path != path:
+                            hop.path = path
+                        if not hop.aggregate:
+                            self.logger.debug("%s missing aggregate", hop)
+                            urn = hop.urn
+                            urnO = URN(urn=urn)
+                            urnAuth = urnO.getAuthority()
+                            urnC = URN(authority=urnAuth, type='authority', name='am')
+                            hopAgg = Aggregate.find(urnC.urn)
+                            hop.aggregate = hopAgg
+                            self.logger.debug("Found %s", hopAgg)
+                        if hop.aggregate != am:
+                            self.logger.debug("%s not for this am (%s) - continue", hop, am)
+                            continue
+                        if not hop.aggregate in hop.path.aggregates:
+                            self.logger.debug("%s's AM not on its path - adding", hop)
+                            hop.path.aggregates.add(agg)
+                        found=False
+                        for hop2 in am.hops:
+                            if hop2.urn == hop.urn and hop2.path.id == hop.path.id:
+                                self.logger.debug("%s already listed by it's AM", hop)
+                                found = True
+                                break
+                        if not found:
+                            self.logger.debug("%s not listed on it's AM's hops - adding", hop)
+                            am.add_hop(hop)
+                            found = False
+                            for path2 in am.paths:
+                                if hop.path.id == path2.id:
+                                    found = True
+                                    self.logger.debug("%s 's path alredy listed by its aggregate %s", hop, hop.aggregate)
+                                    break
+                            if not found:
+                                self.logger.debug("%s 's path not listed on the AM's paths, adding", hop)
+                                am.add_path(hop.path)
+                    # End of loop over hops on path
+                # End of loop over paths
+            # End of block to handle the stitching section
+
+            self.logger.debug("%s has %d hops", am, len(am.hops))
+
+            try:
+                from xml.dom.minidom import parseString
+                am.manifestDom = parseString(rspec)
+                am.requestDom = am.manifestDom
+
+                # Fill in the manifest values on hops
+                for hop in am.hops:
+                    self.logger.debug("Updating hop %s", hop)
+                    # 7/12/13: FIXME: EG Manifests reset the Hop ID. So you have to look for the link URN
+                    if am.isEG:
+                        self.logger.debug("Parsing EG manifest with special method")
+                        range_suggested = am.getEGVLANRangeSuggested(am.manifestDom, hop._hop_link.urn, hop.path.id)
+                    else:
+                        range_suggested = am.getVLANRangeSuggested(am.manifestDom, hop._id, hop.path.id)
+
+                    pathGlobalId = None
+                    if range_suggested and len(range_suggested) > 0:
+                        if range_suggested[0] is not None:
+                            pathGlobalId = str(range_suggested[0]).strip()
+                            if pathGlobalId and pathGlobalId is not None and pathGlobalId != "None" and pathGlobalId != '':
+                                if hop.globalId and hop.globalId is not None and hop.globalId != "None" and hop.globalId != pathGlobalId:
+                                    self.logger.warn("Changing Hop %s global ID from %s to %s", hop, hop.globalId, pathGlobalId)
+                                hop.globalId = pathGlobalId
+                            else:
+                                self.logger.debug("Got no global id")
+                        else:
+                            #self.logger.debug("Got nothing in range_suggested first slot")
+                            pass
+
+                        if len(range_suggested) > 1 and range_suggested[1] is not None:
+                            rangeValue = str(range_suggested[1]).strip()
+                            if not rangeValue or rangeValue in ('null', 'any', 'None'):
+                                self.logger.debug("Got no valid vlan range on %s: %s", hop, rangeValue)
+                            else:
+                                rangeObject = VLANRange.fromString(rangeValue)
+                                hop._hop_link.vlan_range_manifest = rangeObject
+                                self.logger.debug("Set range manifest: %s", rangeObject)
+                        else:
+                            self.logger.debug("Got no spot for a range value")
+
+                        if len(range_suggested) > 2 and range_suggested[2] is not None:
+                            suggestedValue = str(range_suggested[2]).strip()
+                            if not suggestedValue or suggestedValue in ('null', 'any', 'None'):
+                                self.logger.debug("Got no valid vlan suggestion on %s: %s", hop, suggestedValue)
+                            else:
+                                suggestedObject = VLANRange.fromString(suggestedValue)
+                                hop._hop_link.vlan_suggested_manifest = suggestedObject
+                                self.logger.debug("Set suggested manifest: %s", suggestedObject)
+                        else:
+                            self.logger.debug("Got no spot for a suggested value")
+                    else:
+                        self.logger.debug("Got no range_suggested at all")
+                    # End block for found the range and suggested from the RSpec for this hop
+                # end of loop over hops
+            except Exception, e:
+                self.logger.debug("Failed to parse rspec: %s", e)
+                continue
+
+            lastAM = am
+        # Done looping over AMs
+
+        if lastAM is None:
+            # Failed to get any manifests, so bail
+            raise StitchingError("Failed to retrieve resource listing - see logs")
+
+        # Construct and save out a combined manifest
+        combinedManifest, filename, retVal = self.getAndSaveCombinedManifest(lastAM)
+
+        self.dump_objects(self.rspecParser.parse(combinedManifest), self.ams_to_process)
+
+        # Print something about sliver expiration times
+        msg = self.getExpirationMessage()
+
+        if msg:
+            self.logger.info(msg)
+            retVal += msg + "\n"
+
+        if filename:
+            msg = "Saved combined reservation RSpec at %d AMs to file '%s'" % (len(self.ams_to_process), os.path.abspath(filename))
+            self.logger.info(msg)
+            retVal += msg
+
+        # Construct return message
+        retMsg = self.buildRetMsg()
+        self.logger.debug(retMsg)
+        return (retMsg, combinedManifest)
+
+    def passToOmni(self, args):
+        # Pass the call on to Omni, using the given args. Reset logging appropriately
+        # Return is the omni.call return
+
+        # Try to force a call that falls through to omni to log at info level,
+        # or whatever level the main stitcher is using on the console
+        ologger = logging.getLogger("omni")
+        myLevel = logging.INFO
+        handlers = self.logger.handlers
+        if len(handlers) == 0:
+            handlers = logging.getLogger().handlers
+        for handler in handlers:
+            if isinstance(handler, logging.StreamHandler):
+                myLevel = handler.level
+                break
+        for handler in ologger.handlers:
+            if isinstance(handler, logging.StreamHandler):
+                handler.setLevel(myLevel)
+                break
+
+        return omni.call(args, self.opts)
+    # End of passToOmni
 
     def buildRetMsg(self):
         # Build the return message from this handler on success
@@ -1172,30 +1408,29 @@ class StitchingHandler(object):
             raise StitchingError("Requested no reservation")
         # Done handling --noReservation
 
-    def createObjectsFromParsedAMURNs(self):
-        # Ensure all AM URNs we found in the RSpec are Aggregate objects in ams_to_process
-        for amURN in self.parsedSCSRSpec.amURNs:
-#            self.logger.debug("Looking at SCS returned amURN %s", amURN)
+    def createObjectFromOneURN(self, amURN):
+        # Create an Aggregate class instance from the URN of the aggregate,
+        # avoiding duplicates.
 
-            # If the AM URN we parsed from the RSpec is already in the list of aggregates to process,
-            # skip to the next parsed URN
-            found = False
-            for agg in self.ams_to_process:
-                if agg.urn == amURN:
+        # If the AM URN we parsed from the RSpec is already in the list of aggregates to process,
+        # skip to the next parsed URN
+        found = False
+        for agg in self.ams_to_process:
+            if agg.urn == amURN:
+                found = True
+#                self.logger.debug(" .. was already in ams_to_process")
+                break
+            # For EG there are multiple URNs that are really the same
+            # If find one, found them all
+            for urn2 in agg.urn_syns:
+                if urn2 == amURN:
+#                    self.logger.debug(" .. was in ams_to_process under synonym. Ams_to_process had %s", agg.urn)
                     found = True
-#                    self.logger.debug(" .. was already in ams_to_process")
                     break
-                # For EG there are multiple URNs that are really the same
-                # If find one, found them all
-                for urn2 in agg.urn_syns:
-                    if urn2 == amURN:
-#                        self.logger.debug(" .. was in ams_to_process under synonym. Ams_to_process had %s", agg.urn)
-                        found = True
-                        break
-            if found:
-                continue # to next parsed URN
+        if found:
+            return
 
-            # AM URN was not in the workflow from the SCS
+        # AM URN was not in the workflow from the SCS
 
 #            # If this URN was on a stitching link, then this isn't going to work
 #            for link in self.parsedSCSRSpec.links:
@@ -1212,39 +1447,56 @@ class StitchingHandler(object):
 #                                self.logger.debug("No path in stitching section of rspec for link %s that seems to need stitching", link.id)
 #                            raise StitchingError("SCS did not handle link %s - perhaps AM %s is unknown?", link.id, amURN)
 
-            am = Aggregate.find(amURN)
+        am = Aggregate.find(amURN)
 
-            # Fill in a URL for this AM
-            # First, find it in the agg_nick_cache
-            if not am.url:
-                # FIXME: Avoid apparent v1 URLs
-                for urn in am.urn_syns:
-                    (nick, url) = handler_utils._lookupAggNickURLFromURNInNicknames(self.logger, self.config, urn)
-                    if url and url.strip() != '':
-                        self.logger.debug("Found AM %s URL using URN %s from omni_config AM nicknames: %s", amURN, urn, nick)
-                        am.url = url
-                        am.nick = nick
+        # Fill in a URL for this AM
+        # First, find it in the agg_nick_cache
+        if not am.url:
+            # FIXME: Avoid apparent v1 URLs
+            for urn in am.urn_syns:
+                (nick, url) = handler_utils._lookupAggNickURLFromURNInNicknames(self.logger, self.config, urn)
+                if url and url.strip() != '':
+                    self.logger.debug("Found AM %s URL using URN %s from omni_config AM nicknames: %s", amURN, urn, nick)
+                    am.url = url
+                    am.nick = nick
+                    break
+
+        # If that failed, try asking the CH
+        if not am.url:
+            # Try asking our CH for AMs to get the URL for the
+            # given URN
+            fw_ams = dict()
+            try:
+                fw_ams = self.framework.list_aggregates()
+                for fw_am_urn in fw_ams.keys():
+                    if fw_am_urn and fw_am_urn.strip() in am.urn_syns and fw_ams[fw_am_urn].strip() != '':
+                        am.url = fw_ams[fw_am_urn]
+                        self.logger.debug("Found AM %s URL from CH ListAggs: %s", amURN, am.url)
                         break
+            except:
+                pass
+        if not am.url:
+            raise StitchingError("RSpec requires AM '%s' which is not in workflow and URL is unknown!" % amURN)
+        else:
+            self.logger.debug("Adding am to ams_to_process from URN %s, with url %s", amURN, am.url)
+            self.ams_to_process.append(am)
+        return
+    # End of createObjectFromOneURN
 
-            # If that failed, try asking the CH
-            if not am.url:
-                # Try asking our CH for AMs to get the URL for the
-                # given URN
-                fw_ams = dict()
-                try:
-                    fw_ams = self.framework.list_aggregates()
-                    for fw_am_urn in fw_ams.keys():
-                        if fw_am_urn and fw_am_urn.strip() in am.urn_syns and fw_ams[fw_am_urn].strip() != '':
-                            am.url = fw_ams[fw_am_urn]
-                            self.logger.debug("Found AM %s URL from CH ListAggs: %s", amURN, am.url)
-                            break
-                except:
-                    pass
-            if not am.url:
-                raise StitchingError("RSpec requires AM '%s' which is not in workflow and URL is unknown!" % amURN)
-            else:
-                self.logger.debug("Adding am to ams_to_process from URN %s, with url %s", amURN, am.url)
-                self.ams_to_process.append(am)
+    def createObjectsFromOptArgs(self):
+        # For use when merging manifests
+        for amNick in self.opts.aggregate:
+            url1,urn1 = handler_utils._derefAggNick(self, amNick)
+            self.createObjectFromOneURN(urn1)
+
+    def createObjectsFromParsedAMURNs(self):
+        # Ensure all AM URNs we found in the RSpec are Aggregate objects in ams_to_process
+        if self.parsedSCSRSpec is None:
+            return
+        for amURN in self.parsedSCSRSpec.amURNs:
+#            self.logger.debug("Looking at SCS returned amURN %s", amURN)
+            self.createObjectFromOneURN(amURN)
+
         # Done adding user requested non linked AMs to list of AMs to process
 
     def updateAvailRanges(self, sliceurn, requestDOM):
@@ -2214,7 +2466,7 @@ class StitchingHandler(object):
                     if self.opts.useExoSM:
                         # Should not happen I believe.
                         self.logger.debug("Asked to use the ExoSM for all EG AMs. So change this one.")
-                    else:
+                    elif self.parsedSCSRSpec:
                         self.logger.debug("Will use EG stitching where applicable. Must go through the ExoSM for EG only links.")
 
                         # Does this AM participate in an EG only link? If so, convert it.
@@ -2400,9 +2652,9 @@ class StitchingHandler(object):
 #            self.logger.debug("add_am_info looking at %s", agg)
 
             # Note which AMs were user requested
-            if agg.urn in self.parsedUserRequest.amURNs:
+            if self.parsedUserRequest and agg.urn in self.parsedUserRequest.amURNs:
                 agg.userRequested = True
-            else:
+            elif self.parsedUserRequest:
                 for urn2 in agg.urn_syns:
                     if urn2 in self.parsedUserRequest.amURNs:
                         agg.userRequested = True
