@@ -184,6 +184,7 @@ class StitchingHandler(object):
                 # Omni can handle this
                 return self.passToOmni(args)
 
+            self.opts.useSliceAggregates = False
             # This is a case of multiple AMs whose manifests should be combined
             return self.rebuildManifest()
 
