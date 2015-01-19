@@ -302,7 +302,9 @@ class ManifestRSpecCombiner:
                     cid = child.getAttribute(CLIENT_ID)
                     cmid = child.getAttribute(COMPONENT_MGR_ID)
                     key = cid + cmid
-                    if not key in template_node_cids and cmid in am.urn_syns:
+                    # self.logger.debug("Found possible node to add. client_id: %s; comp_mgr: %s; from AM: %s", cid, cmid, am)
+                    if key not in template_node_cids and cmid in am.urn_syns:
+                        # self.logger.debug(".... adding it")
                         doc_root.appendChild(child)
             # Now do the node replacing as necessary
             for urn in am.urn_syns:
@@ -315,7 +317,7 @@ class ManifestRSpecCombiner:
                                 child_cmid = child.getAttribute(COMPONENT_MGR_ID)
                                 child_client_id = child.getAttribute(CLIENT_ID)
                                 if child_cmid == urn and child_client_id == template_client_id:
-                                    #self.logger.debug("Replacing " + str(template_node) + " with " + str(child) + " " + child_cmid)
+                                    # self.logger.debug(("Replacing template for node %s (" % template_client_id) + str(template_node) + (") with that from %s" % am) + " (" + str(child) + "). Node comp_mgr ID: " + child_cmid)
                                     doc_root.replaceChild(child, template_node)
 
     def combineLinks(self, ams_list, dom_template):
