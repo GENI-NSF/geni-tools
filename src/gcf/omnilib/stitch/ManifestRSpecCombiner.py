@@ -120,6 +120,10 @@ class ManifestRSpecCombiner:
                 am_manifest_dom = am.manifestDom
             if am_manifest_dom == dom_template:
                 continue
+            if am_manifest_dom is None:
+                self.logger.debug("%s had no manifest DOM", am)
+                continue
+
             am_doc_root = am_manifest_dom.documentElement
             am_rspec_node = None
             if am_doc_root.nodeType == Node.ELEMENT_NODE and \
@@ -180,6 +184,10 @@ class ManifestRSpecCombiner:
                 am_manifest_dom = am.manifestDom
             if am_manifest_dom == dom_template:
                 continue
+            if am_manifest_dom is None:
+                self.logger.debug("%s had no manifest DOM", am)
+                continue
+
             am_doc_root = am_manifest_dom.documentElement
             am_rspec_node = None
             if am_doc_root.nodeType == Node.ELEMENT_NODE and \
@@ -278,6 +286,11 @@ class ManifestRSpecCombiner:
                 am_manifest_dom = am.requestDom
             else:
                 am_manifest_dom = am.manifestDom
+
+            if am_manifest_dom is None:
+                self.logger.debug("%s had no manifest DOM", am)
+                continue
+
             am_doc_root = am_manifest_dom.documentElement
 
             # For each node in this AMs manifest for which this AM
@@ -334,6 +347,9 @@ class ManifestRSpecCombiner:
                 man = agg.requestDom
             else:
                 man = agg.manifestDom
+            if man is None:
+                self.logger.debug("%s had no manifest DOM", agg)
+                continue
             man_root = man.documentElement
             man_kids = man_root.childNodes
             for link2 in man_kids:
@@ -440,6 +456,9 @@ class ManifestRSpecCombiner:
                         man = agg.requestDom
                     else:
                         man = agg.manifestDom
+                    if man is None:
+                        self.logger.debug("%s had no manifest DOM", agg)
+                        continue
                     for link2 in man.documentElement.childNodes:
                         if link2.nodeType != Node.ELEMENT_NODE or \
                                 link2.localName != defs.LINK_TAG:
@@ -573,6 +592,10 @@ class ManifestRSpecCombiner:
                 am_manifest_dom = am.manifestDom
             if am_manifest_dom == dom_template:
                 self.logger.debug("AM %s's manifest is the dom_template- no need to do combineHops here.", am)
+                continue
+
+            if am_manifest_dom is None:
+                self.logger.debug("%s had no manifest DOM", am)
                 continue
 
             # FIXME: Should this be am._hops or is am.hops OK as is?

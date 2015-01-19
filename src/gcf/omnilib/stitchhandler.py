@@ -587,7 +587,9 @@ class StitchingHandler(object):
                 self.logger.debug("Failed to parse rspec: %s", e)
                 continue
 
-            lastAM = am
+            if am.manifestDom is not None:
+                lastAM = am
+                self.logger.debug("Setting lastAM to %s", lastAM)
         # Done looping over AMs
 
         if lastAM is None:
@@ -804,6 +806,8 @@ class StitchingHandler(object):
         # Avoid EG manifests - they are incomplete
         # Avoid DCN manifests - they do funny things with namespaces (ticket #549)
         # GRAM AMs seems to also miss nodes. Avoid if possible.
+        if lastAM is None and len(self.ams_to_process) > 0:
+            lastAM = self.ams_to_process[-1]
         if lastAM is not None and (lastAM.isEG or lastAM.dcn or lastAM.isGRAM):
             self.logger.debug("Last AM was an EG or DCN or GRAM AM. Find another for the template.")
             i = 1
@@ -926,7 +930,7 @@ class StitchingHandler(object):
             # Done looping over agg exp times in sortedAggs
         # Done handling sortedAggs
         if not noPrint:
-            if len(sortedAggs) == 1:
+            if len(sortedAggs) == 1 or secondTime is None:
                 msg = "Your resources expire at %s (UTC). %s" % (firstTime.isoformat(), msgAdd)
             else:
                 msg = "Your resources expire at %d different times. The first resources expire at %s (UTC) at %s. The second expiration time is %s (UTC) at %s. %s" % (len(sortedAggs), firstTime.isoformat(), firstLabel, secondTime.isoformat(), secondLabel, msgAdd)
@@ -2992,7 +2996,7 @@ class StitchingHandler(object):
         # interface_ref elements on link elements also come from the responsible AM
         # Top level link element is effectively arbitrary, but with comments on what other AMs said
         lastDom = None
-        if lastAM is None:
+        if lastAM is None or lastAM.manifestDom is None:
             self.logger.debug("Combined manifest will start from expanded request RSpec")
             lastDom = self.parsedSCSRSpec.dom
             # Change that dom to be a manifest RSpec
@@ -3012,6 +3016,7 @@ class StitchingHandler(object):
 #            self.logger.debug(stripBlankLines(lastDom.toprettyxml(encoding="utf-8")))
         else:
             lastDom = lastAM.manifestDom
+
         combinedManifestDom = combineManifestRSpecs(ams, lastDom)
 
         try:
