@@ -55,7 +55,7 @@ gcf 2.8:
      * See README-stitching.txt for more on `--noEGStitching` and `--noEGStitchingOnLink`.
   * Increase sleep before retrying reservations from 30 to 45 seconds. (#769)
    * PG based nodes now return quicker but take that long to finish deleting.
-  * Allow `--verbose` to `scs.py` to turn on debug SSL logging. (#770)
+  * Allow `--verbosessl` to `scs.py` to turn on debug SSL logging. (#770)
 
  * readyToLogin
   * Add --ansible-inventory option which creates a host file to use with Ansible. Works 

@@ -253,7 +253,7 @@ def main(argv=None):
         print "Usage: scs.py [--scs_url <URL of SCS server if not standard (%s)] [--monitoring to suppress printouts] --key <path-to-trusted-key> --cert <path-to-trusted-client-cert>" % SCS_URL
         print "    Key and cert are not required for an SCS not running at an https URL."
         print "    Supply --listaggregates to list known AMs at the SCS instead of running GetVersion"
-        print "    Supply --verbose to turn on detailed SSL logging"
+        print "    Supply --verbosessl to turn on detailed SSL logging"
         return 0
     for arg in argv:
         ind = ind + 1
@@ -267,7 +267,7 @@ def main(argv=None):
             keyfile = argv[ind+1]
         if ("--cert" == arg or "--certfile" == arg) and (ind+1) < len(argv):
             certfile = argv[ind+1]
-        if arg.lower() == "--verbose":
+        if arg.lower() == "--verbosessl":
             verbose = True
 
     if SCS_URL.lower().strip().startswith('https') and (keyfile is None or certfile is None):
