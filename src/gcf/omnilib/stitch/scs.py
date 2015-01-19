@@ -248,10 +248,12 @@ def main(argv=None):
     listAMs = False
     keyfile=None
     certfile=None
+    verbose = False
     if "-h" in argv or "-?" in argv:
         print "Usage: scs.py [--scs_url <URL of SCS server if not standard (%s)] [--monitoring to suppress printouts] --key <path-to-trusted-key> --cert <path-to-trusted-client-cert>" % SCS_URL
         print "    Key and cert are not required for an SCS not running at an https URL."
         print "    Supply --listaggregates to list known AMs at the SCS instead of running GetVersion"
+        print "    Supply --verbose to turn on detailed SSL logging"
         return 0
     for arg in argv:
         ind = ind + 1
@@ -265,6 +267,8 @@ def main(argv=None):
             keyfile = argv[ind+1]
         if ("--cert" == arg or "--certfile" == arg) and (ind+1) < len(argv):
             certfile = argv[ind+1]
+        if arg.lower() == "--verbose":
+            verbose = True
 
     if SCS_URL.lower().strip().startswith('https') and (keyfile is None or certfile is None):
         print "ERROR: When using an SCS with an https URL, you must supply the --key and --cert arguments to provide the paths to your key file and certificate"
@@ -284,7 +288,7 @@ def main(argv=None):
         certfile = os.path.expanduser(certfile)
 
     try:
-        scsI = Service(SCS_URL, key=keyfile, cert=certfile)
+        scsI = Service(SCS_URL, key=keyfile, cert=certfile, verbose=verbose)
         if listAMs:
             result = scsI.ListAggregates(printR)
         else:
