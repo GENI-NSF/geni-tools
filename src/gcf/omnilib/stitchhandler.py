@@ -163,15 +163,16 @@ class StitchingHandler(object):
                 self.addAggregateOptions(args)
             if not self.opts.aggregate or len(self.opts.aggregate) == 0:
                 # Call the CH to get AMs in this slice
+                oldUSA = self.opts.useSliceAggregates
                 self.opts.useSliceAggregates = True
                 self.opts.sliceName = self.slicename
                 (aggs, message) = handler_utils._listaggregates(self)
+                self.opts.useSliceAggregates = oldUSA
                 if len(aggs) > 0:
                     self.opts.aggregate = []
                     for agg in aggs.values():
                         self.logger.debug("Adding AM %s retrieved from CH", agg)
                         self.opts.aggregate.append(agg)
-                    self.opts.useSliceAggregates = False
                 else:
                     self.logger.debug("No AMs from CH: %s", message)
             if not self.opts.aggregate or len(self.opts.aggregate) == 0:
