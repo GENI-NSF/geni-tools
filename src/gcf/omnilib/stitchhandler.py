@@ -491,6 +491,31 @@ class StitchingHandler(object):
             # Without the hops on the aggregates, we don't merge hops in the stitching extension
             workflow_parser.parse({}, parsedMan)
 
+            # Make sure the ExoSM lists URN synonyms for all the EG component managers
+            # that don't have their own Agg instance
+            # FIXME: Anything similar I need to do for other AMs like gram?
+            if am.isExoSM:
+                for urn in parsedMan.amURNs:
+                    # self.logger.debug("Man from %s had AM URN %s", am, urn)
+                    if urn in Aggregate.aggs:
+                        # self.logger.debug("Already is an AM")
+                        continue
+                    syns = Aggregate.urn_syns(urn)
+                    found = False
+                    for urn2 in syns:
+                        if urn2 in Aggregate.aggs:
+                            found = True
+                            urn = urn2
+                            # self.logger.debug(".. which is an AM under syn %s", urn)
+                            break
+                    if not found:
+                        # self.logger.debug("... is not any existing AM")
+                        urnO = URN(urn=urn)
+                        urnAuth = urnO.getAuthority()
+                        if urnAuth.startswith("exogeni.net"):
+                            # self.logger.debug("Is an ExoGENI URN. Since this is the exoSM, add it as a urn syn")
+                            am.urn_syns.append(urn)
+
             for link in parsedMan.links:
                 self.logger.debug("Have a link %s", link.id)
                 for agg in link.aggregates:
