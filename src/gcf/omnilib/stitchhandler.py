@@ -515,19 +515,17 @@ class StitchingHandler(object):
                         if urnAuth.startswith("exogeni.net"):
                             # self.logger.debug("Is an ExoGENI URN. Since this is the exoSM, add it as a urn syn")
                             am.urn_syns.append(urn)
-
-            for link in parsedMan.links:
-                self.logger.debug("Have a link %s", link.id)
-                for agg in link.aggregates:
-                    self.logger.debug(" .. which hits %s", agg)
+                # end of loop over AM URNs
+            # End of block to handle ExoSM
 
             # Try to use the info I do have to construct hops on aggregates
+            # Note this has to be redone on the combined manifest later.
             if parsedMan.stitching:
                 for path in parsedMan.stitching.paths:
-
                     for hop in path.hops:
                         if hop.path != path:
                             hop.path = path
+                        # Fill in the Aggregate instance on the hop
                         if not hop.aggregate:
                             self.logger.debug("%s missing aggregate", hop)
                             urn = hop.urn
@@ -542,31 +540,56 @@ class StitchingHandler(object):
                             continue
                         if not hop.aggregate in hop.path.aggregates:
                             self.logger.debug("%s's AM not on its path - adding", hop)
-                            hop.path.aggregates.add(agg)
+                            hop.path.aggregates.add(hop.aggregate)
+                        # Ensure the Aggregate instance lists the hop
                         found=False
                         for hop2 in am.hops:
                             if hop2.urn == hop.urn and hop2.path.id == hop.path.id:
                                 self.logger.debug("%s already listed by it's AM", hop)
+                                if hop != hop2:
+                                    self.logger.debug("... but FIXME the 2 hop instances are different!!")
+                                    # FIXME: Do I need to swap instances?
                                 found = True
                                 break
                         if not found:
                             self.logger.debug("%s not listed on it's AM's hops - adding", hop)
                             am.add_hop(hop)
+                            # Ensure the Aggregate instance lists the path
                             found = False
                             for path2 in am.paths:
                                 if hop.path.id == path2.id:
                                     found = True
-                                    self.logger.debug("%s 's path alredy listed by its aggregate %s", hop, hop.aggregate)
+                                    self.logger.debug("%s 's path already listed by its aggregate %s", hop, hop.aggregate)
+                                    if hop.path != path2:
+                                        self.logger.debug("... but FIXME the 2 path instances are different!!")
+                                        # FIXME: Do I need to swap instances?
                                     break
                             if not found:
                                 self.logger.debug("%s 's path not listed on the AM's paths, adding", hop)
                                 am.add_path(hop.path)
                     # End of loop over hops on path
                 # End of loop over paths
+
+                # Error check that AMs hops are all found with same IDs/etc
+                for hop in am.hops:
+                    found = False
+                    for path in parsedMan.stitching.paths:
+                        for hop2 in path.hops:
+                            if hop == hop2:
+                                found = True
+                                break
+                            elif hop2.path.id == path.id and hop2.urn == hop.urn:
+                                self.logger.debug("FIXME: %s had hop %s which look same but is diff than a matching hop on a path in the manifest", am, hop)
+                        if found:
+                            break
+                    if not found:
+                        self.logger.debug("FIXME: %s had hop %s not on any of the paths", am, hop)
+                # End of block to error check the AMs hops
             # End of block to handle the stitching section
 
             self.logger.debug("%s has %d hops", am, len(am.hops))
 
+            # Parse the manifest and fill in the manifest suggested/range values
             try:
                 from xml.dom.minidom import parseString
                 am.manifestDom = parseString(rspec)
@@ -614,7 +637,7 @@ class StitchingHandler(object):
                             else:
                                 suggestedObject = VLANRange.fromString(suggestedValue)
                                 hop._hop_link.vlan_suggested_manifest = suggestedObject
-                                self.logger.debug("Set suggested manifest: %s", suggestedObject)
+                                self.logger.debug("Set suggested manifest: %s", hop._hop_link.vlan_suggested_manifest)
                         else:
                             self.logger.debug("Got no spot for a suggested value")
                     else:
@@ -637,7 +660,75 @@ class StitchingHandler(object):
         # Construct and save out a combined manifest
         combinedManifest, filename, retVal = self.getAndSaveCombinedManifest(lastAM)
 
-        self.dump_objects(self.rspecParser.parse(combinedManifest), self.ams_to_process)
+        parsedCombined = self.rspecParser.parse(combinedManifest)
+
+        # Fix up the parsed combined RSpec to ensure we use the proper
+        # hop instances and all the objects point to each other
+        if parsedCombined.stitching:
+            for path in parsedCombined.stitching.paths:
+                for hop in path.hops:
+                    if hop.path != path:
+                        hop.path = path
+                    if not hop.aggregate:
+                        self.logger.debug("%s missing aggregate", hop)
+                        urn = hop.urn
+                        urnO = URN(urn=urn)
+                        urnAuth = urnO.getAuthority()
+                        urnC = URN(authority=urnAuth, type='authority', name='am')
+                        hopAgg = Aggregate.find(urnC.urn)
+                        hop.aggregate = hopAgg
+                        self.logger.debug("Found %s", hopAgg)
+                    if not hop.aggregate in hop.path.aggregates:
+                        self.logger.debug("%s's AM not on its path - adding", hop)
+                        hop.path.aggregates.add(hop.aggregate)
+                    # Now loop thru AMs to find the AM for this hop and ensure we are using the right hop instance
+                    for am in self.ams_to_process:
+                        if hop.aggregate != am:
+                            continue
+                        found=False
+                        for hop2 in am.hops:
+                            if hop2.urn == hop.urn and hop2.path.id == hop.path.id:
+                                self.logger.debug("%s already listed by it's AM", hop)
+                                if hop != hop2:
+                                    self.logger.debug("... but FIXME the 2 hop instances are different!!")
+                                    # FIXME: Do I need to swap instances?
+                                    if hop2._hop_link.vlan_suggested_manifest != hop._hop_link.vlan_suggested_manifest:
+                                        self.logger.debug("swapping out the path version of the hop to use the AM version instead, which has sug man: %s", hop2._hop_link.vlan_suggested_manifest)
+                                        # use hop2 not hop
+                                        # edt path.hops
+                                        newHops = []
+                                        for hop3 in path.hops:
+                                            if hop3 == hop:
+                                                newHops.append(hop2)
+                                            else:
+                                                newHops.append(hop3)
+                                        path.hops = newHops
+                                    else:
+                                        # both same, should matter
+                                        self.logger.debug(" ... but have same suggested manifest, so leave it alone")
+                                found = True
+                                break
+                        if not found:
+                            self.logger.debug("%s not listed on it's AM's hops - adding", hop)
+                            am.add_hop(hop)
+                            found = False
+                            for path2 in am.paths:
+                                if hop.path.id == path2.id:
+                                    found = True
+                                    self.logger.debug("%s 's path already listed by its aggregate %s", hop, hop.aggregate)
+                                    if hop.path != path2:
+                                        self.logger.debug("... but FIXME the 2 path instances are different!!")
+                                        # FIXME: Do I need to swap instances?
+                                    break
+                            if not found:
+                                self.logger.debug("%s 's path not listed on the AM's paths, adding", hop)
+                                am.add_path(hop.path)
+                    # End of loop over AMs
+                # End of loop over hops
+            # End of loop over paths
+        # End of block to fix up links on combined object
+
+        self.dump_objects(parsedCombined, self.ams_to_process)
 
         # Print something about sliver expiration times
         msg = self.getExpirationMessage()
@@ -2954,6 +3045,18 @@ class StitchingHandler(object):
                     self.logger.debug( "    VLAN Available Range (requested): %s" % (hop._hop_link.vlan_range_request))
                     if hop._hop_link.vlan_suggested_manifest:
                         self.logger.debug( "    VLAN Suggested (manifest): %s" % (hop._hop_link.vlan_suggested_manifest))
+
+                    else:
+                        if not hop.aggregate:
+                            self.logger.debug("**** FIXME: %s missing aggregate", hop)
+                        else:
+                            for hop2 in hop.aggregate.hops:
+                                if hop2.urn == hop.urn and hop2.path.id == path.id and hop2 != hop:
+                                    self.logger.debug("**** FIXME: Hop %s has agg %s that has hop with same ID but diff instance", hop, hop.aggregate)
+                                    if hop2._hop_link.vlan_suggested_manifest:
+                                        self.logger.debug("***** and that other instance has a manifest")
+                        self.logger.debug( "    (had no manifest)") 
+
                     if hop._hop_link.vlan_range_manifest:
                         self.logger.debug( "    VLAN Available Range (manifest): %s" % (hop._hop_link.vlan_range_manifest))
                     if hop.vlans_unavailable and len(hop.vlans_unavailable) > 0:
