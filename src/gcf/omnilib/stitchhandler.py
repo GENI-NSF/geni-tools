@@ -343,7 +343,8 @@ class StitchingHandler(object):
             if self.lastException:
                 msg += ' ' + str(self.lastException)
             self.logger.error(msg)
-
+            import traceback
+            self.logger.debug("%s", traceback.format_exc())
 
             if self.ams_to_process is not None:
                 class DumbLauncher():
