@@ -2312,6 +2312,10 @@ class AMCallHandler(object):
                 if rspec and rspec_util.is_rspec_string( rspec, None, None, logger=self.logger ):
                     rspec = rspec_util.getPrettyRSpec(rspec)
                     result['value']['geni_rspec'] = rspec
+                else:
+                    self.logger.debug("No valid RSpec returned!")
+            else:
+                self.logger.debug("Return struct missing geni_rspec element!")
 
             # Pull out the result
             retItem[ client.url ] = result
@@ -4359,6 +4363,506 @@ class AMCallHandler(object):
             return retVal, retItem
     # End of shutdown
 
+    def update(self, args):
+        """
+        GENI AM API Update <slice name> <rspec file name>
+        For use with AM API v3+ only, and only at some AMs. 
+        Technically adopted for AM API v4, but may be implemented by v3 AMs. See http://groups.geni.net/geni/wiki/GAPI_AM_API_DRAFT/Adopted#ChangeSetC:Update
+
+        Update resources as described in a request RSpec argument in a slice with 
+        the named URN. Update the named slivers if specified, or all slivers in the slice at the aggregate.
+        On success, new resources in the RSpec will be allocated in new slivers, existing resources in the RSpec will
+        be updated, and slivers requested but missing in the RSpec will be deleted.
+
+        Return a string summarizing results, and a dictionary by AM URL of the return value from the AM.
+
+        After update, slivers that were geni_allocated remain geni_allocated (unless they were left
+        out of the RSpec, indicating they should be deleted, which is then immediate). Slivers that were 
+        geni_provisioned or geni_updating will be geni_updating.
+        Clients must Renew or Provision any new (geni_updating) slivers before the expiration time
+        (given in the return struct), or the aggregate will automatically revert the changes 
+        (delete new slivers or revert changed slivers to their original state). 
+        Slivers that were geni_provisioned that you do not include in the RSpec will be deleted, 
+        but only after calling Provision.
+        Slivers that were geni_allocated or geni_updating are immediately changed.
+
+        Slice name could be a full URN, but is usually just the slice name portion.
+        Note that PLC Web UI lists slices as <site name>_<slice name>
+        (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
+
+        Slice credential is usually retrieved from the Slice Authority. But
+        with the --slicecredfile option it is read from that file, if it exists.
+
+        Aggregates queried:
+        - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+          '''and''' any aggregates specified with the `-a` option.
+         - Only supported at some clearinghouses, and the list of aggregates is only advisory
+        - Each URL given in an -a argument or URL listed under that given
+        nickname in omni_config, if provided, ELSE
+        - List of URLs given in omni_config aggregates option, if provided, ELSE
+        - List of URNs and URLs provided by the selected clearinghouse
+        Note that if multiple aggregates are supplied, the same RSpec will be submitted to each.
+        Aggregates should ignore parts of the Rspec requesting specific non-local resources (bound requests), but each 
+        aggregate should attempt to satisfy all unbound requests. 
+
+        --sliver-urn / -u option: each specifies a sliver URN to update. If specified, 
+        only the listed slivers will be updated. Otherwise, all slivers in the slice will be updated.
+        --best-effort: If supplied, slivers that can be updated, will be; some slivers 
+        may not be updated, in which case check the geni_error return for that sliver.
+        If not supplied, then if any slivers cannot be updated, the whole call fails
+        and sliver states do not change.
+
+        Note that some aggregates may require updating all slivers in the same state at the same 
+        time, per the geni_single_allocation GetVersion return.
+
+        --end-time: Request that new slivers expire at the given time.
+        The aggregates may update the resources, but not be able to grant the requested
+        expiration time.
+        Note that per the AM API expiration times will be timezone aware.
+        Unqualified times are assumed to be in UTC.
+        Note that the expiration time cannot be past your slice expiration
+        time (see renewslice).
+
+        Output directing options:
+        -o Save result in per-Aggregate files
+        -p (used with -o) Prefix for resulting files
+        --outputfile If supplied, use this output file name: substitute the AM for any %a,
+        and %s for any slicename
+        If not saving results to a file, they are logged.
+        If --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the slice name, file format, and
+        which aggregate is represented.
+        e.g.: myprefix-myslice-update-localhost-8001.json
+
+        -V# API Version #
+        --devmode: Continue on error if possible
+        -l to specify a logging config file
+        --logoutput <filename> to specify a logging output filename
+
+        Sample usage:
+        Basic update of resources at 1 AM into myslice
+        omni.py -V3 -a http://myaggregate/url update myslice my-request-rspec.xml
+
+        Update resources in 2 AMs, requesting a specific sliver end time, save results into specificly named files that include an AM name calculated from the AM URL,
+        using the slice credential saved in the given file
+        omni.py -V3 -a http://myaggregate/url -a http://myother/aggregate --end-time 20120909 -o --outputfile myslice-manifest-%a.json --slicecredfile mysaved-myslice-slicecred.xml update myslice my-update-rspec.xml
+        """
+        if self.opts.api_version < 3:
+            if self.opts.devmode:
+                self.logger.warn("Trying Update with AM API v%d...", self.opts.api_version)
+            else:
+                self._raise_omni_error("Update is only available in AM API v3+. Specify -V3 to use AM API v3.")
+
+        (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 2,
+                                                      "Update",
+                                                      "and a request rspec filename")
+        # Load up the user's request rspec
+        rspecfile = None
+        if not (self.opts.devmode and len(args) < 2):
+            rspecfile = args[1]
+        if rspecfile is None: # FIXME: If file type arg, check the file exists: os.path.isfile(rspecfile) 
+            # Dev mode should allow missing RSpec
+            msg = 'File of resources to request missing: %s' % rspecfile
+            if self.opts.devmode:
+                self.logger.warn(msg)
+            else:
+                self._raise_omni_error(msg)
+
+        try:
+            # read the rspec into a string, and add it to the rspecs dict
+            rspec = _derefRSpecNick(self, rspecfile)
+        except Exception, exc:
+            msg = "Unable to read rspec file '%s': %s" % (rspecfile, str(exc))
+            if self.opts.devmode:
+                rspec = ""
+                self.logger.warn(msg)
+            else:
+                self._raise_omni_error(msg)
+
+        # Test if the rspec is really json containing an RSpec, and
+        # pull out the right thing
+        rspec = self._maybeGetRSpecFromStruct(rspec)
+
+        # Build args
+        op = 'Update'
+        options = self._build_options(op, slicename, None)
+        urnsarg, slivers = self._build_urns(urn)
+        creds = _maybe_add_abac_creds(self.framework, slice_cred)
+        creds = self._maybe_add_creds_from_files(creds)
+        args = [urnsarg, creds, rspec, options]
+        descripMsg = "slivers in slice %s" % urn
+        if len(slivers) > 0:
+            descripMsg = "%d slivers in slice %s" % (len(slivers), urn)
+        self.logger.debug("Doing Update with urns %s, %d creds, rspec starting: \'%s...\', and options %s", urnsarg, len(creds), rspec[:min(40, len(rspec))], options)
+
+        successCnt = 0
+        retItem = dict()
+        (clientList, message) = self._getclients()
+        numClients = len(clientList)
+        if numClients == 0:
+            msg = "No aggregate specified to submit update request to. Use the -a argument."
+            if self.opts.devmode:
+                #  warn
+                self.logger.warn(msg)
+            else:
+                self._raise_omni_error(msg)
+        elif numClients > 1:
+            #  info - mention unbound bits will be repeated
+            self.logger.info("Multiple aggregates will get the same request RSpec; unbound requests will be attempted at multiple aggregates.")
+            if len(slivers) > 0:
+                # All slivers will go to all AMs. If not best effort, AM may fail the request if its
+                # not a local sliver.
+                #  # FIXME: Could partition slivers by AM URN?
+                msg = "Will do %s %s at all %d AMs - some aggregates may fail the request if given slivers not from that aggregate." % (op, descripMsg, numClients)
+                if self.opts.geni_best_effort:
+                    self.logger.info(msg)
+                else:
+                    self.logger.warn(msg + " Consider running with --best-effort in future.")
+
+        # Do the command for each client
+        for client in clientList:
+            self.logger.info("%s %s at %s:", op, descripMsg, client.str)
+            try:
+                ((result, message), client) = self._api_call(client,
+                                    ("%s %s at %s" % (op, descripMsg, client.url)),
+                                    op,
+                                    args)
+            except BadClientException, bce:
+                if bce.validMsg and bce.validMsg != '':
+                    retVal += bce.validMsg + ". "
+                else:
+                    retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.str, self.opts.api_version)
+                if numClients == 1:
+                    self._raise_omni_error("\nUpdate failed: " + retVal)
+                continue
+
+            # Make the RSpec more pretty-printed
+            rspec = None
+            if result and isinstance(result, dict) and result.has_key('value') and isinstance(result['value'], dict) and result['value'].has_key('geni_rspec'):
+                rspec = result['value']['geni_rspec']
+                if rspec and rspec_util.is_rspec_string( rspec, None, None, logger=self.logger ):
+                    rspec = rspec_util.getPrettyRSpec(rspec)
+                    result['value']['geni_rspec'] = rspec
+                else:
+                    self.logger.debug("No valid RSpec returned!")
+            else:
+                self.logger.debug("Return struct missing geni_rspec element!")
+
+            # Pull out the result and check it
+            retItem[ client.url ] = result
+            (realresult, message) = self._retrieve_value(result, message, self.framework)
+
+            if realresult:
+                # Success (maybe partial?)
+
+                missingSlivers = self._findMissingSlivers(realresult, slivers)
+                if len(missingSlivers) > 0:
+                    self.logger.warn("%d slivers from request missing in result?!", len(missingSlivers))
+                    self.logger.debug("Slivers requested missing in result: %s", missingSlivers)
+
+                sliverFails = self._didSliversFail(realresult)
+                for sliver in sliverFails.keys():
+                    self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
+
+                (header, rspeccontent, rVal) = _getRSpecOutput(self.logger, rspec, slicename, client.urn, client.url, message)
+                self.logger.debug(rVal)
+                if realresult and isinstance(realresult, dict) and realresult.has_key('geni_rspec') and rspec and rspeccontent:
+                    realresult['geni_rspec'] = rspeccontent
+                if isinstance(realresult, dict):
+                    # Hmm. The rspec content looks OK here. But the
+                    # json.dumps seems to screw it up? Quotes get
+                    # double escaped.
+                    prettyResult = json.dumps(realresult, ensure_ascii=True, indent=2)
+                else:
+                    prettyResult = pprint.pformat(realresult)
+
+                # Save out the result
+#                header="<!-- Update %s at AM URL %s -->" % (descripMsg, client.url)
+                filename = None
+
+                if self.opts.output:
+                    filename = _construct_output_filename(self.opts, slicename, client.url, client.urn, "update", ".json", numClients)
+                    #self.logger.info("Writing result of update for slice: %s at AM: %s to file %s", slicename, client.url, filename)
+                _printResults(self.opts, self.logger, header, prettyResult, filename)
+                if filename:
+                    retVal += "Saved update of %s at AM %s to file %s. \n" % (descripMsg, client.str, filename)
+                else:
+                    retVal += "Updated %s at %s. \n" % (descripMsg, client.str)
+
+                if len(missingSlivers) > 0:
+                    retVal += " - but with %d slivers from request missing in result?! \n" % len(missingSlivers)
+                if len(sliverFails.keys()) > 0:
+                    retVal += " = but with %d slivers reporting errors. \n" % len(sliverFails.keys())
+
+                # Check the new sliver expirations
+                (orderedDates, sliverExps) = self._getSliverExpirations(realresult)
+                # None case
+                if len(orderedDates) == 1:
+                    self.logger.info("All slivers expire on %r", orderedDates[0].isoformat())
+                elif len(orderedDates) == 2:
+                    self.logger.info("%d slivers expire on %r, the rest (%d) on %r", len(sliverExps[orderedDates[0]]), orderedDates[0].isoformat(), len(sliverExps[orderedDates[0]]), orderedDates[1].isoformat())
+                elif len(orderedDates) == 0:
+                    msg = " 0 Slivers reported updated!"
+                    self.logger.warn(msg)
+                    retVal += msg
+                else:
+                    self.logger.info("%d slivers expire on %r, %d on %r, and others later", len(sliverExps[orderedDates[0]]), orderedDates[0].isoformat(), len(sliverExps[orderedDates[0]]), orderedDates[1].isoformat())
+                if len(orderedDates) > 0:
+                    if len(orderedDates) == 1:
+                        retVal += " All slivers expire on: %s" % orderedDates[0].isoformat()
+                    else:
+                        retVal += " First sliver expiration: %s" % orderedDates[0].isoformat()
+
+                self.logger.debug("Update %s result: %s" %  (descripMsg, prettyResult))
+                if len(missingSlivers) == 0 and len(sliverFails.keys()) == 0:
+                    successCnt += 1
+            else:
+                # Failure
+                if message is None or message.strip() == "":
+                    message = "(no reason given)"
+                retVal += "Update of %s at %s failed: %s.\n" % (descripMsg, client.str, message)
+                self.logger.warn(retVal)
+                # FIXME: Better message?
+        # Done with update call loop over clients
+
+        if numClients == 0:
+            retVal += "No aggregates at which to update %s. %s\n" % (descripMsg, message)
+        elif numClients > 1:
+            retVal += "Updated %s at %d out of %d aggregates.\n" % (descripMsg, successCnt, self.numOrigClients)
+        elif successCnt == 0:
+            retVal += "Update %s failed at %s" % (descripMsg, clientList[0].url)
+        self.logger.debug("Update Return: \n%s", json.dumps(retItem, indent=2))
+        return retVal, retItem
+    # end of update
+
+# Cancel(urns, creds, options)
+# return (like for Describe - see how that is handled):
+#   rspec
+#   slice urn
+#   slivers list
+#     urn
+#     expires
+#     alloc status
+#     op status
+#     error
+# options may include geni_best_effort
+    def cancel(self, args):
+        """
+        GENI AM API Cancel <slice name>
+        For use with AM API v3+ only, and only at some AMs. 
+        Technically adopted for AM API v4, but may be implemented by v3 AMs. See http://groups.geni.net/geni/wiki/GAPI_AM_API_DRAFT/Adopted#ChangeSetC:Update
+
+        Cancel an Update or Allocate of what is reserved in this slice. For geni_allocated slivers,
+        this method acts like Delete. For geni_updating slivers, returns the slivers to the geni_provisioned state and
+        the operational state and properties from before the call to Update.
+
+        Return a string summarizing results, and a dictionary by AM URL of the return value from the AM.
+
+        Slice name could be a full URN, but is usually just the slice name portion.
+        Note that PLC Web UI lists slices as <site name>_<slice name>
+        (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
+
+        Slice credential is usually retrieved from the Slice Authority. But
+        with the --slicecredfile option it is read from that file, if it exists.
+
+        Aggregates queried:
+        - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+          '''and''' any aggregates specified with the `-a` option.
+         - Only supported at some clearinghouses, and the list of aggregates is only advisory
+        - Each URL given in an -a argument or URL listed under that given
+        nickname in omni_config, if provided, ELSE
+        - List of URLs given in omni_config aggregates option, if provided, ELSE
+        - List of URNs and URLs provided by the selected clearinghouse
+
+        --sliver-urn / -u option: each specifies a sliver URN whose update or allocate to cancel. If specified, 
+        only the listed slivers will be cancelled. Otherwise, all slivers in the slice will be cancelled.
+        --best-effort: If supplied, slivers whose update or allocation can be cancelled, will be; some sliver 
+        changes may not be cancelled, in which case check the geni_error return for that sliver.
+        If not supplied, then if any slivers cannot be cancelled, the whole call fails
+        and sliver states do not change.
+
+        Note that some aggregates may require updating all slivers in the same state at the same 
+        time, per the geni_single_allocation GetVersion return.
+
+        Output directing options:
+        -o Save result in per-Aggregate files
+        -p (used with -o) Prefix for resulting files
+        --outputfile If supplied, use this output file name: substitute the AM for any %a,
+        and %s for any slicename
+        If not saving results to a file, they are logged.
+        If --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the slice name, file format, and
+        which aggregate is represented.
+        e.g.: myprefix-myslice-update-localhost-8001.json
+
+        -V# API Version #
+        --devmode: Continue on error if possible
+        -l to specify a logging config file
+        --logoutput <filename> to specify a logging output filename
+
+        Sample usage:
+        Basic cancel of changes at 1 AM in myslice
+        omni.py -V3 -a http://myaggregate/url cancel myslice
+
+        Cancel changes in 2 AMs, save results into specificly named files that include an AM name calculated from the AM URL,
+        using the slice credential saved in the given file
+        omni.py -V3 -a http://myaggregate/url -a http://myother/aggregate -o --outputfile myslice-status-%a.json --slicecredfile mysaved-myslice-slicecred.xml cancel myslice
+        """
+        if self.opts.api_version < 3:
+            if self.opts.devmode:
+                self.logger.warn("Trying Cancel with AM API v%d...", self.opts.api_version)
+            else:
+                self._raise_omni_error("Cancel is only available in AM API v3+. Specify -V3 to use AM API v3.")
+
+        (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 1,
+                                                                                  "Cancel")
+
+        creds = _maybe_add_abac_creds(self.framework, slice_cred)
+        creds = self._maybe_add_creds_from_files(creds)
+
+        urnsarg, slivers = self._build_urns(urn)
+
+        descripMsg = "changes in slice %s" % urn
+        if len(slivers) > 0:
+            descripMsg = "changes in %d slivers in slice %s" % (len(slivers), urn)
+
+        args = [urnsarg, creds]
+        # Add the options dict
+        options = self._build_options('Delete', slicename, None)
+        args.append(options)
+
+        self.logger.debug("Doing cancel with urns %s, %d creds, options %r",
+                          urnsarg, len(creds), options)
+
+        successCnt = 0
+        (clientList, message) = self._getclients()
+        numClients = len(clientList)
+
+        # Connect to each available GENI AM
+        ## The AM API does not cleanly state how to deal with
+        ## aggregates which do not have a sliver in this slice.  We
+        ## know at least one aggregate (PG) returns an Exception in
+        ## this case.
+        ## FIX ME: May need to look at handling of this more in the future.
+        ## Also, if the user supplied the aggregate list, a failure is
+        ## more interesting.  We can figure out what the error strings
+        ## are at the various aggregates if they don't know about the
+        ## slice and make those more quiet.  Finally, we can try
+        ## to call status at places where it fails to indicate places
+        ## where you still have resources.
+        op = 'Cancel'
+        msg = "Cancel of %s at " % (descripMsg)
+        retItem = {}
+        for client in clientList:
+            try:
+                ((result, message), client) = self._api_call(client,
+                                                   msg + str(client.url),
+                                                   op, args)
+            except BadClientException, bce:
+                if bce.validMsg and bce.validMsg != '':
+                    retVal += bce.validMsg + ". "
+                else:
+                    retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.str, self.opts.api_version)
+                if numClients == 1:
+                    self._raise_omni_error("\nCancel failed: " + retVal)
+                continue
+
+# FIXME: Factor this next chunk into helper method?
+            # Decompress the RSpec before sticking it in retItem
+            rspec = None
+            if result and isinstance(result, dict) and result.has_key('value') and isinstance(result['value'], dict) and result['value'].has_key('geni_rspec'):
+                rspec = self._maybeDecompressRSpec(options, result['value']['geni_rspec'])
+                if rspec and rspec != result['value']['geni_rspec']:
+                    self.logger.debug("Decompressed RSpec")
+                if rspec and rspec_util.is_rspec_string( rspec, None, None, logger=self.logger ):
+                    rspec = rspec_util.getPrettyRSpec(rspec)
+                else:
+                    self.logger.warn("Didn't get a valid RSpec!")
+                result['value']['geni_rspec'] = rspec
+            else:
+                self.logger.warn("Got no results from AM %s", client.str)
+                self.logger.debug("Return struct missing geni_rspec element!")
+
+            # Return for tools is the full code/value/output triple
+            retItem[client.url] = result
+
+            # Get the dict cancel result out of the result (accounting for API version diffs, ABAC)
+            (result, message) = self._retrieve_value(result, message, self.framework)
+            if not result:
+                fmt = "\nFailed to Cancel %s at AM %s: %s\n"
+                if message is None or message.strip() == "":
+                    message = "(no reason given)"
+                retVal += fmt % (descripMsg, client.str, message)
+                continue # go to next AM
+            else:
+                retVal += "\nCancelled %s at AM %s" % (descripMsg, client.str)
+
+            sliverStateErrors = 0
+            # FIXME: geni_unallocated or geni_provisioned are both possible new alloc states
+            # So querying sliver alloc states would have to get all states and then complain if any are not
+            # either of those states.
+            sliverStates = self._getSliverAllocStates(result)
+            for sliver in sliverStates.keys():
+#                self.logger.debug("Sliver %s state: %s", sliver, sliverStates[sliver])
+                if sliverStates[sliver] not in ['geni_unallocated', 'geni_provisioned']:
+                    self.logger.warn("Sliver %s in wrong state! Expected %s, got %s?!", sliver, 'geni_unallocated ir geni_provisioned', sliverStates[sliver])
+                    # FIXME: This really might be a case where sliver in wrong state means the call failed?!
+                    sliverStateErrors += 1
+
+            missingSlivers = self._findMissingSlivers(result, slivers)
+            if len(missingSlivers) > 0:
+                self.logger.warn("%d slivers from request missing in result", len(missingSlivers))
+                self.logger.debug("%s", missingSlivers)
+
+            sliverFails = self._didSliversFail(result)
+            for sliver in sliverFails.keys():
+                self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
+
+            (header, rspeccontent, rVal) = _getRSpecOutput(self.logger, rspec, slicename, client.urn, client.url, message, slivers)
+            self.logger.debug(rVal)
+            if result and isinstance(result, dict) and result.has_key('geni_rspec') and rspec and rspeccontent:
+                result['geni_rspec'] = rspeccontent
+
+            if not isinstance(result, dict):
+                # malformed cancel return
+                self.logger.warn('Malformed cancel result from AM %s. Expected struct, got type %s.' % (client.str, result.__class__.__name__))
+                # FIXME: Add something to retVal that the result was malformed?
+                if isinstance(result, str):
+                    prettyResult = str(result)
+                else:
+                    prettyResult = pprint.pformat(result)
+            else:
+                prettyResult = json.dumps(result, ensure_ascii=True, indent=2)
+
+            #header="<!-- Cancel %s at AM URL %s -->" % (descripMsg, client.url)
+            filename = None
+
+            if self.opts.output:
+                filename = _construct_output_filename(self.opts, slicename, client.url, client.urn, "cancel", ".json", numClients)
+                #self.logger.info("Writing result of cancel for slice: %s at AM: %s to file %s", slicename, client.url, filename)
+            else:
+                self.logger.info("Result of Cancel: ")
+            _printResults(self.opts, self.logger, header, prettyResult, filename)
+            if filename:
+                retVal += "Saved result of cancel %s at AM %s to file %s. \n" % (descripMsg, client.str, filename)
+            # Only count it as success if no slivers were missing
+            if len(missingSlivers) == 0 and len(sliverFails.keys()) == 0 and sliverStateErrors == 0:
+                successCnt+=1
+            else:
+                retVal += " - with %d sliver(s) missing and %d sliver(s) with errors and %d sliver(s) in wrong state. \n" % (len(missingSlivers), len(sliverFails.keys()), sliverStateErrors)
+
+        # loop over all clients
+
+        if numClients == 0:
+            retVal = "No aggregates specified at which to cancel changes. %s" % message
+        elif numClients > 1:
+            retVal = "Cancelled changes at %d out of a possible %d aggregates" % (successCnt, self.numOrigClients)
+        self.logger.debug("Cancel result: " + json.dumps(retItem, indent=2))
+        return retVal, retItem
+    # End of cancel
+
     # End of AM API operations
     #######
 
@@ -5528,8 +6032,8 @@ class AMCallHandler(object):
             options = {}
 
         if self.opts.api_version >= 3 and self.opts.geni_end_time:
-            if op in ('Allocate', 'Provision') or self.opts.devmode:
-                if self.opts.devmode and not op in ('Allocate', 'Provision'):
+            if op in ('Allocate', 'Provision', 'Update') or self.opts.devmode:
+                if self.opts.devmode and not op in ('Allocate', 'Provision', 'Update'):
                     self.logger.warn("Got geni_end_time for method %s but using anyhow", op)
                 time = datetime.datetime.max
                 try:
@@ -5559,11 +6063,18 @@ class AMCallHandler(object):
 
         if self.opts.api_version >= 3 and self.opts.geni_best_effort:
             # FIXME: What about Describe? Status?
-            if op in ('Provision', 'Renew', 'Delete', 'PerformOperationalAction'):
+            if op in ('Provision', 'Renew', 'Delete', 'PerformOperationalAction', 'Cancel'):
                 options["geni_best_effort"] = self.opts.geni_best_effort
             elif self.opts.devmode:
                 self.logger.warn("Got geni_best_effort for method %s but using anyhow", op)
                 options["geni_best_effort"] = self.opts.geni_best_effort
+
+        # For Update. See http://groups.geni.net/geni/wiki/GAPI_AM_API_DRAFT/Adopted#ChangestoDescribe
+        if self.opts.api_version >= 3 and self.opts.cancelled and op == 'Describe':
+            options["geni_cancelled"] = self.opts.cancelled
+        elif self.opts.devmode and self.opts.cancelled:
+            self.logger.warn("Got cancelled option for method %s but using anhow", op)
+            options["geni_cancelled"] = self.opts.cancelled
 
         # To support Speaks For, allow specifying the URN of the user
         # the tool is speaking for. 
