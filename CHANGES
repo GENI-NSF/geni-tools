@@ -12,6 +12,7 @@ gcf 2.8:
     for any aggregates that support such a value. (#660)
   * Update copyrights to 2015 (#764)
   * Add nicknames for !CloudLab and Apt. (#767)
+  * Avoid exception on empty aggregate in `-a` argument. (#771)
 
  * Stitcher
   * Limit available range on a hop that doesn't import to tags available at hops that 

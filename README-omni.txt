@@ -52,6 +52,7 @@ New in v2.8:
    for any aggregates that support such a value. (#660)
  * Update copyrights to 2015 (#764)
  * Add nicknames for !CloudLab and Apt. (#767)
+ * Avoid exception on empty aggregate in `-a` argument. (#771)
 
 New in v2.7:
  * Calls to `status` and `sliverstatus` will also call the CH

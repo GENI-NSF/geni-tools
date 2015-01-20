@@ -331,6 +331,9 @@ def _listaggregates(handler):
             # otherwise it is the url directly
             # Either way, if we have no URN, we fill in 'unspecified_AM_URN'
             url, urn = _derefAggNick(handler, agg)
+            if url is None or urn is None:
+                handler.logger.info("Aggregate '%s' unknown", agg)
+                continue
             url = url.strip()
             urn = urn.strip()
             aggURNAlt = None
@@ -356,11 +359,13 @@ def _listaggregates(handler):
                 handler.logger.debug("Adding aggregate %s (%s) to query list", agg, urn)
                 ret[urn] = url
             else:
-                handler.logger.info("Aggregate %s unknown", agg)
+                handler.logger.info("Aggregate '%s' unknown", agg)
         return (ret, "")
     elif not handler.omni_config.get('aggregates', '').strip() == '':
         aggs = {}
         for url in handler.omni_config['aggregates'].strip().split(','):
+            if url is None:
+                continue
             url = url.strip()
             if url != '':
                 # Try treating that as a nickname
