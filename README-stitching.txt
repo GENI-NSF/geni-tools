@@ -172,6 +172,16 @@ aggregates at which it made reservations. This file is used by
 `renewsliver` or `deletesliver`. This file is named something like
 `slice.hrn-amlist.txt`.
 
+To recreate the combined manifest RSpec for your entire slice as one
+file, you can call stitcher with the `listresource` or `describe`
+command.
+ - Specify `--useSliceAggregates` to ignore the local stitcher file of
+ aggregates in your slice, and instead query the clearinghouse.
+ - The combined RSpec will be saved to a file as usual.
+ - The return signature for the stitcher call (when used as a tool)
+ matches that for Omni, with the combined manifest stored under
+ `combined`.
+
 When done, be sure to delete your reservations, at ''all''
 aggregates involved in your reservation. `stitcher` remembers the
 aggregates at which it made reservations (see above), so this is easy
@@ -657,11 +667,8 @@ Cannot find the set of paths for the RequestTopology. '.
  - With ExoGENI AMs: After reservation, loop checking sliverstatus for
  success or failure, then get the manifest after that
  - Thread all calls to omni
- - Add Aggregate specific top level RSpec elements in combined
- manifest
  - Summarize errors at the end of the run.
  - Support stitch-to-aggregate at ProtoGENI based aggregates if supported
- - Support recreating the combined manifest RSpec
  - Clean up hard-coded aggregate-specific sliver expiration policy handling
  - Support AM API v3; specifically, use `allocate` where supported to
  more rapidly negotiate VLAN tags.
