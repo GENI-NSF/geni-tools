@@ -4463,6 +4463,7 @@ class HopLink(object):
         id = element.getAttribute(cls.ID_TAG)
         # FIXME: getElementsByTagNameNS?
         vlan_xlate = element.getElementsByTagName(cls.VLAN_TRANSLATION_TAG)
+        vlan_translate = False
         if vlan_xlate:
             # If no firstChild or no nodeValue, assume false
             if len(vlan_xlate) > 0 and vlan_xlate[0].firstChild:
