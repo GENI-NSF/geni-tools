@@ -54,6 +54,7 @@ from .stitch.VLANRange import *
 
 from ..geni.util import rspec_schema
 from ..geni.util.rspec_util import is_rspec_string, is_rspec_of_type, rspeclint_exists, validate_rspec
+from ..geni.util.urn_util import URN, urn_to_string_format
 
 from ..sfa.trust import gid
 from ..sfa.util.xrn import urn_to_hrn, get_leaf
@@ -154,6 +155,40 @@ class StitchingHandler(object):
         self.slicename = None
         if len(args) > 0:
             command = args[0]
+        if len(args) > 1:
+            self.slicename = args[1]
+
+        if command and command.strip().lower() in ('describe', 'listresources') and self.slicename:
+            if (not self.opts.aggregate or len(self.opts.aggregate) == 0) and not self.opts.useSliceAggregates:
+                self.addAggregateOptions(args)
+            if not self.opts.aggregate or len(self.opts.aggregate) == 0:
+                # Call the CH to get AMs in this slice
+                oldUSA = self.opts.useSliceAggregates
+                self.opts.useSliceAggregates = True
+                self.opts.sliceName = self.slicename
+                (aggs, message) = handler_utils._listaggregates(self)
+                self.opts.useSliceAggregates = oldUSA
+                if len(aggs) > 0:
+                    self.opts.aggregate = []
+                    for agg in aggs.values():
+                        self.logger.debug("Adding AM %s retrieved from CH", agg)
+                        self.opts.aggregate.append(agg)
+                else:
+                    self.logger.debug("No AMs from CH: %s", message)
+            if not self.opts.aggregate or len(self.opts.aggregate) == 0:
+                # No resources known to be in any AMs. Try again specifying explicit -a arguments.
+                msg = "No known reservations at any aggregates. Try again with explicit -a arguments."
+                self.logger.info(msg)
+                return (msg, None)
+            if self.opts.aggregate and len(self.opts.aggregate) == 1:
+                # Omni can handle this
+                self.logger.debug("Passing call to Omni...")
+                return self.passToOmni(args)
+
+            self.opts.useSliceAggregates = False
+            # This is a case of multiple AMs whose manifests should be combined
+            return self.rebuildManifest()
+
         if not command or command.strip().lower() not in ('createsliver', 'allocate'):
             # Stitcher only handles createsliver or allocate. Hand off to Omni.
             if self.opts.fakeModeDir:
@@ -161,31 +196,14 @@ class StitchingHandler(object):
                 self.logger.info(msg)
                 return (msg, None)
             else:
-                self.logger.debug("Passing call to Omni")
+                self.logger.debug("Passing call to Omni...")
                 # Add -a options from the saved file, if none already supplied
                 self.addAggregateOptions(args)
 
-                # Try to force a call that falls through to omni to log at info level,
-                # or whatever level the main stitcher is using on the console
-                ologger = logging.getLogger("omni")
-                myLevel = logging.INFO
-                handlers = self.logger.handlers
-                if len(handlers) == 0:
-                    handlers = logging.getLogger().handlers
-                for handler in handlers:
-                    if isinstance(handler, logging.StreamHandler):
-                        myLevel = handler.level
-                        break
-                for handler in ologger.handlers:
-                    if isinstance(handler, logging.StreamHandler):
-                        handler.setLevel(myLevel)
-                        break
+                return self.passToOmni(args)
 
-                return omni.call(args, self.opts)
         # End of block to check the command
 
-        if len(args) > 1:
-            self.slicename = args[1]
         if len(args) > 2:
             request = args[2]
 
@@ -343,7 +361,8 @@ class StitchingHandler(object):
             if self.lastException:
                 msg += ' ' + str(self.lastException)
             self.logger.error(msg)
-
+            import traceback
+            self.logger.debug("%s", traceback.format_exc())
 
             if self.ams_to_process is not None:
                 class DumbLauncher():
@@ -402,6 +421,360 @@ class StitchingHandler(object):
         self.logger.debug(retMsg)
         return (retMsg, combinedManifest)
     # End of doStitching()
+
+    def rebuildManifest(self):
+        # Process a listresources or describe call on a slice
+        # by fetching all the manifests and combining those into a new combined manifest
+
+        # Save off the various RSpecs to files.
+        # Return is consistent with Omni: (string, object)
+        # Describe return should be by URL with the full return triple
+        # Put the combined manifest under 'combined'
+        # ListResources return should be dict by URN,URL of RSpecs
+        # Put the combined manifest under ('combined','combined')
+
+        # Get username for slicecred filename
+        self.username = get_leaf(handler_utils._get_user_urn(self.logger, self.framework.config))
+        if not self.username:
+            raise OmniError("Failed to find your username to name your slice credential")
+
+        # Ensure the slice is valid before all those Omni calls use it
+        (sliceurn, sliceexp) = self.confirmSliceOK()
+
+        # We don't have any RSpecs
+        self.parsedUserRequest = None
+        self.parsedSCSRSpec = None
+
+        # Ensure all AM URNs in the commandline are Aggregate objects in ams_to_process
+        self.createObjectsFromOptArgs()
+
+        # Add extra info about the aggregates to the AM objects
+        self.add_am_info(self.ams_to_process)
+
+        # If requesting from >1 ExoGENI AM, then use ExoSM. And use ExoSM only once.
+        # FIXME!!
+        # Will this correctly query the ExoSM vs the individual rack?
+        # Or should I always query both the individual rack and the ExoSM (once)?
+        self.ensureOneExoSM()
+
+        # Save slice cred and timeoutTime on each AM
+        for am in self.ams_to_process:
+            if self.slicecred:
+                # Hand each AM the slice credential, so we only read it once
+                am.slicecred = self.slicecred
+            # Also hand the timeout time
+            am.timeoutTime = self.config['timeoutTime']
+
+            am.userRequested = True
+
+        # Init some data structures
+        lastAM = None
+        workflow_parser = WorkflowParser(self.logger)
+        self.rspecParser = RSpecParser(self.logger)
+        retStruct = dict()
+
+        # Now actually get the manifest for each AM
+        for am in self.ams_to_process:
+            opts_copy = copy.deepcopy(self.opts)
+            opts_copy.aggregate = [(am.nick if am.nick else am.url)]
+            self.logger.info("Gathering current reservations at %s...", am)
+            rspec = None
+            try:
+                rspec = am.listResources(opts_copy, self.slicename)
+            except StitchingError, se:
+                self.logger.debug("Failed to list current reservation: %s", se)
+            if self.opts.api_version == 2:
+                retStruct[(am.urn,am.url)] = rspec
+            else:
+                retStruct[am.url] = {'code':dict(),'value':rspec,'output':None}
+                if am.isPG:
+                    retStruct[am.url]['code'] = {'geni_code':0, 'am_type':'protogeni', 'am_code':0}
+                elif am.dcn:
+                    retStruct[am.url]['code'] = {'geni_code':0, 'am_type':'dcn', 'am_code':0}
+                elif am.isEG:
+                    retStruct[am.url]['code'] = {'geni_code':0, 'am_type':'orca', 'am_code':0}
+                elif am.isGRAM:
+                    retStruct[am.url]['code'] = {'geni_code':0, 'am_type':'gram', 'am_code':0}
+                else:
+                    retStruct[am.url]['code'] = {'geni_code':0, 'am_code':0}
+            if rspec is None:
+                continue
+
+            # Look for and save any sliver expiration
+            am.setSliverExpirations(handler_utils.expires_from_rspec(rspec, self.logger))
+
+            # Fill in more data structures using this RSpec to the extent it helps
+            parsedMan = self.rspecParser.parse(rspec)
+            if self.parsedUserRequest is None:
+                self.parsedUserRequest = parsedMan
+            if self.parsedSCSRSpec is None:
+                self.parsedSCSRSpec = parsedMan
+            # This next, if I had a workflow, would create the hops
+            # on the aggregates. As is, it does verly little
+            # Without the hops on the aggregates, we don't merge hops in the stitching extension
+            workflow_parser.parse({}, parsedMan)
+
+            # Make sure the ExoSM lists URN synonyms for all the EG component managers
+            # that don't have their own Agg instance
+            # FIXME: Anything similar I need to do for other AMs like gram?
+            if am.isExoSM:
+                for urn in parsedMan.amURNs:
+                    # self.logger.debug("Man from %s had AM URN %s", am, urn)
+                    if urn in Aggregate.aggs:
+                        # self.logger.debug("Already is an AM")
+                        continue
+                    syns = Aggregate.urn_syns(urn)
+                    found = False
+                    for urn2 in syns:
+                        if urn2 in Aggregate.aggs:
+                            found = True
+                            urn = urn2
+                            # self.logger.debug(".. which is an AM under syn %s", urn)
+                            break
+                    if not found:
+                        if not (urn.strip().lower().endswith("+cm") or urn.strip().lower().endswith("+am")):
+                            # Doesn't look like an AM URN. Skip it.
+                            self.logger.debug("URN parsed from man doesn't look like an AM URN: %s", urn)
+                            continue
+                        # self.logger.debug("... is not any existing AM")
+                        urnO = URN(urn=urn)
+                        urnAuth = urnO.getAuthority()
+                        if urnAuth.startswith("exogeni.net"):
+                            # self.logger.debug("Is an ExoGENI URN. Since this is the exoSM, add it as a urn syn")
+                            am.urn_syns.append(urn)
+                # end of loop over AM URNs
+            # End of block to handle ExoSM
+
+            # Try to use the info I do have to construct hops on aggregates
+            # Note this has to be redone on the combined manifest later.
+            # May need to tell it to not swap hops?
+            self.fixHopRefs(parsedMan, am)
+
+            self.logger.debug("%s has %d hops", am, len(am.hops))
+
+            # Parse the manifest and fill in the manifest suggested/range values
+            try:
+                from xml.dom.minidom import parseString
+                am.manifestDom = parseString(rspec)
+                am.requestDom = am.manifestDom
+
+                # Fill in the manifest values on hops
+                for hop in am.hops:
+                    self.logger.debug("Updating hop %s", hop)
+                    # 7/12/13: FIXME: EG Manifests reset the Hop ID. So you have to look for the link URN
+                    if am.isEG:
+                        self.logger.debug("Parsing EG manifest with special method")
+                        range_suggested = am.getEGVLANRangeSuggested(am.manifestDom, hop._hop_link.urn, hop.path.id)
+                    else:
+                        range_suggested = am.getVLANRangeSuggested(am.manifestDom, hop._id, hop.path.id)
+
+                    pathGlobalId = None
+                    if range_suggested and len(range_suggested) > 0:
+                        if range_suggested[0] is not None:
+                            pathGlobalId = str(range_suggested[0]).strip()
+                            if pathGlobalId and pathGlobalId is not None and pathGlobalId != "None" and pathGlobalId != '':
+                                if hop.globalId and hop.globalId is not None and hop.globalId != "None" and hop.globalId != pathGlobalId:
+                                    self.logger.warn("Changing Hop %s global ID from %s to %s", hop, hop.globalId, pathGlobalId)
+                                hop.globalId = pathGlobalId
+                            else:
+                                self.logger.debug("Got no global id")
+                        else:
+                            #self.logger.debug("Got nothing in range_suggested first slot")
+                            pass
+
+                        if len(range_suggested) > 1 and range_suggested[1] is not None:
+                            rangeValue = str(range_suggested[1]).strip()
+                            if not rangeValue or rangeValue in ('null', 'any', 'None'):
+                                self.logger.debug("Got no valid vlan range on %s: %s", hop, rangeValue)
+                            else:
+                                rangeObject = VLANRange.fromString(rangeValue)
+                                hop._hop_link.vlan_range_manifest = rangeObject
+                                self.logger.debug("Set range manifest: %s", rangeObject)
+                        else:
+                            self.logger.debug("Got no spot for a range value")
+
+                        if len(range_suggested) > 2 and range_suggested[2] is not None:
+                            suggestedValue = str(range_suggested[2]).strip()
+                            if not suggestedValue or suggestedValue in ('null', 'any', 'None'):
+                                self.logger.debug("Got no valid vlan suggestion on %s: %s", hop, suggestedValue)
+                            else:
+                                suggestedObject = VLANRange.fromString(suggestedValue)
+                                hop._hop_link.vlan_suggested_manifest = suggestedObject
+                                self.logger.debug("Set suggested manifest: %s", hop._hop_link.vlan_suggested_manifest)
+                        else:
+                            self.logger.debug("Got no spot for a suggested value")
+                    else:
+                        self.logger.debug("Got no range_suggested at all")
+                    # End block for found the range and suggested from the RSpec for this hop
+                # end of loop over hops
+            except Exception, e:
+                self.logger.debug("Failed to parse rspec: %s", e)
+                continue
+
+            if am.manifestDom is not None:
+                lastAM = am
+                self.logger.debug("Setting lastAM to %s", lastAM)
+        # Done looping over AMs
+
+        if lastAM is None:
+            # Failed to get any manifests, so bail
+            raise StitchingError("Failed to retrieve resource listing - see logs")
+
+        # Construct and save out a combined manifest
+        combinedManifest, filename, retVal = self.getAndSaveCombinedManifest(lastAM)
+        if self.opts.api_version == 2:
+            retStruct[('combined','combined')] = combinedManifest
+        else:
+            retStruct['combined'] = {'code':{'geni_code':0},'value':combinedManifest,'output':None}
+        parsedCombined = self.rspecParser.parse(combinedManifest)
+
+        # Fix up the parsed combined RSpec to ensure we use the proper
+        # hop instances and all the objects point to each other
+        self.fixHopRefs(parsedCombined)
+
+        self.dump_objects(parsedCombined, self.ams_to_process)
+
+        # Print something about sliver expiration times
+        msg = self.getExpirationMessage()
+
+        if msg:
+            self.logger.info(msg)
+            retVal += msg + "\n"
+
+        if filename:
+            msg = "Saved combined reservation RSpec at %d AMs to file '%s'" % (len(self.ams_to_process), os.path.abspath(filename))
+            self.logger.info(msg)
+            retVal += msg
+
+        # Construct return message
+        retMsg = self.buildRetMsg()
+        self.logger.debug(retMsg)
+
+        # # Simplest return: just the combined rspec
+        # return (retMsg, combinedManifest)
+
+        # API method compliant returns
+        # Describe return should be by URL with the full return triple
+        # Put the combined manifest under 'combined'
+        # ListResources return should be dict by URN,URL of RSpecs
+        # Put the combined manifest under ('combined','combined')
+        return (retMsg, retStruct)
+    # End of rebuidManifest()
+
+    def fixHopRefs(self, parsedManifest, thisAM=None):
+        # Use a parsed RSpec to fix up the Hop and Aggregate objects that would otherwise
+        # be fixed up using the workflow.
+        # Used by rebuildManifest()
+        if not parsedManifest or not parsedManifest.stitching:
+            return
+        for path in parsedManifest.stitching.paths:
+            for hop in path.hops:
+                if hop.path != path:
+                    hop.path = path
+                # Fill in the Aggregate instance on the hop
+                if not hop.aggregate:
+                    self.logger.debug("%s missing aggregate", hop)
+                    urn = hop.urn
+                    if not urn or not '+' in urn:
+                        self.logger.debug("%s had invalid urn", hop)
+                        continue
+                    spl = urn.split('+')
+                    if len(spl) < 4:
+                        self.logger.debug("%s URN malformed", hop)
+                        continue
+                    urnAuth = urn_to_string_format(spl[1])
+                    urnC = URN(authority=urnAuth, type='authority', name='am')
+                    hopAgg = Aggregate.find(urnC.urn)
+                    hop.aggregate = hopAgg
+                    self.logger.debug("Found %s", hopAgg)
+                if thisAM and hop.aggregate != thisAM:
+                    # self.logger.debug("%s not for this am (%s) - continue", hop, thisAM)
+                    continue
+                if not hop.aggregate in hop.path.aggregates:
+                    self.logger.debug("%s's AM not on its path - adding", hop)
+                    hop.path.aggregates.add(hop.aggregate)
+                # Find the AM for this hop
+                if not thisAM:
+                    anAM = None
+                    for am in self.ams_to_process:
+                        if hop.aggregate == am:
+                            anAM = am
+                            break
+                    if not anAM:
+                        return
+                    am = anAM
+                else:
+                    am = thisAM
+
+                # Now ensure we have the right objects
+                found=False
+                for hop2 in am.hops:
+                    # Ensure use right version of the Hop object
+                    if hop2.urn == hop.urn and hop2.path.id == hop.path.id:
+                        self.logger.debug("%s already listed by its AM", hop)
+                        if hop != hop2:
+                            self.logger.debug("... but the 2 hop instances are different!")
+                            # Do I need to swap instances?
+                            if hop2._hop_link.vlan_suggested_manifest != hop._hop_link.vlan_suggested_manifest:
+                                self.logger.debug("Swapping out the path version of the hop to use the AM version instead, which has sug man: %s", hop2._hop_link.vlan_suggested_manifest)
+                                # use hop2 not hop
+                                # edit path.hops
+                                newHops = []
+                                for hop3 in path.hops:
+                                    if hop3 == hop:
+                                        newHops.append(hop2)
+                                    else:
+                                        newHops.append(hop3)
+                                path.hops = newHops
+                            else:
+                                # both hops have same manifest value, shouldn't matter
+                                self.logger.debug(" ... but have same suggested manifest, so leave it alone")
+                        found = True
+                        break
+                # AM didn't know the hop, so add it
+                if not found:
+                    self.logger.debug("%s not listed on it's AM's hops - adding", hop)
+                    am.add_hop(hop)
+                    found = False
+                    # And make sure the AM has the Path too
+                    for path2 in am.paths:
+                        if hop.path.id == path2.id:
+                            found = True
+                            self.logger.debug("%s 's path already listed by its aggregate %s", hop, hop.aggregate)
+                            if hop.path != path2:
+                                self.logger.debug("... but FIXME the 2 path instances are different!!")
+                                # FIXME: Do I need to swap instances?
+                                break
+                    if not found:
+                        self.logger.debug("%s 's path not listed on the AM's paths, adding", hop)
+                        am.add_path(hop.path)
+                # End of block to ensure the AM has the hop
+            # End of loop over hops
+        # End of loop over paths
+    # End of method fixHopRefs
+
+    def passToOmni(self, args):
+        # Pass the call on to Omni, using the given args. Reset logging appropriately
+        # Return is the omni.call return
+
+        # Try to force a call that falls through to omni to log at info level,
+        # or whatever level the main stitcher is using on the console
+        ologger = logging.getLogger("omni")
+        myLevel = logging.INFO
+        handlers = self.logger.handlers
+        if len(handlers) == 0:
+            handlers = logging.getLogger().handlers
+        for handler in handlers:
+            if isinstance(handler, logging.StreamHandler):
+                myLevel = handler.level
+                break
+        for handler in ologger.handlers:
+            if isinstance(handler, logging.StreamHandler):
+                handler.setLevel(myLevel)
+                break
+
+        return omni.call(args, self.opts)
+    # End of passToOmni
 
     def buildRetMsg(self):
         # Build the return message from this handler on success
@@ -568,6 +941,8 @@ class StitchingHandler(object):
         # Avoid EG manifests - they are incomplete
         # Avoid DCN manifests - they do funny things with namespaces (ticket #549)
         # GRAM AMs seems to also miss nodes. Avoid if possible.
+        if lastAM is None and len(self.ams_to_process) > 0:
+            lastAM = self.ams_to_process[-1]
         if lastAM is not None and (lastAM.isEG or lastAM.dcn or lastAM.isGRAM):
             self.logger.debug("Last AM was an EG or DCN or GRAM AM. Find another for the template.")
             i = 1
@@ -690,7 +1065,7 @@ class StitchingHandler(object):
             # Done looping over agg exp times in sortedAggs
         # Done handling sortedAggs
         if not noPrint:
-            if len(sortedAggs) == 1:
+            if len(sortedAggs) == 1 or secondTime is None:
                 msg = "Your resources expire at %s (UTC). %s" % (firstTime.isoformat(), msgAdd)
             else:
                 msg = "Your resources expire at %d different times. The first resources expire at %s (UTC) at %s. The second expiration time is %s (UTC) at %s. %s" % (len(sortedAggs), firstTime.isoformat(), firstLabel, secondTime.isoformat(), secondLabel, msgAdd)
@@ -1172,30 +1547,29 @@ class StitchingHandler(object):
             raise StitchingError("Requested no reservation")
         # Done handling --noReservation
 
-    def createObjectsFromParsedAMURNs(self):
-        # Ensure all AM URNs we found in the RSpec are Aggregate objects in ams_to_process
-        for amURN in self.parsedSCSRSpec.amURNs:
-#            self.logger.debug("Looking at SCS returned amURN %s", amURN)
+    def createObjectFromOneURN(self, amURN):
+        # Create an Aggregate class instance from the URN of the aggregate,
+        # avoiding duplicates.
 
-            # If the AM URN we parsed from the RSpec is already in the list of aggregates to process,
-            # skip to the next parsed URN
-            found = False
-            for agg in self.ams_to_process:
-                if agg.urn == amURN:
+        # If the AM URN we parsed from the RSpec is already in the list of aggregates to process,
+        # skip to the next parsed URN
+        found = False
+        for agg in self.ams_to_process:
+            if agg.urn == amURN:
+                found = True
+#                self.logger.debug(" .. was already in ams_to_process")
+                break
+            # For EG there are multiple URNs that are really the same
+            # If find one, found them all
+            for urn2 in agg.urn_syns:
+                if urn2 == amURN:
+#                    self.logger.debug(" .. was in ams_to_process under synonym. Ams_to_process had %s", agg.urn)
                     found = True
-#                    self.logger.debug(" .. was already in ams_to_process")
                     break
-                # For EG there are multiple URNs that are really the same
-                # If find one, found them all
-                for urn2 in agg.urn_syns:
-                    if urn2 == amURN:
-#                        self.logger.debug(" .. was in ams_to_process under synonym. Ams_to_process had %s", agg.urn)
-                        found = True
-                        break
-            if found:
-                continue # to next parsed URN
+        if found:
+            return
 
-            # AM URN was not in the workflow from the SCS
+        # AM URN was not in the workflow from the SCS
 
 #            # If this URN was on a stitching link, then this isn't going to work
 #            for link in self.parsedSCSRSpec.links:
@@ -1212,39 +1586,56 @@ class StitchingHandler(object):
 #                                self.logger.debug("No path in stitching section of rspec for link %s that seems to need stitching", link.id)
 #                            raise StitchingError("SCS did not handle link %s - perhaps AM %s is unknown?", link.id, amURN)
 
-            am = Aggregate.find(amURN)
+        am = Aggregate.find(amURN)
 
-            # Fill in a URL for this AM
-            # First, find it in the agg_nick_cache
-            if not am.url:
-                # FIXME: Avoid apparent v1 URLs
-                for urn in am.urn_syns:
-                    (nick, url) = handler_utils._lookupAggNickURLFromURNInNicknames(self.logger, self.config, urn)
-                    if url and url.strip() != '':
-                        self.logger.debug("Found AM %s URL using URN %s from omni_config AM nicknames: %s", amURN, urn, nick)
-                        am.url = url
-                        am.nick = nick
+        # Fill in a URL for this AM
+        # First, find it in the agg_nick_cache
+        if not am.url:
+            # FIXME: Avoid apparent v1 URLs
+            for urn in am.urn_syns:
+                (nick, url) = handler_utils._lookupAggNickURLFromURNInNicknames(self.logger, self.config, urn)
+                if url and url.strip() != '':
+                    self.logger.debug("Found AM %s URL using URN %s from omni_config AM nicknames: %s", amURN, urn, nick)
+                    am.url = url
+                    am.nick = nick
+                    break
+
+        # If that failed, try asking the CH
+        if not am.url:
+            # Try asking our CH for AMs to get the URL for the
+            # given URN
+            fw_ams = dict()
+            try:
+                fw_ams = self.framework.list_aggregates()
+                for fw_am_urn in fw_ams.keys():
+                    if fw_am_urn and fw_am_urn.strip() in am.urn_syns and fw_ams[fw_am_urn].strip() != '':
+                        am.url = fw_ams[fw_am_urn]
+                        self.logger.debug("Found AM %s URL from CH ListAggs: %s", amURN, am.url)
                         break
+            except:
+                pass
+        if not am.url:
+            raise StitchingError("RSpec requires AM '%s' which is not in workflow and URL is unknown!" % amURN)
+        else:
+            self.logger.debug("Adding am to ams_to_process from URN %s, with url %s", amURN, am.url)
+            self.ams_to_process.append(am)
+        return
+    # End of createObjectFromOneURN
 
-            # If that failed, try asking the CH
-            if not am.url:
-                # Try asking our CH for AMs to get the URL for the
-                # given URN
-                fw_ams = dict()
-                try:
-                    fw_ams = self.framework.list_aggregates()
-                    for fw_am_urn in fw_ams.keys():
-                        if fw_am_urn and fw_am_urn.strip() in am.urn_syns and fw_ams[fw_am_urn].strip() != '':
-                            am.url = fw_ams[fw_am_urn]
-                            self.logger.debug("Found AM %s URL from CH ListAggs: %s", amURN, am.url)
-                            break
-                except:
-                    pass
-            if not am.url:
-                raise StitchingError("RSpec requires AM '%s' which is not in workflow and URL is unknown!" % amURN)
-            else:
-                self.logger.debug("Adding am to ams_to_process from URN %s, with url %s", amURN, am.url)
-                self.ams_to_process.append(am)
+    def createObjectsFromOptArgs(self):
+        # For use when merging manifests
+        for amNick in self.opts.aggregate:
+            url1,urn1 = handler_utils._derefAggNick(self, amNick)
+            self.createObjectFromOneURN(urn1)
+
+    def createObjectsFromParsedAMURNs(self):
+        # Ensure all AM URNs we found in the RSpec are Aggregate objects in ams_to_process
+        if self.parsedSCSRSpec is None:
+            return
+        for amURN in self.parsedSCSRSpec.amURNs:
+#            self.logger.debug("Looking at SCS returned amURN %s", amURN)
+            self.createObjectFromOneURN(amURN)
+
         # Done adding user requested non linked AMs to list of AMs to process
 
     def updateAvailRanges(self, sliceurn, requestDOM):
@@ -2214,7 +2605,7 @@ class StitchingHandler(object):
                     if self.opts.useExoSM:
                         # Should not happen I believe.
                         self.logger.debug("Asked to use the ExoSM for all EG AMs. So change this one.")
-                    else:
+                    elif self.parsedSCSRSpec:
                         self.logger.debug("Will use EG stitching where applicable. Must go through the ExoSM for EG only links.")
 
                         # Does this AM participate in an EG only link? If so, convert it.
@@ -2390,6 +2781,7 @@ class StitchingHandler(object):
         options_copy = copy.deepcopy(self.opts)
         options_copy.debug = False
         options_copy.info = False
+        options_copy.aggregate = []
 
         aggsc = copy.copy(aggs)
 
@@ -2400,9 +2792,9 @@ class StitchingHandler(object):
 #            self.logger.debug("add_am_info looking at %s", agg)
 
             # Note which AMs were user requested
-            if agg.urn in self.parsedUserRequest.amURNs:
+            if self.parsedUserRequest and agg.urn in self.parsedUserRequest.amURNs:
                 agg.userRequested = True
-            else:
+            elif self.parsedUserRequest:
                 for urn2 in agg.urn_syns:
                     if urn2 in self.parsedUserRequest.amURNs:
                         agg.userRequested = True
@@ -2740,7 +3132,7 @@ class StitchingHandler(object):
         # interface_ref elements on link elements also come from the responsible AM
         # Top level link element is effectively arbitrary, but with comments on what other AMs said
         lastDom = None
-        if lastAM is None:
+        if lastAM is None or lastAM.manifestDom is None:
             self.logger.debug("Combined manifest will start from expanded request RSpec")
             lastDom = self.parsedSCSRSpec.dom
             # Change that dom to be a manifest RSpec
@@ -2760,6 +3152,7 @@ class StitchingHandler(object):
 #            self.logger.debug(stripBlankLines(lastDom.toprettyxml(encoding="utf-8")))
         else:
             lastDom = lastAM.manifestDom
+
         combinedManifestDom = combineManifestRSpecs(ams, lastDom)
 
         try:

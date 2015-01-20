@@ -52,6 +52,9 @@ New in v2.8:
    for any aggregates that support such a value. (#660)
  * Update copyrights to 2015 (#764)
  * Add nicknames for !CloudLab and Apt. (#767)
+ * Avoid exception on empty aggregate in `-a` argument. (#771)
+ * Support `Update()` and `Cancel()` from AM APIv4 in any v3+ implementation. Support
+   is only known at ProtoGENI, and is limited. (#589)
 
 New in v2.7:
  * Calls to `status` and `sliverstatus` will also call the CH
@@ -857,6 +860,8 @@ omni.py [options] [--project <proj_name>] <command and arguments>
  			 deletesliver <slicename> [AM API V1&2 only] 
  			 delete <slicename> [AM API V3 only] 
  			 shutdown <slicename> 
+ 			 update <slicename> <rspec URL, filename, or nickname> [Some AM API V3 AMs only] 
+ 			 cancel <slicename> [Some AM API V3 AMs only] 
  		Non AM API aggregate functions (supported by some aggregates): 
  			 createimage <slicename> <imagename> [optional: false (keep image private)] -u <sliver urn> [ProtoGENI/InstaGENI only] 
  			 snapshotimage <slicename> <imagename> [optional: false (keep image private)] -u <sliver urn> [ProtoGENI/InstaGENI only] 
@@ -942,6 +947,9 @@ Options:
                         Sliver URN (not name) on which to act. Supply this
                         option multiple times for multiple slivers, or not at
                         all to apply to the entire slice
+    --cancelled         Should Describe show sliver state of only
+                        geni_provisioned slivers, ignoring any geni_updating
+                        and geni_allocated slivers (default False)
 
   Logging and Verboseness:
     Control the amount of output to the screen and/or to a log
@@ -1833,6 +1841,8 @@ Other options:
  - --no-compress: Request the returned RSpec not be compressed (default is to compress)
  - `-l <path>` to specify a logging configuration file
  - `--logoutput <filename>` to specify a logging output filename
+ - `--cancelled`: For use with `Update()`: Show only slivers that are
+ `geni_provisioned`, not slivers that are only `geni_allocated` or `geni_updating`.
 
 Options for development and testing:
  - `--devmode`: Continue on error if possible
@@ -2617,6 +2627,162 @@ Aggregates queried:
  nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
+
+==== update ====
+Call GENI AM API Update <slice name> <rspec file name>
+
+For use with AM API v3+ only, and only at some AMs. 
+Technically adopted for AM API v4, but may be implemented by v3 AMs. 
+See http://groups.geni.net/geni/wiki/GAPI_AM_API_DRAFT/Adopted#ChangeSetC:Update
+
+Update resources as described in a request RSpec argument in a slice with 
+the named URN. Update the named slivers if specified, or all slivers in the slice at the aggregate.
+On success, new resources in the RSpec will be allocated in new slivers, existing resources in the RSpec will
+be updated, and slivers requested but missing in the RSpec will be deleted.
+
+Return a string summarizing results, and a dictionary by AM URL of the return value from the AM.
+
+Format: `omni.py -V3 [-a AM_url_or_nickname] [-u sliver_urn] update <slicename> <rspec file or nickname>`
+
+Sample usage:
+ - Basic update of resources at 1 AM into myslice
+   `omni.py -V3 -a http://myaggregate/url update myslice my-request-rspec.xml`
+ - Update resources in 2 AMs, requesting a specific sliver end time, save results into specificly named files that include an AM name calculated from the AM URL,
+   using the slice credential saved in the given file
+   `omni.py -V3 -a http://myaggregate/url -a http://myother/aggregate --end-time 20120909 -o --outputfile myslice-manifest-%a.json --slicecredfile mysaved-myslice-slicecred.xml update myslice my-update-rspec.xml`
+
+After update, slivers that were `geni_allocated` remain `geni_allocated` (unless they were left
+out of the RSpec, indicating they should be deleted, which is then immediate). Slivers that were 
+`geni_provisioned` or `geni_updating` will be `geni_updating`.
+Clients must `Renew` or `Provision` any new (`geni_updating`) slivers before the expiration time
+(given in the return struct), or the aggregate will automatically revert the changes 
+(delete new slivers or revert changed slivers to their original state). 
+Slivers that were `geni_provisioned` that you do not include in the RSpec will be deleted, 
+but only after calling `Provision`.
+Slivers that were `geni_allocated` or `geni_updating` are immediately changed.
+
+Slice name could be a full URN, but is usually just the slice name portion.
+Note that PLC Web UI lists slices as <site name>_<slice name>
+(e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
+
+Slice credential is usually retrieved from the Slice Authority. But
+with the `--slicecredfile` option it is read from that file, if it exists.
+
+Aggregates queried:
+ - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+   '''and''' any aggregates specified with the `-a` option.
+  - Only supported at some clearinghouses, and the list of aggregates is only advisory
+ - Each URL given in an `-a` argument or URL listed under that given
+ nickname in omni_config, if provided, ELSE
+ - List of URLs given in omni_config `aggregates` option, if provided, ELSE
+ - List of URNs and URLs provided by the selected clearinghouse
+Note that if multiple aggregates are supplied, the same RSpec will be submitted to each.
+Aggregates should ignore parts of the Rspec requesting specific non-local resources (bound requests), but each 
+aggregate should attempt to satisfy all unbound requests. 
+
+Options:
+ - `--sliver-urn` or `-u` option: each specifies a sliver URN to update. If specified,
+   only the listed slivers will be updated. Otherwise, all slivers in the slice will be updated.
+ - `--best-effort`: If supplied, slivers that can be updated, will be; some slivers
+   may not be updated, in which case check the geni_error return for that sliver.
+   If not supplied, then if any slivers cannot be updated, the whole call fails
+   and sliver allocation states do not change.
+   Note that some aggregates may require updating all slivers in the same state at the same 
+   time, per the `geni_single_allocation` !GetVersion return.
+ - `--end-time <time>`: Request that new slivers expire at the given time.
+   The aggregates may provision the resources, but not be able to grant the requested
+   expiration time.
+   Note that per the AM API, expiration times will be timezone aware.
+   Unqualified times are assumed to be in UTC.
+   Note that the expiration time cannot be past your slice expiration
+   time (see `renewslice`).
+
+Output directing options:
+ - `-o`: Save result in per-aggregate files
+ - `-p <prefix>` (used with `-o`): Prefix for resulting files
+ - `--outputfile <path>`: If supplied, use this output file name: substitute the AM for any `%a`, and slicename for any `%s`
+ - If not saving results to a file, they are logged.
+ - If `--tostdout` option, then instead of logging, print to STDOUT.
+ - When using `-o` and not `--outputfile`, file names will indicate the
+   slice name, file format, and which aggregate is represented.
+   e.g.: `myprefix-myslice-update-localhost-8001.json`
+
+Other options:
+ - `--api-version #` or `-V #` or `-V#`: AM API Version # (default: 2)
+ - `-l <path>` to specify a logging config file
+ - `--logoutput <filename>` to specify a logging output filename
+
+Options for development and testing:
+ - `--devmode`: Continue on error if possible
+
+==== cancel ====
+Call GENI AM API Cancel <slice name>
+
+For use with AM API v3+ only, and only at some AMs. 
+Technically adopted for AM API v4, but may be implemented by v3 AMs. 
+See http://groups.geni.net/geni/wiki/GAPI_AM_API_DRAFT/Adopted#ChangeSetC:Update
+
+Cancel pending changes in a slice with 
+the named URN. Cancel the changes to the named slivers if specified, or all slivers in the slice at the aggregate.
+On success, any slivers that were being allocated will be deleted
+(geni_unallocated), and any slivers that were being updated
+('geni_updating'), will revert to their previous state
+('geni_provisioned' with all state and properties as before).
+
+Return a string summarizing results, and a dictionary by AM URL of the return value from the AM.
+
+Format: `omni.py -V3 [-a AM_url_or_nickname] [-u sliver_urn] cancel <slicename>`
+
+Sample usage:
+ - Basic cancel of changes at 1 AM into myslice
+   `omni.py -V3 -a http://myaggregate/url cancel myslice`
+ - Cancel changes in 2 AMs, save results into specificly named files that include an AM name calculated from the AM URL,
+   using the slice credential saved in the given file
+   `omni.py -V3 -a http://myaggregate/url -a http://myother/aggregate -o --outputfile myslice-manifest-%a.json --slicecredfile mysaved-myslice-slicecred.xml cancel myslice`
+
+Slice name could be a full URN, but is usually just the slice name portion.
+Note that PLC Web UI lists slices as <site name>_<slice name>
+(e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
+
+Slice credential is usually retrieved from the Slice Authority. But
+with the `--slicecredfile` option it is read from that file, if it exists.
+
+Aggregates queried:
+ - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+   '''and''' any aggregates specified with the `-a` option.
+  - Only supported at some clearinghouses, and the list of aggregates is only advisory
+ - Each URL given in an `-a` argument or URL listed under that given
+ nickname in omni_config, if provided, ELSE
+ - List of URLs given in omni_config `aggregates` option, if provided, ELSE
+ - List of URNs and URLs provided by the selected clearinghouse
+
+Options:
+ - `--sliver-urn` or `-u` option: each specifies a sliver URN to revert. If specified,
+   only the changes to the listed slivers will be canceled. Otherwise, all changes in the slice will be canceled.
+ - `--best-effort`: If supplied, slivers that can be canceled, will be; some slivers
+   may not be canceled, in which case check the geni_error return for that sliver.
+   If not supplied, then if any slivers cannot be canceled, the whole call fails
+   and sliver allocation states do not change.
+   Note that some aggregates may require canceling all changes in the same state at the same 
+   time, per the `geni_single_allocation` !GetVersion return.
+
+Output directing options:
+ - `-o`: Save result in per-aggregate files
+ - `-p <prefix>` (used with `-o`): Prefix for resulting files
+ - `--outputfile <path>`: If supplied, use this output file name: substitute the AM for any `%a`, and slicename for any `%s`
+ - If not saving results to a file, they are logged.
+ - If `--tostdout` option, then instead of logging, print to STDOUT.
+ - When using `-o` and not `--outputfile`, file names will indicate the
+   slice name, file format, and which aggregate is represented.
+   e.g.: `myprefix-myslice-cancel-localhost-8001.json`
+
+Other options:
+ - `--api-version #` or `-V #` or `-V#`: AM API Version # (default: 2)
+ - `-l <path>` to specify a logging config file
+ - `--logoutput <filename>` to specify a logging output filename
+
+Options for development and testing:
+ - `--devmode`: Continue on error if possible
 
 ==== createimage ====
 Call the ProtoGENI / InstaGENI !CreateImage method, to snapshot the
