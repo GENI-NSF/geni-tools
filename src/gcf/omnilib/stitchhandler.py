@@ -54,7 +54,7 @@ from .stitch.VLANRange import *
 
 from ..geni.util import rspec_schema
 from ..geni.util.rspec_util import is_rspec_string, is_rspec_of_type, rspeclint_exists, validate_rspec
-from ..geni.util.urn_util import URN
+from ..geni.util.urn_util import URN, urn_to_string_format
 
 from ..sfa.trust import gid
 from ..sfa.util.xrn import urn_to_hrn, get_leaf
@@ -159,7 +159,7 @@ class StitchingHandler(object):
             self.slicename = args[1]
 
         if command and command.strip().lower() in ('describe', 'listresources') and self.slicename:
-            if not self.opts.aggregate or len(self.opts.aggregate) == 0:
+            if (not self.opts.aggregate or len(self.opts.aggregate) == 0) and not self.opts.useSliceAggregates:
                 self.addAggregateOptions(args)
             if not self.opts.aggregate or len(self.opts.aggregate) == 0:
                 # Call the CH to get AMs in this slice
@@ -182,6 +182,7 @@ class StitchingHandler(object):
                 return (msg, None)
             if self.opts.aggregate and len(self.opts.aggregate) == 1:
                 # Omni can handle this
+                self.logger.debug("Passing call to Omni...")
                 return self.passToOmni(args)
 
             self.opts.useSliceAggregates = False
@@ -195,7 +196,7 @@ class StitchingHandler(object):
                 self.logger.info(msg)
                 return (msg, None)
             else:
-                self.logger.debug("Passing call to Omni")
+                self.logger.debug("Passing call to Omni...")
                 # Add -a options from the saved file, if none already supplied
                 self.addAggregateOptions(args)
 
@@ -425,6 +426,13 @@ class StitchingHandler(object):
         # Process a listresources or describe call on a slice
         # by fetching all the manifests and combining those into a new combined manifest
 
+        # Save off the various RSpecs to files.
+        # Return is consistent with Omni: (string, object)
+        # Describe return should be by URL with the full return triple
+        # Put the combined manifest under 'combined'
+        # ListResources return should be dict by URN,URL of RSpecs
+        # Put the combined manifest under ('combined','combined')
+
         # Get username for slicecred filename
         self.username = get_leaf(handler_utils._get_user_urn(self.logger, self.framework.config))
         if not self.username:
@@ -463,6 +471,7 @@ class StitchingHandler(object):
         lastAM = None
         workflow_parser = WorkflowParser(self.logger)
         self.rspecParser = RSpecParser(self.logger)
+        retStruct = dict()
 
         # Now actually get the manifest for each AM
         for am in self.ams_to_process:
@@ -474,6 +483,20 @@ class StitchingHandler(object):
                 rspec = am.listResources(opts_copy, self.slicename)
             except StitchingError, se:
                 self.logger.debug("Failed to list current reservation: %s", se)
+            if self.opts.api_version == 2:
+                retStruct[(am.urn,am.url)] = rspec
+            else:
+                retStruct[am.url] = {'code':dict(),'value':rspec,'output':None}
+                if am.isPG:
+                    retStruct[am.url]['code'] = {'geni_code':0, 'am_type':'protogeni', 'am_code':0}
+                elif am.dcn:
+                    retStruct[am.url]['code'] = {'geni_code':0, 'am_type':'dcn', 'am_code':0}
+                elif am.isEG:
+                    retStruct[am.url]['code'] = {'geni_code':0, 'am_type':'orca', 'am_code':0}
+                elif am.isGRAM:
+                    retStruct[am.url]['code'] = {'geni_code':0, 'am_type':'gram', 'am_code':0}
+                else:
+                    retStruct[am.url]['code'] = {'geni_code':0, 'am_code':0}
             if rspec is None:
                 continue
 
@@ -509,6 +532,10 @@ class StitchingHandler(object):
                             # self.logger.debug(".. which is an AM under syn %s", urn)
                             break
                     if not found:
+                        if not (urn.strip().lower().endswith("+cm") or urn.strip().lower().endswith("+am")):
+                            # Doesn't look like an AM URN. Skip it.
+                            self.logger.debug("URN parsed from man doesn't look like an AM URN: %s", urn)
+                            continue
                         # self.logger.debug("... is not any existing AM")
                         urnO = URN(urn=urn)
                         urnAuth = urnO.getAuthority()
@@ -595,7 +622,10 @@ class StitchingHandler(object):
 
         # Construct and save out a combined manifest
         combinedManifest, filename, retVal = self.getAndSaveCombinedManifest(lastAM)
-
+        if self.opts.api_version == 2:
+            retStruct[('combined','combined')] = combinedManifest
+        else:
+            retStruct['combined'] = {'code':{'geni_code':0},'value':combinedManifest,'output':None}
         parsedCombined = self.rspecParser.parse(combinedManifest)
 
         # Fix up the parsed combined RSpec to ensure we use the proper
@@ -619,7 +649,17 @@ class StitchingHandler(object):
         # Construct return message
         retMsg = self.buildRetMsg()
         self.logger.debug(retMsg)
-        return (retMsg, combinedManifest)
+
+        # # Simplest return: just the combined rspec
+        # return (retMsg, combinedManifest)
+
+        # API method compliant returns
+        # Describe return should be by URL with the full return triple
+        # Put the combined manifest under 'combined'
+        # ListResources return should be dict by URN,URL of RSpecs
+        # Put the combined manifest under ('combined','combined')
+        return (retMsg, retStruct)
+    # End of rebuidManifest()
 
     def fixHopRefs(self, parsedManifest, thisAM=None):
         # Use a parsed RSpec to fix up the Hop and Aggregate objects that would otherwise
@@ -635,14 +675,20 @@ class StitchingHandler(object):
                 if not hop.aggregate:
                     self.logger.debug("%s missing aggregate", hop)
                     urn = hop.urn
-                    urnO = URN(urn=urn)
-                    urnAuth = urnO.getAuthority()
+                    if not urn or not '+' in urn:
+                        self.logger.debug("%s had invalid urn", hop)
+                        continue
+                    spl = urn.split('+')
+                    if len(spl) < 4:
+                        self.logger.debug("%s URN malformed", hop)
+                        continue
+                    urnAuth = urn_to_string_format(spl[1])
                     urnC = URN(authority=urnAuth, type='authority', name='am')
                     hopAgg = Aggregate.find(urnC.urn)
                     hop.aggregate = hopAgg
                     self.logger.debug("Found %s", hopAgg)
                 if thisAM and hop.aggregate != thisAM:
-                    self.logger.debug("%s not for this am (%s) - continue", hop, thisAM)
+                    # self.logger.debug("%s not for this am (%s) - continue", hop, thisAM)
                     continue
                 if not hop.aggregate in hop.path.aggregates:
                     self.logger.debug("%s's AM not on its path - adding", hop)
@@ -2735,6 +2781,7 @@ class StitchingHandler(object):
         options_copy = copy.deepcopy(self.opts)
         options_copy.debug = False
         options_copy.info = False
+        options_copy.aggregate = []
 
         aggsc = copy.copy(aggs)
 
@@ -3005,18 +3052,6 @@ class StitchingHandler(object):
                     self.logger.debug( "    VLAN Available Range (requested): %s" % (hop._hop_link.vlan_range_request))
                     if hop._hop_link.vlan_suggested_manifest:
                         self.logger.debug( "    VLAN Suggested (manifest): %s" % (hop._hop_link.vlan_suggested_manifest))
-# FIXME FIXME: Drop this debug block
-                    else:
-                        if not hop.aggregate:
-                            self.logger.debug("**** FIXME: %s missing aggregate", hop)
-                        else:
-                            for hop2 in hop.aggregate.hops:
-                                if hop2.urn == hop.urn and hop2.path.id == path.id and hop2 != hop:
-                                    self.logger.debug("**** FIXME: Hop %s has agg %s that has hop with same ID but diff instance", hop, hop.aggregate)
-                                    if hop2._hop_link.vlan_suggested_manifest:
-                                        self.logger.debug("***** and that other instance has a manifest")
-                        self.logger.debug( "    (had no manifest)") 
-# FIXME FIXME - end of block to dump
                     if hop._hop_link.vlan_range_manifest:
                         self.logger.debug( "    VLAN Available Range (manifest): %s" % (hop._hop_link.vlan_range_manifest))
                     if hop.vlans_unavailable and len(hop.vlans_unavailable) > 0:
