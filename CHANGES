@@ -56,8 +56,10 @@ gcf 2.8:
        `--noEGStitchingOnLink` means that only the named links between ExoGENI sites will attempt
        to use a GENI stitched link.
      * See README-stitching.txt for more on `--noEGStitching` and `--noEGStitchingOnLink`.
-  * Increase sleep before retrying reservations from 30 to 45 seconds. (#769)
-   * PG based nodes now return quicker but take that long to finish deleting.
+  * Handle PG AMs taking longer to delete a previous reservation. (#769)
+   * Better handle delete errors that really mean there was nothing here to delete.
+   * Before allocating, if stitcher did a previous delete at this aggergate in this run,
+     check `sliverstatus` to ensure that delete completed.
   * Allow `--verbosessl` to `scs.py` to turn on debug SSL logging. (#770)
   * Allow recreating the combined manifest RSpec. (#284)
    * Call `stitcher listresources <slice>` or `stitcher describe <slice>`.
