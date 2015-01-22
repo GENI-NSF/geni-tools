@@ -1866,7 +1866,7 @@ class AMCallHandler(object):
                 if manExpires is not None:
                     prstr = "Reservation at %s in slice %s expires at %s (UTC)." % (client.str, slicename, manExpires)
                     self.logger.info(prstr)
-                    if not retVal.endswith('.'):
+                    if not (retVal.endswith('.') or retVal.endswith('. ')):
                         retVal += '.'
                     retVal += " " + prstr
                 else:
