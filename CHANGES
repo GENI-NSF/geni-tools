@@ -17,6 +17,12 @@ gcf 2.8:
     is only known at ProtoGENI, and is limited. (#589)
   * New option `--noCacheFiles` completely disables reading or writing the !GetVersion and
     Aggregate nickname cache files. (#772)
+  * Better control of Omni logging configuration. (#458)
+   * Allow a Python logging configuration dictionary, and configure
+     logging from that if possible.
+   * New option `--noLoggingConfiguration` completely disables
+     configuring Python loggers from Omni. A script might use this to
+     allow it to configure logging later in its own way.
 
  * Stitcher
   * Limit available range on a hop that doesn't import to tags available at hops that 
