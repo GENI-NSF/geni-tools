@@ -157,6 +157,14 @@ def load_agg_nick_config(opts, logger):
     Search path:
     - filename from commandline
     """
+    if opts.noCacheFiles:
+        logger.debug("Not loading agg_nick_config per option noCacheFiles")
+        config = {}
+        if not config.has_key('aggregate_nicknames'):
+            config['aggregate_nicknames'] = {}
+        if not config.has_key('omni_defaults'):
+            config['omni_defaults'] = {}
+        return config
 
     # the directory of this file
     curr_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -1107,6 +1115,8 @@ def getParser():
     gvgroup.add_option("--GetVersionCacheName", dest='getversionCacheName',
                       default="~/.gcf/get_version_cache.json",
                       help="File where GetVersion info will be cached, default is %default")
+    gvgroup.add_option("--noCacheFiles", default=False, action="store_true",
+                       help="Disable both GetVersion and Aggregate Nickname cache functionality completely; no files are downloaded, saved, or loaded.")
     parser.add_option_group( gvgroup )
 
     # AggNick

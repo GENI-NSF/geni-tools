@@ -55,6 +55,8 @@ New in v2.8:
  * Avoid exception on empty aggregate in `-a` argument. (#771)
  * Support `Update()` and `Cancel()` from AM APIv4 in any v3+ implementation. Support
    is only known at ProtoGENI, and is limited. (#589)
+ * New option `--noCacheFiles` completely disables reading or writing the !GetVersion and
+   Aggregate nickname cache files. (#772)
 
 New in v2.7:
  * Calls to `status` and `sliverstatus` will also call the CH
@@ -1026,6 +1028,9 @@ Options:
     --GetVersionCacheName=GETVERSIONCACHENAME
                         File where GetVersion info will be cached, default is
                         ~/.gcf/get_version_cache.json
+    --noCacheFiles      Disable both GetVersion and Aggregate Nickname cache
+                        functionality completely; no files are downloaded,
+                        saved, or loaded.
 
   Aggregate Nickname Cache:
     Control Aggregate Nickname Cache
@@ -1185,10 +1190,14 @@ Advanced / Developer Options:
  clearinghouses, specifically the GENI Clearinghouse. Note also that
  `useslicemembers` in the `omni` section of your `omni_config` file
  can be set to `false` to disable `useSliceMembers`.
- - `--ignoreConfigUsers: By default, `createsliver` and `provision`
+ - `--ignoreConfigUsers`: By default, `createsliver` and `provision`
  tell the aggregate to create accounts including for users listed in the users
  section of your `omni_config`, and install the listed SSH keys. With
  this option, Omni will not use those keys. See also `--noSliceMembers`.
+ - `--noCacheFiles`: Completely disable reading, writing or
+ downloading the aggregate nickname and !GetVersion cache files. This
+ may be useful for tools using Omni as a library when multiple
+ instances may run in parallel.
 
 === Supported commands ===
 Omni supports the following commands.

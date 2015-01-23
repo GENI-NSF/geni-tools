@@ -475,6 +475,9 @@ class AMCallHandler(object):
         #      urn
         #      url
         #      lasterror
+        if self.opts.noCacheFiles:
+            self.logger.debug("Per option noCacheFiles, not saving GetVersion cache")
+            return
         fdir = os.path.dirname(self.opts.getversionCacheName)
         if fdir and fdir != "":
             if not os.path.exists(fdir):
@@ -489,6 +492,9 @@ class AMCallHandler(object):
     def _load_getversion_cache(self):
         '''Load GetVersion cache from JSON encoded file, if any'''
         self.GetVersionCache = {}
+        if self.opts.noCacheFiles:
+            self.logger.debug("Per option noCacheFiles, not loading get version cache")
+            return
         #client url->
         #      timestamp (a datetime.datetime)
         #      version struct, including code/value/etc as appropriate
