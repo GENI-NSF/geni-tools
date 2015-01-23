@@ -15,6 +15,8 @@ gcf 2.8:
   * Avoid exception on empty aggregate in `-a` argument. (#771)
   * Support `Update()` and `Cancel()` from AM APIv4 in any v3+ implementation. Support
     is only known at ProtoGENI, and is limited. (#589)
+  * New option `--noCacheFiles` completely disables reading or writing the !GetVersion and
+    Aggregate nickname cache files. (#772)
 
  * Stitcher
   * Limit available range on a hop that doesn't import to tags available at hops that 
