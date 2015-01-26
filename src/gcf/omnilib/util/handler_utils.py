@@ -123,6 +123,7 @@ def _isBetterNick(retNick, nick, logger=None):
 def _lookupAggNick(handler, aggregate_urn_or_url):
     retNick = None
     for nick, (urn, url) in handler.config['aggregate_nicknames'].items():
+        # Case 1
         if aggregate_urn_or_url == urn or aggregate_urn_or_url == url:
 #            handler.logger.debug("For urn/url %s found match: %s=%s,%s", aggregate_urn_or_url, nick, urn, url)
             if _isBetterNick(retNick, nick, handler.logger):
@@ -130,6 +131,7 @@ def _lookupAggNick(handler, aggregate_urn_or_url):
     if retNick is not None:
         return retNick
     for nick, (urn, url) in handler.config['aggregate_nicknames'].items():
+        # Case 2
         if aggregate_urn_or_url.startswith(url):
 #            handler.logger.debug("Queried %s startswith url for nick %s", aggregate_urn_or_url, nick)
             if _isBetterNick(retNick, nick, handler.logger):
@@ -138,6 +140,7 @@ def _lookupAggNick(handler, aggregate_urn_or_url):
         return retNick
     aggregate_urn_or_url = _extractURL(handler.logger, aggregate_urn_or_url)
     for nick, (urn, url) in handler.config['aggregate_nicknames'].items():
+        # Case 3
         if _extractURL(handler.logger,url) == aggregate_urn_or_url:
 #            handler.logger.debug("Queried & trimmed %s is end of url %s for nick %s", aggregate_urn_or_url, url, nick)
             if _isBetterNick(retNick, nick, handler.logger):
@@ -145,14 +148,20 @@ def _lookupAggNick(handler, aggregate_urn_or_url):
     if retNick is not None:
         return retNick
     for nick, (urn, url) in handler.config['aggregate_nicknames'].items():
+        # Case 4
         if aggregate_urn_or_url in urn:
 #            handler.logger.debug("Trimmed %s is in urn for %s=%s,%s", aggregate_urn_or_url, nick, urn, url)
             if _isBetterNick(retNick, nick, handler.logger):
                 retNick = nick
         elif _extractURL(handler.logger, url).startswith(aggregate_urn_or_url):
+            # Case 5
 #            handler.logger.debug("Trimmed %s is in url for %s=%s,%s", aggregate_urn_or_url, nick, urn, url)
             if _isBetterNick(retNick, nick, handler.logger):
                 retNick = nick
+#    if retNick is None:
+#        handler.logger.debug("Found no match for %s", aggregate_urn_or_url)
+#    else:
+#        handler.logger.debug("Returning %s", retNick)
     return retNick
 
 def _lookupAggURNFromURLInNicknames(logger, config, agg_url):
