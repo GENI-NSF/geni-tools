@@ -17,6 +17,8 @@ gcf 2.8:
     is only known at ProtoGENI, and is limited. (#589)
   * New option `--noCacheFiles` completely disables reading or writing the !GetVersion and
     Aggregate nickname cache files. (#772)
+  * New config that sets the current release number and a release message,
+    so Omni can alert you if a new release is available. (#698)
 
  * Stitcher
   * Limit available range on a hop that doesn't import to tags available at hops that 
