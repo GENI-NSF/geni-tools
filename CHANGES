@@ -69,6 +69,8 @@ gcf 2.8:
      will be ignored.
    * Return matches that for Omni, with the combined manifest returned under the key
      `combined` for `describe`, and `('combined','combined')` for `listresources`.
+  * Allow re-setting default sliver expiration times by aggregate type with a new
+    `omni_defaults` value (like from the agg_nick_cache). (#694)
 
  * readyToLogin
   * Add --ansible-inventory option which creates a host file to use with Ansible. Works 

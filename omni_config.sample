@@ -25,6 +25,14 @@
 # May be over-ridden using the commandline option --scsURL
 # scs_url=http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc
 
+# Default initial sliver expiration times
+# done by aggregate type / category
+# Numbers are in days
+# def_sliver_expiration_utah = 5 # PG Utah and Utah DDC, not Utah IG
+# def_sliver_expiration_ig = 90
+# def_sliver_expiration_eg = 14
+# def_sliver_expiration_gram = 7
+
 [omni]
 # The default control framework for omni to use.
 # Override on the commandline with -f argument.
