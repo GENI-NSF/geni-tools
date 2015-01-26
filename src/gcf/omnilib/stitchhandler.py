@@ -3086,6 +3086,7 @@ class StitchingHandler(object):
                     self.logger.debug("   An Orca Aggregate")
                 if agg.isExoSM:
                     self.logger.debug("   The ExoSM Aggregate")
+                    self.logger.debug("   URN synonyms: %s", agg.urn_syns)
                 if agg.alt_url:
                     self.logger.debug("   Alternate URL: %s", agg.alt_url)
                 self.logger.debug("   Using AM API version %d", agg.api_version)
