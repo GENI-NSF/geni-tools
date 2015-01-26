@@ -326,6 +326,9 @@ class StitchingHandler(object):
             self.scsService = scs.Service(self.opts.scsURL, key=self.framework.key, cert=self.framework.cert, timeout=self.opts.ssltimeout, verbose=self.opts.verbosessl)
         self.scsCalls = 0
 
+        # Create singleton that knows about default sliver expirations by AM type
+        defs.DefaultSliverExpirations.getInstance(self.config, self.logger)
+
         # Compare the list of AMs in the request with AMs known
         # to the SCS. Any that the SCS does not know means the request
         # cannot succeed if those are AMs in a stitched link
