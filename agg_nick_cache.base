@@ -19,6 +19,11 @@
 # def_sliver_expiration_eg = 14
 # def_sliver_expiration_gram = 7
 
+# Specify the latest version of Omni released, and a message
+# Expected format is "#,Message" EG: "2.8,Omni 2.8 was release 2/1/2015". No commas in the message.
+# If a newer version is available, Omni will log a message at INFO level.
+latest_omni_version=2.7,Omni 2.7 was released 1/14/2014. See http://trac.gpolab.bbn.com/gcf
+
 #------AM nicknames
 # Format :
 # Nickname=URN, URL

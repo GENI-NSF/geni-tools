@@ -57,6 +57,8 @@ New in v2.8:
    is only known at ProtoGENI, and is limited. (#589)
  * New option `--noCacheFiles` completely disables reading or writing the !GetVersion and
    Aggregate nickname cache files. (#772)
+ * New config that sets the current release number and a release message,
+   so Omni can alert you if a new release is available. (#698)
 
 New in v2.7:
  * Calls to `status` and `sliverstatus` will also call the CH
