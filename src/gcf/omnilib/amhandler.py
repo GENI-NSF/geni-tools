@@ -475,6 +475,9 @@ class AMCallHandler(object):
         #      urn
         #      url
         #      lasterror
+        if self.opts.noCacheFiles:
+            self.logger.debug("Per option noCacheFiles, not saving GetVersion cache")
+            return
         fdir = os.path.dirname(self.opts.getversionCacheName)
         if fdir and fdir != "":
             if not os.path.exists(fdir):
@@ -489,6 +492,9 @@ class AMCallHandler(object):
     def _load_getversion_cache(self):
         '''Load GetVersion cache from JSON encoded file, if any'''
         self.GetVersionCache = {}
+        if self.opts.noCacheFiles:
+            self.logger.debug("Per option noCacheFiles, not loading get version cache")
+            return
         #client url->
         #      timestamp (a datetime.datetime)
         #      version struct, including code/value/etc as appropriate
@@ -1866,7 +1872,7 @@ class AMCallHandler(object):
                 if manExpires is not None:
                     prstr = "Reservation at %s in slice %s expires at %s (UTC)." % (client.str, slicename, manExpires)
                     self.logger.info(prstr)
-                    if not retVal.endswith('.'):
+                    if not (retVal.endswith('.') or retVal.endswith('. ')):
                         retVal += '.'
                     retVal += " " + prstr
                 else:

@@ -15,6 +15,10 @@ gcf 2.8:
   * Avoid exception on empty aggregate in `-a` argument. (#771)
   * Support `Update()` and `Cancel()` from AM APIv4 in any v3+ implementation. Support
     is only known at ProtoGENI, and is limited. (#589)
+  * New option `--noCacheFiles` completely disables reading or writing the !GetVersion and
+    Aggregate nickname cache files. (#772)
+  * New config that sets the current release number and a release message,
+    so Omni can alert you if a new release is available. (#698)
 
  * Stitcher
   * Limit available range on a hop that doesn't import to tags available at hops that 
@@ -56,8 +60,10 @@ gcf 2.8:
        `--noEGStitchingOnLink` means that only the named links between ExoGENI sites will attempt
        to use a GENI stitched link.
      * See README-stitching.txt for more on `--noEGStitching` and `--noEGStitchingOnLink`.
-  * Increase sleep before retrying reservations from 30 to 45 seconds. (#769)
-   * PG based nodes now return quicker but take that long to finish deleting.
+  * Handle PG AMs taking longer to delete a previous reservation. (#769)
+   * Better handle delete errors that really mean there was nothing here to delete.
+   * Before allocating, if stitcher did a previous delete at this aggergate in this run,
+     check `sliverstatus` to ensure that delete completed.
   * Allow `--verbosessl` to `scs.py` to turn on debug SSL logging. (#770)
   * Allow recreating the combined manifest RSpec. (#284)
    * Call `stitcher listresources <slice>` or `stitcher describe <slice>`.
@@ -65,6 +71,9 @@ gcf 2.8:
      will be ignored.
    * Return matches that for Omni, with the combined manifest returned under the key
      `combined` for `describe`, and `('combined','combined')` for `listresources`.
+  * Use the SCS instance maintained by Internet2 by default. (#761)
+  * Allow re-setting default sliver expiration times by aggregate type with a new
+    `omni_defaults` value (like from the agg_nick_cache). (#694)
   * Use the SCS instance maintained by Internet2 by default. (#761)
 
  * readyToLogin

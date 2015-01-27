@@ -185,9 +185,7 @@ class Aggregate(object):
     BUSY_POLL_INTERVAL_SEC = 10 # dossl does 10
     SLIVERSTATUS_MAX_TRIES = 10
     SLIVERSTATUS_POLL_INTERVAL_SEC = 30 # Xi says 10secs is short if ION is busy; per ticket 1045, even 20 may be too short
-    # 1/15: 30 has been enough, but PG nodes now take 45 seconds to delete a node.
-    # Ideally we'd make this pause be time-from-node-delete-to-next-createsliver-call on a per AM basis.
-    PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS = 45
+    PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS = 30
     # See DCN_AM_RETRY_INTERVAL_SECS for the DCN AM equiv of PAUSE_FOR_AM_TO_FREE...
     PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS = DCN_AM_RETRY_INTERVAL_SECS # Xi and Chad say ION routers take a long time to reset
     MAX_AGG_NEW_VLAN_TRIES = 50 # Max times to locally pick a new VLAN
@@ -413,6 +411,9 @@ class Aggregate(object):
         # particularly if any were DCN
         self.triedRes = False
 
+        # timestamp when did deleteReservation at this AM, to ensure we wait long enough after a delete
+        self.deletedResAt = None
+
         # FIXME: See stitchhandler.saveAggregateState whenever a new attribute is added here
 
         # Ugly hack
@@ -599,9 +600,149 @@ class Aggregate(object):
                         raise StitchingError("%s is a ProtoGENI AM and %s is requesting the same tag (%s) as a hop on a different path %s" % \
                                                  (self, hop, hop._hop_link.vlan_suggested_request, hop2))
 
+        # PG AMs take time to delete previous reservations.
+        # So if it has not been long enough, we need to sleep (see ticket #769)
+        if self.isPG and self.deletedResAt:
+            self.logger.debug("%s is PG and had prior deleted reservation: %s", self, self.deletedResAt)
+
+            # sliverstatus may return busy result so we wait anyhow, so this initial sleep may not be needed....
+            # # Wait at least 30 seconds
+            # delta =  self.deletedResAt + datetime.timedelta(seconds=45) - datetime.datetime.utcnow()
+            # if delta > datetime.timedelta(seconds=0):
+            #     self.logger.debug("Sleep for %d seconds to ensure PG AM is done with previous deletion...", delta.seconds)
+            #     time.sleep(delta.seconds)
+
+            # Then call SliverStatus and see if the AM is ready. If now, we'll go back to the launcher and sleep again.
+            if self.api_version == 2:
+                opName = 'sliverstatus'
+            else:
+                opName = 'status'
+            if opts.warn:
+                omniargs = [ '-V%d' % self.api_version, '--raise-error-on-v2-amapi-error', '-a', self.url, opName, slicename]
+            else:
+                omniargs = ['-o', '-V%d' % self.api_version, '--raise-error-on-v2-amapi-error', '-a', self.url, opName, slicename]
+
+            self.logger.info("Checking that prior reservation at %s has been cleared up....", self)
+            lvl = logging.INFO
+            try:
+                # FIXME: Big hack!!!
+                if not opts.fakeModeDir:
+                    if not opts.debug:
+                        # Suppress most log messages on the console for checking status
+                        # For many errors there is no reservation there from before so it looks like an error but isn't.
+                        handlers = self.logger.handlers
+                        if len(handlers) == 0:
+                            handlers = logging.getLogger().handlers
+                        for handler in handlers:
+                            if isinstance(handler, logging.StreamHandler):
+                                lvl = handler.level
+                                handler.setLevel(logging.CRITICAL)
+                                break
+                    (text2, result2) = self.doAMAPICall(omniargs, opts, opName, slicename, self.allocateTries, suppressLogs=True)
+                    if not opts.debug:
+                        handlers = self.logger.handlers
+                        if len(handlers) == 0:
+                            handlers = logging.getLogger().handlers
+                        for handler in handlers:
+                            if isinstance(handler, logging.StreamHandler):
+                                handler.setLevel(lvl)
+                                break
+                    self.logger.debug("For PG AM with previous delete doing %s %s at %s got: %s", opName, slicename, self, text2)
+                    # Getting here should mean got an actual status, which shouldn't happen, should it? Or does it if the delete is incomplete?
+                    # FIXME: Treat this as though the delete failed or is incomplete?
+                    # Redo delete? or pause & try again?
+                    raise StitchingRetryAggregateNewVlanError("%s not done deleting previous reservation. Pause & try later." % self)
+            except AMAPIError, ae:
+                if not opts.debug:
+                    handlers = self.logger.handlers
+                    if len(handlers) == 0:
+                        handlers = logging.getLogger().handlers
+                    for handler in handlers:
+                        if isinstance(handler, logging.StreamHandler):
+                            handler.setLevel(lvl)
+                            break
+                if ae.returnstruct and isinstance(ae.returnstruct, dict) and ae.returnstruct.has_key("code") and \
+                   isinstance(ae.returnstruct["code"], dict) and ae.returnstruct["code"].has_key("geni_code"):
+
+                    # Try to get PG log url:
+                    try:
+                        if ae.returnstruct["code"]["am_type"] == "protogeni":
+                            if not self.isPG and not self.dcn and not self.isEG:
+                                self.isPG = True
+                                self.pgLogUrl = ae.returnstruct["code"]["protogeni_error_url"]
+                    except:
+                        pass
+
+                    # Get the error code
+                    try:
+                        code = ae.returnstruct["code"]["geni_code"]
+                        amcode = None
+                        if ae.returnstruct["code"].has_key("am_code"):
+                            amcode = ae.returnstruct["code"]["am_code"]
+                        amtype = None
+                        if ae.returnstruct["code"].has_key("am_type"):
+                            amtype = ae.returnstruct["code"]["am_type"]
+                        msg = ""
+                        if ae.returnstruct.has_key("output"):
+                            msg = ae.returnstruct["output"]
+                        val = ""
+                        if ae.returnstruct.has_key("value"):
+                            val = ae.returnstruct["value"]
+                        if code == 12 and amcode == 12:
+                            self.logger.debug("%s says no sliver here, so done deleting previous reservation. Ready to allocate.", self)
+                            # Must continue
+                        elif (code == 7 and amcode == 7) or code==0:
+                            # This is the error createsliver gives if you already have a reservation here.
+                            # FIXME: Will this happen here? Or is this the error only from createsliver?
+                            self.logger.debug("%s says not done deleting previous reservation. Must pause & try later. Got %s", self, ae)
+                            raise StitchingRetryAggregateNewVlanError("%s not done deleting previous reservation. Pause & try later." % self)
+                        elif code==14:
+                            # Busy, so still deleting perhaps, so need to wait/retry
+                            self.logger.debug("%s got busy error doing %s after previous delete. Wait/retry: %s", self, opName, ae)
+                            raise StitchingRetryAggregateNewVlanError("%s not done deleting previous reservation. Pause & try later." % self)
+                        elif code != 0:
+                            # Some other error doing sliverstatus. Continue on? Go back to launcher? Die?
+                            self.logger.debug("%s got other error doing %s after previous delete. Continue? %s", self, opName, ae)
+                            raise StitchingRetryAggregateNewVlanError("%s not done deleting previous reservation. Pause & try later." % self)
+                        else:
+                            self.logger.debug("%s got other error doing %s after previous delete. Continue? %s", self, opName, ae)
+                    except Exception, e2:
+                        # Failed to parse the error code. Treat like some other error. Continue on? Go back to launcher? Die?
+                        self.logger.debug("Failed to parse return code out of error doing %s at %s: parsing %s gave %s", opName, self, ae, e2)
+                else:
+                    # Failed to parse struct from error
+                    self.logger.debug("%s got unparsable error doing %s after previous delete. %s", self, opName, ae)
+            except Exception, e:
+                # Unknown error. Continue on? Go back to launcher? Die?
+                if not opts.debug:
+                    handlers = self.logger.handlers
+                    if len(handlers) == 0:
+                        handlers = logging.getLogger().handlers
+                    for handler in handlers:
+                        if isinstance(handler, logging.StreamHandler):
+                            handler.setLevel(lvl)
+                            break
+                self.logger.debug("Failed %s at PG AM %s: %s", opName, self, e)
+            except KeyboardInterrupt:
+                if not opts.debug:
+                    handlers = self.logger.handlers
+                    if len(handlers) == 0:
+                        handlers = logging.getLogger().handlers
+                    for handler in handlers:
+                        if isinstance(handler, logging.StreamHandler):
+                            handler.setLevel(lvl)
+                            break
+                raise
+
+            self.logger.info("... it is, so can try a new reservation.")
+        else:
+            self.logger.debug("%s not PG or no prior deletion", self)
+        # End of block to handle a PG AM with a previous reservation
+
+        self.deletedResAt = None
+
         if self.allocateTries == self.MAX_TRIES:
             self.logger.warn("Doing allocate on %s for %dth time!", self, self.allocateTries)
-
 
         # Debug code
         for hop in self.hops:
@@ -669,6 +810,12 @@ class Aggregate(object):
             raise StitchingError("%s manifest rspec not parsable: %s" % (self, e))
 
         hadSuggestedNotRequest = False
+
+#        # Test code to force an AM to say it couldn't give the VLAN tag requested, and delete the reservation
+#        if "nysernet" in self.urn:
+#            self.logger.error("Forcing %s to report an error, delete prior reservation...", self)
+#            self.deleteReservation(opts, slicename)
+#            self.handleVlanUnavailable("reservation", ("fake unavail"))
 
         # Parse out the VLANs we got, saving them away on the HopLinks
         # Note and complain if we didn't get VLANs or the VLAN we got is not what we requested
@@ -782,6 +929,10 @@ class Aggregate(object):
         newExpires = naiveUTC(sliceexp)
         self.logger.debug("Starting newExpires at slice expiration %s, so init minDays to %d", sliceexp, minDays)
 
+        # Singleton for getting the default sliver expirations by AM type, that knows about values
+        # from the omni_config
+        defs_getter = defs.DefaultSliverExpirations.getInstance()
+
         # Ensure we obey this AMs rules
         amExpDays = None
         # This part is ugly. We hardcode some knowledge of what current AM policies are.
@@ -791,14 +942,14 @@ class Aggregate(object):
         if self.isPG:
             # If this is Utah PG or DDC, set to their shorter expiration
             if self.urn in [defs.PGU_URN, defs.IGUDDC_URN]:
-                amExpDays = defs.DEF_SLIVER_EXPIRATION_UTAH
-                self.logger.debug("%s is Utah PG or DDC - %d day sliver expiration", self, defs.DEF_SLIVER_EXPIRATION_UTAH)
+                amExpDays = defs_getter.getUtah()
+                self.logger.debug("%s is Utah PG or DDC - %d day sliver expiration", self, defs_getter.getUtah())
             else:
-                amExpDays = defs.DEF_SLIVER_EXPIRATION_IG
+                amExpDays = defs_getter.getIG()
         elif self.isEG:
-            amExpDays = defs.DEF_SLIVER_EXPIRATION_EG
+            amExpDays = defs_getter.getEG()
         elif self.isGRAM:
-            amExpDays = defs.DEF_SLIVER_EXPIRATION_GRAM
+            amExpDays = defs_getter.getGram()
 
         if amExpDays is not None:
             self.logger.debug("%s policy says expDays=%d", self, amExpDays)
@@ -830,14 +981,14 @@ class Aggregate(object):
                     if am.isPG:
                         # If this is Utah PG or DDC, set to their shorter expiration
                         if am.urn in [defs.PGU_URN, defs.IGUDDC_URN]:
-                            amExpDays = defs.DEF_SLIVER_EXPIRATION_UTAH
-                            self.logger.debug("AM's path includes %s which is Utah PG or DDC - %d day sliver expiration", am, defs.DEF_SLIVER_EXPIRATION_UTAH)
+                            amExpDays = defs_getter.getUtah()
+                            self.logger.debug("AM's path includes %s which is Utah PG or DDC - %d day sliver expiration", am, defs_getter.getUtah())
                         else:
-                            amExpDays = defs.DEF_SLIVER_EXPIRATION_IG
+                            amExpDays = defs_getter.getIG()
                     elif am.isEG:
-                        amExpDays = defs.DEF_SLIVER_EXPIRATION_EG
+                        amExpDays = defs_getter.getEG()
                     elif am.isGRAM:
-                        amExpDays = defs.DEF_SLIVER_EXPIRATION_GRAM
+                        amExpDays = defs_getter.getGram()
 
                     if amExpDays is not None:
                         self.logger.debug("%s policy says expDays=%d", am, amExpDays)
@@ -1656,17 +1807,6 @@ class Aggregate(object):
 #                ret["output"] = "requested VLAN unavailable: sdn-sw.sunn.net.internet2.edu,e5/1 VLAN=1641/"
 #                raise AMAPIError("test", ret)
 
-#            # Test code to force Utah to say it couldn't give the VLAN tag requested
-#            if "emulab.net" in self.url:
-#                self.logger.debug("Forcing %s to report an error", self)
-#                ret = dict()
-#                ret["code"] = dict()
-#                ret["code"]["geni_code"] = 2
-#                ret["code"]["am_code"] = 2
-#                ret["code"]["am_type"] = "protogeni"
-#                ret["output"] = "*** ERROR: mapper: Reached run limit. Giving up."
-#                raise AMAPIError("test", ret)
-
             # FIXME: Try disabling all but WARN log messages? But I lose PG Log URL? 
             (text, result) = self.doAMAPICall(omniargs, opts, opName, slicename, self.allocateTries, suppressLogs=True)
             self.logger.debug("%s %s at %s got: %s", opName, slicename, self, text)
@@ -1754,6 +1894,12 @@ class Aggregate(object):
                 self.inProcess = False
                 raise StitchingError(msg)
 
+        except KeyboardInterrupt:
+            # The AM may think we have a reservation. So mark the manifestDom as non-empty so when we clean up, we try to delete here
+            if not self.manifestDom:
+                self.manifestDom = True
+                self.logger.debug("Allocation interrupted. Faking that %s has a reservation, in case the AM got far enough that it thinks we do.", self)
+            raise
         except AMAPIError, ae:
             didInfo = False
 #            self.logger.info("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
@@ -2000,6 +2146,10 @@ class Aggregate(object):
                                 self.logger.debug("Fatal error from PG AM: no stitching extension? Wrong link type?")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Malformed request? Wrong link type? %s..." % (self, str(ae)[:120])
+                            elif code == 2 and amcode == 2 and "unknown network for external_interface" in msg:
+                                self.logger.debug("Fatal error from PG AM: %s", msg)
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s. Malformed request? %s..." % (self, str(ae)[:120])
                             else:
                                 self.logger.debug("Some other PG error: Code=%d, amcode=%d, msg=%s, val=%s", code, amcode, msg, str(val))
                         elif self.isEG:
@@ -3707,40 +3857,82 @@ class Aggregate(object):
                 if self.api_version == 2:
                     (successList, fail) = result
                     if self.url in fail or (len(successList) == 0 and len(fail) > 0):
-                        raise StitchingError("Failed to delete prior reservation at %s: %s" % (self, text))
+                        if self.isEG and "no reason given" in text:
+                            # EG gives no reason but returns False that looks like error
+                            # if you didn't have a reservation
+                            self.logger.debug("%s %s Result: %s", opName, self, text)
+                        else:
+                            raise StitchingError("Failed to %s prior reservation at %s: %s" % (opName, self, text))
                     else:
                         self.logger.debug("%s %s Result: %s", opName, self, text)
                 else:
                     # API v3
                     retCode = 0
+                    amCode = None
                     try:
                         retCode = result[self.url]["code"]["geni_code"]
+                        amCode = result[self.url]["code"]["am_code"]
                     except:
                         # Malformed return - treat as error
                         raise StitchingError("Failed to delete prior reservation at %s (malformed return): %s" % (self, text))
                     if retCode != 0:
-                        raise StitchingError("Failed to delete prior reservation at %s: %s" % (self, text))
-                    # need to check status of slivers to ensure they are all deleted
-                    try:
-                        for sliver in result[self.url]["value"]:
-                            status = sliver["geni_allocation_status"]
-                            if status != 'geni_unallocated':
-                                if sliver.has_key("geni_error"):
-                                    text = text + "; " + sliver["geni_error"]
-                                raise StitchingError("Failed to delete prior reservation at %s for sliver %s: %s" % (self, sliver["geni_sliver_urn"], text))
-                    except:
-                        # Malformed return I think
-                        raise StitchingError("Failed to delete prior reservation at %s (malformed return): %s" % (self, text))
+                        if retCode == 12 and (amCode == 12 or amCode is None):
+                            # This counts as success
+                            self.logger.debug("%s %s gave error indicating there was nothing to delete (success): %s", opName, self, result[self.url])
+                        else:
+                            raise StitchingError("Failed to delete prior reservation at %s: %s" % (self, text))
+                    if result[self.url].has_key('value') and result[self.url]['value'] is not None and len(result[self.url]['value']) > 0:
+                        # need to check status of slivers to ensure they are all deleted
+                        try:
+                            for sliver in result[self.url]["value"]:
+                                status = sliver["geni_allocation_status"]
+                                if status != 'geni_unallocated':
+                                    if sliver.has_key("geni_error"):
+                                        text = text + "; " + sliver["geni_error"]
+                                    raise StitchingError("Failed to delete prior reservation at %s for sliver %s: %s" % (self, sliver["geni_sliver_urn"], text))
+                        except:
+                            # Malformed return I think
+                            raise StitchingError("Failed to delete prior reservation at %s (malformed return): %s" % (self, text))
 
             except OmniError, e:
                 self.inProcess = False
-                self.logger.error("Failed to %s at %s: %s", opName, self, e)
-                raise StitchingError(e) # FIXME: Right way to re-raise?
+                noError = False
+                if isinstance(e, AMAPIError):
+                    ae = e
+                    if ae.returnstruct and isinstance(ae.returnstruct, dict) and ae.returnstruct.has_key("code") and \
+                       isinstance(ae.returnstruct["code"], dict) and ae.returnstruct["code"].has_key("geni_code"):
+                        # Get the error code
+                        try:
+                            code = ae.returnstruct["code"]["geni_code"]
+                            amcode = None
+                            if ae.returnstruct["code"].has_key("am_code"):
+                                amcode = ae.returnstruct["code"]["am_code"]
+                            amtype = None
+                            if ae.returnstruct["code"].has_key("am_type"):
+                                amtype = ae.returnstruct["code"]["am_type"]
+                            msg = ""
+                            if ae.returnstruct.has_key("output"):
+                                msg = ae.returnstruct["output"]
+                            val = ""
+                            if ae.returnstruct.has_key("value"):
+                                val = ae.returnstruct["value"]
+                            if code == 12 and (amcode == 12 or amcode is None):
+                                # This counts as success
+                                self.logger.info(" ... but this error means there was nothing to delete")
+                                noError = True
+                        except Exception, e2:
+                            # Failed to parse the error code.
+                            self.logger.debug("Failed to parse return code out of error doing %s at %s: parsing %s gave %s", opName, self, ae, e2)
+                if not noError:
+                    self.logger.error("Failed to %s at %s: %s", opName, self, e)
+                    raise StitchingError(e) # FIXME: Right way to re-raise?
 
         self.inProcess = False
         # FIXME: Fake mode delete results from a file?
 
-        # FIXME: Set a flag marking this AM was deleted?
+        # Set a flag marking this AM was deleted
+        self.deletedResAt = datetime.datetime.utcnow()
+        # self.logger.debug("Noted deleted reservation: %s", self.deletedResAt)
 
         # Clear old manifests
         self.manifestDom = None
@@ -3946,9 +4138,12 @@ class Aggregate(object):
                     busyCtr = busyCtr + 1
                     if busyCtr == self.BUSY_MAX_TRIES:
                         raise ae
+                    self.logger.info(" ... aggregate was busy, will retry ...")
                     text = str(ae)
                 else:
                     raise ae
+        if busyCtr > 0:
+            self.logger.info(" ... done.")
         return (text, result)
 
     # suppressLogs makes Omni part log at WARN and up only
