@@ -2964,7 +2964,7 @@ class StitchingHandler(object):
                     if version[aggurl]['value'].has_key('GRAM_version'):
                         agg.isGRAM = True
                         self.logger.debug("AM %s is GRAM", agg)
-                    if version[aggurl]['value'].has_key('foam_version') and 'oess' in agg.url:
+                    if version[aggurl]['value'].has_key('foam_version') and ('oess' in agg.url or 'al2s' in agg.url):
                         agg.isOESS = True
                         self.logger.debug("AM %s is OESS", agg)
                     if version[aggurl]['value'].has_key('geni_request_rspec_versions') and \

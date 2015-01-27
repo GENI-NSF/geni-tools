@@ -71,9 +71,10 @@ gcf 2.8:
      will be ignored.
    * Return matches that for Omni, with the combined manifest returned under the key
      `combined` for `describe`, and `('combined','combined')` for `listresources`.
-  * Use the SCS instance maintained by Internet2 by default. (#761)
   * Allow re-setting default sliver expiration times by aggregate type with a new
     `omni_defaults` value (like from the agg_nick_cache). (#694)
+  * Add new production AL2S server to nickname cache and support identifying the OESS AM
+    using the new URL. (#775)
   * Use the SCS instance maintained by Internet2 by default. (#761)
 
  * readyToLogin
