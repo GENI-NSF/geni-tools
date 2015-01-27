@@ -73,6 +73,8 @@ gcf 2.8:
      `combined` for `describe`, and `('combined','combined')` for `listresources`.
   * Allow re-setting default sliver expiration times by aggregate type with a new
     `omni_defaults` value (like from the agg_nick_cache). (#694)
+  * Add new production AL2S server to nickname cache and support identifying the OESS AM
+    using the new URL. (#775)
 
  * readyToLogin
   * Add --ansible-inventory option which creates a host file to use with Ansible. Works 
