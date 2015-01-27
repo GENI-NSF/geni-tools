@@ -1,6 +1,6 @@
 ### DO NOT MODIFY THIS FILE BY HAND ###
 # This file lives at: http://trac.gpolab.bbn.com/gcf/raw-attachment/wiki/Omni/agg_nick_cache
-# Last updated on January 16, 2015
+# Last updated on January 28, 2015
 
 [omni_defaults]
 # This section is for updating Omni defaults without updating Omni.
@@ -559,3 +559,8 @@ apt=urn:publicid:IDN+boss.apt.emulab.net+authority+cm,https://boss.apt.emulab.ne
 apt1=urn:publicid:IDN+boss.apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/1.0
 apt2=urn:publicid:IDN+boss.apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/2.0
 apt3=urn:publicid:IDN+boss.apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/3.0
+
+# ====
+# AL2S (OESS)
+# ====
+al2s=urn:publicid:IDN+al2s.internet2.edu+authority+am,https://geni-al2s.net.internet2.edu:3626/foam/gapi/2
