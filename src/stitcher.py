@@ -403,6 +403,8 @@ def call(argv, options=None):
         logger.debug(omni.getSystemInfo() + "\nStitcher: " + omni.getOmniVersion())
         logger.debug("Running stitcher ... %s Args: %s" % (nondefOpts, " ".join(args)))
 
+    omni.checkForUpdates(config, logger)
+
     if options.defaultCapacity < 1:
         logger.warn("Specified a tiny default link capacity of %dKbps!", options.defaultCapacity)
     # FIXME: Warn about really big capacities too?

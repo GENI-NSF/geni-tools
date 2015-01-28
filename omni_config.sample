@@ -25,6 +25,19 @@
 # May be over-ridden using the commandline option --scsURL
 # scs_url=http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc
 
+# Default initial sliver expiration times
+# done by aggregate type / category
+# Numbers are in days
+# def_sliver_expiration_utah = 5 # PG Utah and Utah DDC, not Utah IG
+# def_sliver_expiration_ig = 90
+# def_sliver_expiration_eg = 14
+# def_sliver_expiration_gram = 7
+
+# Specify the latest version of Omni released, and a message
+# Expected format is "#,Message" EG: "2.8,Omni 2.8 was release 2/1/2015". No commas in the message.
+# If a newer version is available, Omni will log a message at INFO level.
+# latest_omni_version=2.7,Omni 2.7 was released 1/14/2014. See http://trac.gpolab.bbn.com/gcf
+
 [omni]
 # The default control framework for omni to use.
 # Override on the commandline with -f argument.

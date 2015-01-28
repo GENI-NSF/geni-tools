@@ -57,6 +57,10 @@ New in v2.8:
    is only known at ProtoGENI, and is limited. (#589)
  * New option `--noCacheFiles` completely disables reading or writing the !GetVersion and
    Aggregate nickname cache files. (#772)
+ * New config that sets the current release number and a release message,
+   so Omni can alert you if a new release is available. (#698)
+ * Support python 2.7.9+ where we must request not verifying server certificates
+   for the SSL connection. Thanks to Ezra Kissel. (#776)
  * Better control of Omni logging configuration. (#458)
   * Allow a Python logging configuration dictionary, and configure
     logging from that if possible.

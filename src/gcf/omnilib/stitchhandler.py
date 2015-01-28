@@ -326,6 +326,9 @@ class StitchingHandler(object):
             self.scsService = scs.Service(self.opts.scsURL, key=self.framework.key, cert=self.framework.cert, timeout=self.opts.ssltimeout, verbose=self.opts.verbosessl)
         self.scsCalls = 0
 
+        # Create singleton that knows about default sliver expirations by AM type
+        defs.DefaultSliverExpirations.getInstance(self.config, self.logger)
+
         # Compare the list of AMs in the request with AMs known
         # to the SCS. Any that the SCS does not know means the request
         # cannot succeed if those are AMs in a stitched link
@@ -2961,7 +2964,7 @@ class StitchingHandler(object):
                     if version[aggurl]['value'].has_key('GRAM_version'):
                         agg.isGRAM = True
                         self.logger.debug("AM %s is GRAM", agg)
-                    if version[aggurl]['value'].has_key('foam_version') and 'oess' in agg.url:
+                    if version[aggurl]['value'].has_key('foam_version') and ('oess' in agg.url or 'al2s' in agg.url):
                         agg.isOESS = True
                         self.logger.debug("AM %s is OESS", agg)
                     if version[aggurl]['value'].has_key('geni_request_rspec_versions') and \
@@ -3086,6 +3089,7 @@ class StitchingHandler(object):
                     self.logger.debug("   An Orca Aggregate")
                 if agg.isExoSM:
                     self.logger.debug("   The ExoSM Aggregate")
+                    self.logger.debug("   URN synonyms: %s", agg.urn_syns)
                 if agg.alt_url:
                     self.logger.debug("   Alternate URL: %s", agg.alt_url)
                 self.logger.debug("   Using AM API version %d", agg.api_version)

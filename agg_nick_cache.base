@@ -1,6 +1,6 @@
 ### DO NOT MODIFY THIS FILE BY HAND ###
 # This file lives at: http://trac.gpolab.bbn.com/gcf/raw-attachment/wiki/Omni/agg_nick_cache
-# Last updated on January 16, 2015
+# Last updated on January 28, 2015
 
 [omni_defaults]
 # This section is for updating Omni defaults without updating Omni.
@@ -10,6 +10,19 @@
 # URL for the SCS server
 # May be over-ridden using the commandline option --scsURL
 # scs_url=http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc
+
+# Default initial sliver expiration times
+# done by aggregate type / category
+# Numbers are in days
+# def_sliver_expiration_utah = 5 # PG Utah and Utah DDC, not Utah IG
+# def_sliver_expiration_ig = 90
+# def_sliver_expiration_eg = 14
+# def_sliver_expiration_gram = 7
+
+# Specify the latest version of Omni released, and a message
+# Expected format is "#,Message" EG: "2.8,Omni 2.8 was release 2/1/2015". No commas in the message.
+# If a newer version is available, Omni will log a message at INFO level.
+latest_omni_version=2.7,Omni 2.7 was released 1/14/2014. See http://trac.gpolab.bbn.com/gcf
 
 #------AM nicknames
 # Format :
@@ -546,3 +559,8 @@ apt=urn:publicid:IDN+boss.apt.emulab.net+authority+cm,https://boss.apt.emulab.ne
 apt1=urn:publicid:IDN+boss.apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/1.0
 apt2=urn:publicid:IDN+boss.apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/2.0
 apt3=urn:publicid:IDN+boss.apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/3.0
+
+# ====
+# AL2S (OESS)
+# ====
+al2s=urn:publicid:IDN+al2s.internet2.edu+authority+am,https://geni-al2s.net.internet2.edu:3626/foam/gapi/2

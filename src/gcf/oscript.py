@@ -523,6 +523,39 @@ def update_agg_nick_cache( opts, logger ):
         except:
             pass
 
+# Check if there is a newer version of Omni available.
+# Look for an entry "latest_omni_version" under "omni_defaults" in the omni_config (or really, agg_nick_cache).
+# Expected format is "#,Message" EG: "2.8,Omni 2.8 was release 2/1/2015". No commas in the message.
+# If a newer version is available, log a message at INFO level.
+def checkForUpdates(config, logger):
+    if not config or not config.has_key('omni_defaults') or not config['omni_defaults'].has_key('latest_omni_version') or config['omni_defaults']['latest_omni_version'] is None:
+        logger.debug("No latest Omni version found in config")
+        return False
+    latestStr = str(config['omni_defaults']['latest_omni_version']).strip()
+    latestVals = latestStr.split(',')
+    if len(latestVals) == 0:
+        logger.debug("Failed to find any values in latest_omni_version: %s", latestStr)
+        return False
+
+    if latestVals[0].strip() == GCF_VERSION.strip():
+        logger.debug("Already running latest GCF: %s", GCF_VERSION)
+        return False
+    import re
+    def natSort(s, _nsre=re.compile('([0-9]+)')):
+        return [int(text) if text.isdigit() else text.lower()
+                for text in re.split(_nsre, s)]
+    latest = max(latestVals[0].strip(), GCF_VERSION, key=natSort)
+    if latest == GCF_VERSION.strip():
+        logger.debug("Running a newer version of Omni than the last release. Running %s > %s", GCF_VERSION, latestVals[0])
+        return False
+
+    logger.debug("New Omni version available: %s > %s", latestVals[0], GCF_VERSION)
+    if len(latestVals) > 1:
+        logger.info(latestVals[1])
+    else:
+        logger.info("A new version of Omni is available: Version %s", latestVals[0])
+    return True
+
 def initialize(argv, options=None, dictLoggingConfig=None ):
     """Parse argv (list) into the given optional optparse.Values object options.
     (Supplying an existing options object allows pre-setting certain values not in argv.)
@@ -539,6 +572,7 @@ def initialize(argv, options=None, dictLoggingConfig=None ):
     # Load custom config _after_ system agg_nick_cache,
     # which also sets omni_defaults
     config = load_config(opts, logger, config)
+    checkForUpdates(config, logger)
     framework = load_framework(config, opts)
     logger.debug('User Cert File: %s', framework.cert)
     return framework, config, args, opts

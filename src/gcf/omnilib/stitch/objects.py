@@ -929,6 +929,10 @@ class Aggregate(object):
         newExpires = naiveUTC(sliceexp)
         self.logger.debug("Starting newExpires at slice expiration %s, so init minDays to %d", sliceexp, minDays)
 
+        # Singleton for getting the default sliver expirations by AM type, that knows about values
+        # from the omni_config
+        defs_getter = defs.DefaultSliverExpirations.getInstance()
+
         # Ensure we obey this AMs rules
         amExpDays = None
         # This part is ugly. We hardcode some knowledge of what current AM policies are.
@@ -938,14 +942,14 @@ class Aggregate(object):
         if self.isPG:
             # If this is Utah PG or DDC, set to their shorter expiration
             if self.urn in [defs.PGU_URN, defs.IGUDDC_URN]:
-                amExpDays = defs.DEF_SLIVER_EXPIRATION_UTAH
-                self.logger.debug("%s is Utah PG or DDC - %d day sliver expiration", self, defs.DEF_SLIVER_EXPIRATION_UTAH)
+                amExpDays = defs_getter.getUtah()
+                self.logger.debug("%s is Utah PG or DDC - %d day sliver expiration", self, defs_getter.getUtah())
             else:
-                amExpDays = defs.DEF_SLIVER_EXPIRATION_IG
+                amExpDays = defs_getter.getIG()
         elif self.isEG:
-            amExpDays = defs.DEF_SLIVER_EXPIRATION_EG
+            amExpDays = defs_getter.getEG()
         elif self.isGRAM:
-            amExpDays = defs.DEF_SLIVER_EXPIRATION_GRAM
+            amExpDays = defs_getter.getGram()
 
         if amExpDays is not None:
             self.logger.debug("%s policy says expDays=%d", self, amExpDays)
@@ -977,14 +981,14 @@ class Aggregate(object):
                     if am.isPG:
                         # If this is Utah PG or DDC, set to their shorter expiration
                         if am.urn in [defs.PGU_URN, defs.IGUDDC_URN]:
-                            amExpDays = defs.DEF_SLIVER_EXPIRATION_UTAH
-                            self.logger.debug("AM's path includes %s which is Utah PG or DDC - %d day sliver expiration", am, defs.DEF_SLIVER_EXPIRATION_UTAH)
+                            amExpDays = defs_getter.getUtah()
+                            self.logger.debug("AM's path includes %s which is Utah PG or DDC - %d day sliver expiration", am, defs_getter.getUtah())
                         else:
-                            amExpDays = defs.DEF_SLIVER_EXPIRATION_IG
+                            amExpDays = defs_getter.getIG()
                     elif am.isEG:
-                        amExpDays = defs.DEF_SLIVER_EXPIRATION_EG
+                        amExpDays = defs_getter.getEG()
                     elif am.isGRAM:
-                        amExpDays = defs.DEF_SLIVER_EXPIRATION_GRAM
+                        amExpDays = defs_getter.getGram()
 
                     if amExpDays is not None:
                         self.logger.debug("%s policy says expDays=%d", am, amExpDays)
