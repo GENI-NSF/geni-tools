@@ -59,6 +59,8 @@ New in v2.8:
    Aggregate nickname cache files. (#772)
  * New config that sets the current release number and a release message,
    so Omni can alert you if a new release is available. (#698)
+ * Support python 2.7.9+ where we must request not verifying server certificates
+   for the SSL connection. Thanks to Ezra Kissel. (#776)
 
 New in v2.7:
  * Calls to `status` and `sliverstatus` will also call the CH
