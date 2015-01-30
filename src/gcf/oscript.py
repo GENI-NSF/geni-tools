@@ -556,7 +556,7 @@ def checkForUpdates(config, logger):
         logger.info("A new version of Omni is available: Version %s", latestVals[0])
     return True
 
-def initialize(argv, options=None ):
+def initialize(argv, options=None, dictLoggingConfig=None ):
     """Parse argv (list) into the given optional optparse.Values object options.
     (Supplying an existing options object allows pre-setting certain values not in argv.)
     Then configure logging per those options.
@@ -565,7 +565,7 @@ def initialize(argv, options=None ):
     Return the framework, config, args list, and optparse.Values struct."""
 
     opts, args = parse_args(argv, options)
-    logger = configure_logging(opts)
+    logger = configure_logging(opts, dictLoggingConfig)
     if "--useSliceMembers" in argv:
         logger.info("Option --useSliceMembers is no longer necessary and is now deprecated, as that behavior is now the default. This option will be removed in a future release.")
     config = load_agg_nick_config(opts, logger)
@@ -579,7 +579,7 @@ def initialize(argv, options=None ):
 
 
 ####
-def call(argv, options=None, verbose=False):
+def call(argv, options=None, verbose=False, dictLoggingConfig=None):
     """Method to use when calling omni as a library
 
     argv is a list ala sys.argv
@@ -587,6 +587,8 @@ def call(argv, options=None, verbose=False):
       Use this to pre-set certain values, or allow your caller to get omni options from its commandline
 
     Verbose option allows printing the command and summary, or suppressing it.
+    dictLoggingConfig is a Python logging configuration dictionary for configuring logging. If
+    not supplied, any logging config filename provided using the option --logconfig will be applied.
     Callers can control omni logs (suppressing console printing for example) using python logging.
 
     Return is a list of 2 items: a human readable string summarizing the result 
@@ -758,7 +760,7 @@ if __name__ == "__main__":
     if argv is None or not type(argv) == list:
         raise OmniError("Invalid argv argument to call: must be a list")
 
-    framework, config, args, opts = initialize(argv, options)
+    framework, config, args, opts = initialize(argv, options, dictLoggingConfig)
     # process the user's call
     return API_call( framework, config, args, opts, verbose=verbose )
 
@@ -865,8 +867,9 @@ def API_call( framework, config, args, opts, verbose=False ):
     
     return retVal, retItem
 
-def configure_logging(opts):
-    """Configure logging. If a log config filename is supplied with the -l option,
+def configure_logging(opts, dictConfig=None):
+    """Configure logging. If a logging config dictionary is supplied, configuring Logging using that.
+    Else, if a log config filename is supplied with the -l option,
     and the file is non-empty, configure logging from that file. For details on this,
     see the applyLogConfig documentation.
 
@@ -904,17 +907,31 @@ def configure_logging(opts):
     # file
     deft['logfilename'] = opts.logoutput
 
-    if opts.logconfig:
-        deft['optlevel'] = optlevel
-        applyLogConfig(opts.logconfig, defaults=deft)
-    else:
-        # Ticket 296: Add timestamps to log messages
+    error = None # error raised configuring from given dictionary
+    if not opts.noLoggingConfiguration:
+        if dictConfig is not None:
+            # Try to configure logging from the given object
+            try:
+                logging.config.dictConfig(dictConfig)
+            except Exception, e:
+                error = e
+        if dictConfig is None or error is not None:
+            if opts.logconfig:
+                deft['optlevel'] = optlevel
+                applyLogConfig(opts.logconfig, defaults=deft)
+            else:
+                # Ticket 296: Add timestamps to log messages
 #        fmt = '%(asctime)s %(levelname)-8s %(name)s: %(message)s'
-        fmt = '%(asctime)s %(levelname)-8s: %(message)s'
-        logging.basicConfig(level=level,format=fmt,datefmt='%H:%M:%S')
+                fmt = '%(asctime)s %(levelname)-8s: %(message)s'
+                logging.basicConfig(level=level,format=fmt,datefmt='%H:%M:%S')
 
     logger = logging.getLogger("omni")
-    
+
+    if error is not None:
+        logger.warn("Failed to configure logging from dictionary: %s", error)
+    else if dictConfig is not None and not opts.noLoggingConfiguration:
+        logger.debug("Configured logging from dictionary")
+
     return logger
 
 def applyLogConfig(logConfigFilename, defaults={'optlevel': 'INFO'}):
@@ -1113,6 +1130,8 @@ def getParser():
                       help="Python logging output file [use %(logfilename)s in logging config file]. Default: '%default'")
     loggroup.add_option("--tostdout", default=False, action="store_true",
                       help="Print results like rspecs to STDOUT instead of to log stream")
+    loggroup.add_option("--noLoggingConfiguration", default=False, action="store_true",
+                        help="Do not configure python logging; for use by other tools.")
     parser.add_option_group( loggroup )
 
     # output to files

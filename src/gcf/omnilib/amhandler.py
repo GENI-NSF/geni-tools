@@ -6543,17 +6543,21 @@ def _append_geni_error_output(retStruct, message):
     # If return is a dict
     if isinstance(retStruct, dict) and retStruct.has_key('code'):
         message2 = ""
-        if retStruct['code'].has_key('geni_code') and retStruct['code']['geni_code'] != 0:
-            message2 = "Error from Aggregate: code " + str(retStruct['code']['geni_code'])
-        amType = ""
-        if retStruct['code'].has_key('am_type'):
-            amType = retStruct['code']['am_type']
-        if retStruct['code'].has_key('am_code') and retStruct['code']['am_code'] != 0 and retStruct['code']['am_code'] is not None and str(retStruct['code']['am_code']).strip() != "":
-            if message2 != "":
-                if not message2.endswith('.'):
-                    message2 += '.'
-                message2 += " "
-            message2 += "%s AM code: %s" % (amType, str(retStruct['code']['am_code']))
+        if isinstance(retStruct['code'], int):
+            if retStruct['code'] != 0:
+                message2 = "Malformed error from Aggregate: code " + str(retStruct['code'])
+        elif isinstance(retStruct['code'], dict):
+            if retStruct['code'].has_key('geni_code') and retStruct['code']['geni_code'] != 0:
+                message2 = "Error from Aggregate: code " + str(retStruct['code']['geni_code'])
+            amType = ""
+            if retStruct['code'].has_key('am_type'):
+                amType = retStruct['code']['am_type']
+            if retStruct['code'].has_key('am_code') and retStruct['code']['am_code'] != 0 and retStruct['code']['am_code'] is not None and str(retStruct['code']['am_code']).strip() != "":
+                if message2 != "":
+                    if not message2.endswith('.'):
+                        message2 += '.'
+                    message2 += " "
+                message2 += "%s AM code: %s" % (amType, str(retStruct['code']['am_code']))
         if retStruct.has_key('output') and retStruct['output'] is not None and str(retStruct['output']).strip() != "":
             message2 += ": %s" % retStruct['output']
 
@@ -6575,7 +6579,7 @@ def _append_geni_error_output(retStruct, message):
 def _get_pg_log(retStruct):
     '''Pull out the PG log URN and URL, if present'''
     msg = ""
-    if retStruct.has_key('code') and retStruct['code'].has_key('am_type') and retStruct['code']['am_type'] == 'protogeni':
+    if retStruct.has_key('code') and isinstance(retStruct['code'], dict) and retStruct['code'].has_key('am_type') and retStruct['code']['am_type'] == 'protogeni':
         if retStruct['code'].has_key('protogeni_error_url'):
             msg += " (PG log url - look here for details on any failures: %s)" % retStruct['code']['protogeni_error_url']
         elif retStruct['code'].has_key('protogeni_error_log'):

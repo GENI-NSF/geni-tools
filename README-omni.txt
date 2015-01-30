@@ -61,6 +61,12 @@ New in v2.8:
    so Omni can alert you if a new release is available. (#698)
  * Support python 2.7.9+ where we must request not verifying server certificates
    for the SSL connection. Thanks to Ezra Kissel. (#776)
+ * Better control of Omni logging configuration. (#458)
+  * Allow a Python logging configuration dictionary, and configure
+    logging from that if possible.
+  * New option `--noLoggingConfiguration` completely disables
+    configuring Python loggers from Omni. A script might use this to
+    allow it to configure logging later in its own way.
 
 New in v2.7:
  * Calls to `status` and `sliverstatus` will also call the CH
@@ -613,7 +619,9 @@ commands for details.
 
 Omni output is done through the python logging package, and
 prints to STDERR by default. Logging levels, format, and output
-destinations are configurable by supplying a custom Python logging
+destinations are configurable by either supplying a Pythong logging
+configuration dictionary (to `oscript.call` or `oscript.initialize`),
+or by supplying a custom Python logging
 configuration file, using the `-l` option. Note that these settings
 will apply to the entire Python process. For help creating a logging
 config file, see
@@ -626,6 +634,13 @@ etc. If multiple log level options are supplied, Omni uses the most
 verbose setting specified. Note that at WARN and ERROR levels, command
 outputs are not printed: use the `-o` option to save command results
 to files, or --tostdout to print results to STDOUT.
+
+You may also completely disable Omni output, by specifying the option
+`--noLoggingConfiguration`. Unless you use Omni as a library and your
+tool configures Python logging, Omni will not write any output to
+Python logging streams. For example, a tool might include
+`--noLoggingConfiguration` when initializing the Omni library, and
+then programmatically configure Python logging itself.
 
 For further control of Omni output, use Omni as a library from your
 own python script (see [#OmniasaLibrary below] for details). 
@@ -667,7 +682,7 @@ Omni scripting allows a script to:
  * Programmatically set other omni options (like inferring the "-a")
  * Accept omni options (like "-f") in your script to pass along to Omni
  * Parse the returns from Omni commands and use those values in subsequent Omni calls
- * Control or suppress the logging in Omni
+ * Control or suppress the logging in Omni (see the above section for details)
 
 For examples, see `src/stitcher.py` or `examples/expirationofmyslices.py` and `examples/myscript.py` in the gcf distribution.
 Or [http://trac.gpolab.bbn.com/gcf/wiki/OmniScriptingExpiration Omni Scripting Expiration] 
@@ -988,6 +1003,9 @@ Options:
                         logging config file]. Default: 'omni.log'
     --tostdout          Print results like rspecs to STDOUT instead of to log
                         stream
+    --noLoggingConfiguration
+                        Do not configure python logging; for use by other
+                        tools.
 
   File Output:
     Control name of output file and whether to output to a file
@@ -1202,6 +1220,9 @@ Advanced / Developer Options:
  downloading the aggregate nickname and !GetVersion cache files. This
  may be useful for tools using Omni as a library when multiple
  instances may run in parallel.
+ - `--noLoggingConfiguration`: Omni will not configure the Python
+ loggers. Without such a configuration, output only goes to STDOUT if
+ you supply `--tostdout`, or to files if you specify `-o`.
 
 === Supported commands ===
 Omni supports the following commands.
