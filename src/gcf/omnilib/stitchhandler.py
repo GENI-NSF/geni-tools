@@ -321,7 +321,7 @@ class StitchingHandler(object):
 
         # Create the SCS instance if it will be needed
         if self.isStitching:
-            if not "oingo.dragon.maxgigapop.net:8443" in self.opts.scsURL:
+            if not "geni-scs.net.internet2.edu:8443" in self.opts.scsURL:
                 self.logger.info("Using SCS at %s", self.opts.scsURL)
             self.scsService = scs.Service(self.opts.scsURL, key=self.framework.key, cert=self.framework.cert, timeout=self.opts.ssltimeout, verbose=self.opts.verbosessl)
         self.scsCalls = 0

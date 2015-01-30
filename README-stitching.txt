@@ -391,6 +391,9 @@ The SCS URL is set by code, may be updated via a new value in the
 aggregate nickname cache, and may be over-ridden by developers or
 testers using the `--scsURL` option.
 
+This service was developed by engineers at MAX, and the default
+instance is operated by Internet2.
+
 Known issues with this service can be found on the
 [http://groups.geni.net/geni/query?status=new&status=assigned&status=reopened&component=MAXSCS GENI Trac]
 

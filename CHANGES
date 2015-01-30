@@ -83,6 +83,7 @@ gcf 2.8:
     `omni_defaults` value (like from the agg_nick_cache). (#694)
   * Add new production AL2S server to nickname cache and support identifying the OESS AM
     using the new URL. (#775)
+  * Use the SCS instance maintained by Internet2 by default. (#761)
 
  * readyToLogin
   * Add --ansible-inventory option which creates a host file to use with Ansible. Works 

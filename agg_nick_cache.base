@@ -9,7 +9,8 @@
 
 # URL for the SCS server
 # May be over-ridden using the commandline option --scsURL
-# scs_url=http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc
+# 1/6/2015: Use the SCS run by Internet2, not the old MAX instance as specified in the code
+scs_url=https://geni-scs.net.internet2.edu:8443/geni/xmlrpc
 
 # Default initial sliver expiration times
 # done by aggregate type / category
