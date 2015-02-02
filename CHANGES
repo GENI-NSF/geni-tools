@@ -89,6 +89,9 @@ gcf 2.8:
   * Add --ansible-inventory option which creates a host file to use with Ansible. Works 
     with -o and --prefix. (#759)
 
+ * remote-execute
+  * Add -A/--forwardAgent option to enable SSH agent forward (like using -A with SSH). (#774)
+
  * gcf
   * Add support for policy-based authorizer to interpose between authentication
     and delegate invocation. (#660)
