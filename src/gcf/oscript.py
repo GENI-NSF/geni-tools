@@ -911,25 +911,21 @@ def configure_logging(opts, dictConfig=None):
     if not opts.noLoggingConfiguration:
         if dictConfig is not None:
             # Try to configure logging from the given object
-            try:
-                logging.config.dictConfig(dictConfig)
-            except Exception, e:
-                error = e
-        if dictConfig is None or error is not None:
-            if opts.logconfig:
-                deft['optlevel'] = optlevel
-                applyLogConfig(opts.logconfig, defaults=deft)
-            else:
-                # Ticket 296: Add timestamps to log messages
+            # Note this raises an exception if it fails (a ValueError, TypeError, AttributeError or ImportError)
+            # Also note this only works in python2.7+
+            logging.config.dictConfig(dictConfig)
+        elif opts.logconfig:
+            deft['optlevel'] = optlevel
+            applyLogConfig(opts.logconfig, defaults=deft)
+        else:
+            # Ticket 296: Add timestamps to log messages
 #        fmt = '%(asctime)s %(levelname)-8s %(name)s: %(message)s'
-                fmt = '%(asctime)s %(levelname)-8s: %(message)s'
-                logging.basicConfig(level=level,format=fmt,datefmt='%H:%M:%S')
+            fmt = '%(asctime)s %(levelname)-8s: %(message)s'
+            logging.basicConfig(level=level,format=fmt,datefmt='%H:%M:%S')
 
     logger = logging.getLogger("omni")
 
-    if error is not None:
-        logger.warn("Failed to configure logging from dictionary: %s", error)
-    else if dictConfig is not None and not opts.noLoggingConfiguration:
+    if dictConfig is not None and not opts.noLoggingConfiguration:
         logger.debug("Configured logging from dictionary")
 
     return logger
