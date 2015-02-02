@@ -640,7 +640,11 @@ You may also completely disable Omni output, by specifying the option
 tool configures Python logging, Omni will not write any output to
 Python logging streams. For example, a tool might include
 `--noLoggingConfiguration` when initializing the Omni library, and
-then programmatically configure Python logging itself.
+then programmatically configure Python logging itself. Note that you
+should generally configure some logging; many errors will cause Python
+to stop Omni immediately if a log message is called for and no logging
+configuration has been done. (You will see an error like:
+'`No handlers could be found for logger "omni"`'.)
 
 For further control of Omni output, use Omni as a library from your
 own python script (see [#OmniasaLibrary below] for details). 
