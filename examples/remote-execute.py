@@ -55,7 +55,7 @@ options = None
 slicename = None
 config = None
 
-def getLoginCommands( loginInfoDict, keyList ):
+def getLoginCommands( loginInfoDict, keyList, forwardAgent=False ):
   loginCommands = {}
   for amUrl, amInfo in loginInfoDict.items() :
     for item in amInfo["info"] :
@@ -80,6 +80,9 @@ def getLoginCommands( loginInfoDict, keyList ):
         continue
       # Use only the first key
       output = "ssh"
+      if forwardAgent:
+            output += " -A "
+      
       if str(item['port']) != '22' : 
             output += " -p %s " % item['port']
       output += " -i %s %s@%s" % ( keys[0], item['username'], item['hostname'])
@@ -115,6 +118,10 @@ def getParser() :
   parser.add_option("--host", dest="host",
                     default=[], action="append",
                     help="Specify in which host you would like the command to be executed. This has to be the clientId. If omitted the command will be ran in all hosts. --host may be used multiple times on the same call.")
+  parser.add_option("-A", "--forwardAgent",
+                    dest="forward_agent",
+                    help="Forward the SSH agent.  Exactly like using '-A' with ssh.",
+                    action="store_true", default=False)  
 
   return parser
 
@@ -153,7 +160,7 @@ def main(argv=None):
   parseArguments(argv=argv)
   print "1. Find login Info for hosts in slice %s" % slicename
   loginInfoDict, keyList = readyToLogin.main_no_print(argv=argv, opts=options, slicen = slicename)
-  loginCommands = getLoginCommands(loginInfoDict, keyList)
+  loginCommands = getLoginCommands(loginInfoDict, keyList, options.forward_agent)
   modifyToIgnoreHostChecking(loginCommands)
   # If the user explicitly passed a host then use only that to execute the
   # command
