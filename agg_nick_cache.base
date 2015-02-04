@@ -556,10 +556,10 @@ utah-clab3=urn:publicid:IDN+utah.cloudlab.us+authority+cm,https://boss.utah.clou
 # ====
 # Apt (https://www.aptlab.net/)
 # ====
-apt=urn:publicid:IDN+boss.apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/2.0
-apt1=urn:publicid:IDN+boss.apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/1.0
-apt2=urn:publicid:IDN+boss.apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/2.0
-apt3=urn:publicid:IDN+boss.apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/3.0
+apt=urn:publicid:IDN+apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/2.0
+apt1=urn:publicid:IDN+apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/1.0
+apt2=urn:publicid:IDN+apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/2.0
+apt3=urn:publicid:IDN+apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/3.0
 
 # ====
 # AL2S (OESS)
