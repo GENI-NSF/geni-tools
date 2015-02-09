@@ -1,6 +1,6 @@
 ### DO NOT MODIFY THIS FILE BY HAND ###
 # This file lives at: http://trac.gpolab.bbn.com/gcf/raw-attachment/wiki/Omni/agg_nick_cache
-# Last updated on October 2, 2014
+# Last updated on January 28, 2015
 
 [omni_defaults]
 # This section is for updating Omni defaults without updating Omni.
@@ -9,7 +9,24 @@
 
 # URL for the SCS server
 # May be over-ridden using the commandline option --scsURL
-# scs_url=http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc
+# 1/6/2015: Use the SCS run by Internet2, not the old MAX instance as specified in the code
+scs_url=https://geni-scs.net.internet2.edu:8443/geni/xmlrpc
+# Portal runs python2.6 which doesn't respect the connection closed vs keep-alive that the SCS uses
+# So use the non SSL connection
+#scs_url=http://geni-scs.net.internet2.edu:8081/geni/xmlrpc
+
+# Default initial sliver expiration times
+# done by aggregate type / category
+# Numbers are in days
+# def_sliver_expiration_utah = 5 # PG Utah and Utah DDC, not Utah IG
+# def_sliver_expiration_ig = 90
+# def_sliver_expiration_eg = 14
+# def_sliver_expiration_gram = 7
+
+# Specify the latest version of Omni released, and a message
+# Expected format is "#,Message" EG: "2.8,Omni 2.8 was release 2/1/2015". No commas in the message.
+# If a newer version is available, Omni will log a message at INFO level.
+latest_omni_version=2.7,Omni 2.7 was released 1/14/2014. See http://trac.gpolab.bbn.com/gcf
 
 #------AM nicknames
 # Format :
@@ -510,3 +527,67 @@ clemson-og3=urn:publicid:IDN+clemson-clemson-control-1.clemson.edu+authority+am,
 gpo-og=urn:publicid:IDN+bbn-cam-ctrl-1.gpolab.bbn.com+authority+am,https://bbn-cam-ctrl-1.gpolab.bbn.com:5002
 gpo-og2=urn:publicid:IDN+bbn-cam-ctrl-1.gpolab.bbn.com+authority+am,https://bbn-cam-ctrl-1.gpolab.bbn.com:5002
 gpo-og3=urn:publicid:IDN+bbn-cam-ctrl-1.gpolab.bbn.com+authority+am,https://bbn-cam-ctrl-1.gpolab.bbn.com:5001/
+
+# January, 2015
+# ======
+# Texas A&M ExoGENI
+# ======
+tamu-eg=urn:publicid:IDN+exogeni.net:tamuvmsite+authority+am,https://tamu-hn.exogeni.net:11443/orca/xmlrpc
+tamu-eg2=urn:publicid:IDN+exogeni.net:tamuvmsite+authority+am,https://tamu-hn.exogeni.net:11443/orca/xmlrpc
+tamu-eg-of=urn:publicid:IDN+openflow:foam:tamu-hn.exogeni.net+authority+am,https://tamu-hn.exogeni.net:3626/foam/gapi/2
+tamu-eg-of1=urn:publicid:IDN+openflow:foam:tamu-hn.exogeni.net+authority+am,https://tamu-hn.exogeni.net:3626/foam/gapi/1
+tamu-eg-of2=urn:publicid:IDN+openflow:foam:tamu-hn.exogeni.net+authority+am,https://tamu-hn.exogeni.net:3626/foam/gapi/2
+
+# ======
+# Wayne State ExoGENI
+# ======
+wsu-eg=urn:publicid:IDN+exogeni.net:wsuvmsite+authority+am,https://wsu-hn.exogeni.net:11443/orca/xmlrpc
+wsu-eg2=urn:publicid:IDN+exogeni.net:wsuvmsite+authority+am,https://wsu-hn.exogeni.net:11443/orca/xmlrpc
+wsu-eg-of=urn:publicid:IDN+openflow:foam:wsu-hn.exogeni.net+authority+am,https://wsu-hn.exogeni.net:3626/foam/gapi/2
+wsu-eg-of1=urn:publicid:IDN+openflow:foam:wsu-hn.exogeni.net+authority+am,https://wsu-hn.exogeni.net:3626/foam/gapi/1
+wsu-eg-of2=urn:publicid:IDN+openflow:foam:wsu-hn.exogeni.net+authority+am,https://wsu-hn.exogeni.net:3626/foam/gapi/2
+
+# =====
+# Utah CloudLab (cloudlab.us)
+# =====
+utah-clab=urn:publicid:IDN+utah.cloudlab.us+authority+cm,https://boss.utah.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
+clab-utah=urn:publicid:IDN+utah.cloudlab.us+authority+cm,https://boss.utah.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
+utah-clab1=urn:publicid:IDN+utah.cloudlab.us+authority+cm,https://boss.utah.cloudlab.us:12369/protogeni/xmlrpc/am/1.0
+utah-clab2=urn:publicid:IDN+utah.cloudlab.us+authority+cm,https://boss.utah.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
+utah-clab3=urn:publicid:IDN+utah.cloudlab.us+authority+cm,https://boss.utah.cloudlab.us:12369/protogeni/xmlrpc/am/3.0
+
+# ====
+# Apt (https://www.aptlab.net/)
+# ====
+apt=urn:publicid:IDN+apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/2.0
+apt1=urn:publicid:IDN+apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/1.0
+apt2=urn:publicid:IDN+apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/2.0
+apt3=urn:publicid:IDN+apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/3.0
+
+# ====
+# AL2S (OESS)
+# ====
+al2s=urn:publicid:IDN+al2s.internet2.edu+authority+am,https://geni-al2s.net.internet2.edu:3626/foam/gapi/2
+
+# ====
+# iMinds Virtual Wall 2
+# ====
+wall2=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
+wall2-1=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/1.0
+wall2-2=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
+wall2-3=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/3.0
+
+# ====
+# NICTA ExoGENI
+# ====
+nicta-eg=urn:publicid:IDN+exogeni.net:nictavmsite+authority+am,https://nicta-hn.exogeni.net:11443/orca/xmlrpc
+nicta-eg2=urn:publicid:IDN+exogeni.net:nictavmsite+authority+am,https://nicta-hn.exogeni.net:11443/orca/xmlrpc
+
+# ======
+# West Virginia Network (WV Net) ExoGENI
+# ======
+wvn-eg=urn:publicid:IDN+exogeni.net:wvnvmsite+authority+am,https://wvn-hn.exogeni.net:11443/orca/xmlrpc
+wvn-eg2=urn:publicid:IDN+exogeni.net:wvnvmsite+authority+am,https://wvn-hn.exogeni.net:11443/orca/xmlrpc
+wvn-eg-of=urn:publicid:IDN+openflow:foam:wvn-hn.exogeni.net+authority+am,https://wvn-hn.exogeni.net:3626/foam/gapi/2
+wvn-eg-of1=urn:publicid:IDN+openflow:foam:wvn-hn.exogeni.net+authority+am,https://wvn-hn.exogeni.net:3626/foam/gapi/1
+wvn-eg-of2=urn:publicid:IDN+openflow:foam:wvn-hn.exogeni.net+authority+am,https://wvn-hn.exogeni.net:3626/foam/gapi/2

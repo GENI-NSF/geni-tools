@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2014 Raytheon BBN Technologies
+# Copyright (c) 2011-2015 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -59,6 +59,7 @@ class Framework(Framework_Base):
         Framework_Base.__init__(self, config)
         fwtype = "PG"
         self.fwtype = fwtype
+        self.opts = opts
         self.logger = logging.getLogger("omni.protogeni")
         config['cert'] = os.path.expanduser(config['cert'])
         if not os.path.exists(config['cert']):

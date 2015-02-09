@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2014 Raytheon BBN Technologies
+# Copyright (c) 2011-2015 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -68,6 +68,8 @@ from __future__ import absolute_import
        [string (successList, failList)] = omni.py shutdown SLICENAME
        In AM API v3:
        [string dictionary] = omni.py shutdown SLICENAME
+       [string dictionary] = omni.py update SLICENAME RSPEC_FILENAME # Some AM API V3+ AMs only
+       [string dictionary] = omni.py cancel SLICENAME # Some AM API V3+ AMs only
 
        Non-AM API functions exported by aggregates, supported by Omni:
        From ProtoGENI/InstaGENI:
@@ -155,6 +157,14 @@ def load_agg_nick_config(opts, logger):
     Search path:
     - filename from commandline
     """
+    if opts.noCacheFiles:
+        logger.debug("Not loading agg_nick_config per option noCacheFiles")
+        config = {}
+        if not config.has_key('aggregate_nicknames'):
+            config['aggregate_nicknames'] = {}
+        if not config.has_key('omni_defaults'):
+            config['omni_defaults'] = {}
+        return config
 
     # the directory of this file
     curr_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -513,7 +523,40 @@ def update_agg_nick_cache( opts, logger ):
         except:
             pass
 
-def initialize(argv, options=None ):
+# Check if there is a newer version of Omni available.
+# Look for an entry "latest_omni_version" under "omni_defaults" in the omni_config (or really, agg_nick_cache).
+# Expected format is "#,Message" EG: "2.8,Omni 2.8 was release 2/1/2015". No commas in the message.
+# If a newer version is available, log a message at INFO level.
+def checkForUpdates(config, logger):
+    if not config or not config.has_key('omni_defaults') or not config['omni_defaults'].has_key('latest_omni_version') or config['omni_defaults']['latest_omni_version'] is None:
+        logger.debug("No latest Omni version found in config")
+        return False
+    latestStr = str(config['omni_defaults']['latest_omni_version']).strip()
+    latestVals = latestStr.split(',')
+    if len(latestVals) == 0:
+        logger.debug("Failed to find any values in latest_omni_version: %s", latestStr)
+        return False
+
+    if latestVals[0].strip() == GCF_VERSION.strip():
+        logger.debug("Already running latest GCF: %s", GCF_VERSION)
+        return False
+    import re
+    def natSort(s, _nsre=re.compile('([0-9]+)')):
+        return [int(text) if text.isdigit() else text.lower()
+                for text in re.split(_nsre, s)]
+    latest = max(latestVals[0].strip(), GCF_VERSION, key=natSort)
+    if latest == GCF_VERSION.strip():
+        logger.debug("Running a newer version of Omni than the last release. Running %s > %s", GCF_VERSION, latestVals[0])
+        return False
+
+    logger.debug("New Omni version available: %s > %s", latestVals[0], GCF_VERSION)
+    if len(latestVals) > 1:
+        logger.info(latestVals[1])
+    else:
+        logger.info("A new version of Omni is available: Version %s", latestVals[0])
+    return True
+
+def initialize(argv, options=None, dictLoggingConfig=None ):
     """Parse argv (list) into the given optional optparse.Values object options.
     (Supplying an existing options object allows pre-setting certain values not in argv.)
     Then configure logging per those options.
@@ -522,20 +565,21 @@ def initialize(argv, options=None ):
     Return the framework, config, args list, and optparse.Values struct."""
 
     opts, args = parse_args(argv, options)
-    logger = configure_logging(opts)
+    logger = configure_logging(opts, dictLoggingConfig)
     if "--useSliceMembers" in argv:
         logger.info("Option --useSliceMembers is no longer necessary and is now deprecated, as that behavior is now the default. This option will be removed in a future release.")
     config = load_agg_nick_config(opts, logger)
     # Load custom config _after_ system agg_nick_cache,
     # which also sets omni_defaults
     config = load_config(opts, logger, config)
+    checkForUpdates(config, logger)
     framework = load_framework(config, opts)
     logger.debug('User Cert File: %s', framework.cert)
     return framework, config, args, opts
 
 
 ####
-def call(argv, options=None, verbose=False):
+def call(argv, options=None, verbose=False, dictLoggingConfig=None):
     """Method to use when calling omni as a library
 
     argv is a list ala sys.argv
@@ -543,6 +587,8 @@ def call(argv, options=None, verbose=False):
       Use this to pre-set certain values, or allow your caller to get omni options from its commandline
 
     Verbose option allows printing the command and summary, or suppressing it.
+    dictLoggingConfig is a Python logging configuration dictionary for configuring logging. If
+    not supplied, any logging config filename provided using the option --logconfig will be applied.
     Callers can control omni logs (suppressing console printing for example) using python logging.
 
     Return is a list of 2 items: a human readable string summarizing the result 
@@ -714,7 +760,7 @@ if __name__ == "__main__":
     if argv is None or not type(argv) == list:
         raise OmniError("Invalid argv argument to call: must be a list")
 
-    framework, config, args, opts = initialize(argv, options)
+    framework, config, args, opts = initialize(argv, options, dictLoggingConfig)
     # process the user's call
     return API_call( framework, config, args, opts, verbose=verbose )
 
@@ -821,8 +867,9 @@ def API_call( framework, config, args, opts, verbose=False ):
     
     return retVal, retItem
 
-def configure_logging(opts):
-    """Configure logging. If a log config filename is supplied with the -l option,
+def configure_logging(opts, dictConfig=None):
+    """Configure logging. If a logging config dictionary is supplied, configuring Logging using that.
+    Else, if a log config filename is supplied with the -l option,
     and the file is non-empty, configure logging from that file. For details on this,
     see the applyLogConfig documentation.
 
@@ -860,17 +907,27 @@ def configure_logging(opts):
     # file
     deft['logfilename'] = opts.logoutput
 
-    if opts.logconfig:
-        deft['optlevel'] = optlevel
-        applyLogConfig(opts.logconfig, defaults=deft)
-    else:
-        # Ticket 296: Add timestamps to log messages
+    error = None # error raised configuring from given dictionary
+    if not opts.noLoggingConfiguration:
+        if dictConfig is not None:
+            # Try to configure logging from the given object
+            # Note this raises an exception if it fails (a ValueError, TypeError, AttributeError or ImportError)
+            # Also note this only works in python2.7+
+            logging.config.dictConfig(dictConfig)
+        elif opts.logconfig:
+            deft['optlevel'] = optlevel
+            applyLogConfig(opts.logconfig, defaults=deft)
+        else:
+            # Ticket 296: Add timestamps to log messages
 #        fmt = '%(asctime)s %(levelname)-8s %(name)s: %(message)s'
-        fmt = '%(asctime)s %(levelname)-8s: %(message)s'
-        logging.basicConfig(level=level,format=fmt,datefmt='%H:%M:%S')
+            fmt = '%(asctime)s %(levelname)-8s: %(message)s'
+            logging.basicConfig(level=level,format=fmt,datefmt='%H:%M:%S')
 
     logger = logging.getLogger("omni")
-    
+
+    if dictConfig is not None and not opts.noLoggingConfiguration:
+        logger.debug("Configured logging from dictionary")
+
     return logger
 
 def applyLogConfig(logConfigFilename, defaults={'optlevel': 'INFO'}):
@@ -929,7 +986,7 @@ def getSystemInfo():
 
 def getOmniVersion():
     version ="GENI Omni Command Line Aggregate Manager Tool Version %s" % GCF_VERSION
-    version +="\nCopyright (c) 2014 Raytheon BBN Technologies"
+    version +="\nCopyright (c) 2011-2015 Raytheon BBN Technologies"
     return version
 
 def getParser():
@@ -955,6 +1012,8 @@ def getParser():
  \t\t\t deletesliver <slicename> [AM API V1&2 only] \n\
  \t\t\t delete <slicename> [AM API V3 only] \n\
  \t\t\t shutdown <slicename> \n\
+ \t\t\t update <slicename> <rspec URL, filename, or nickname> [Some AM API V3 AMs only] \n\
+ \t\t\t cancel <slicename> [Some AM API V3 AMs only] \n\
  \t\tNon AM API aggregate functions (supported by some aggregates): \n\
  \t\t\t createimage <slicename> <imagename> [optional: false (keep image private)] -u <sliver urn> [ProtoGENI/InstaGENI only] \n\
  \t\t\t snapshotimage <slicename> <imagename> [optional: false (keep image private)] -u <sliver urn> [ProtoGENI/InstaGENI only] \n\
@@ -1025,6 +1084,8 @@ def getParser():
                       help="Send credential in given filename with any call that takes a list of credentials")
     v3group.add_option("--end-time", dest='geni_end_time',
                       help="Requested end time for any newly allocated or provisioned slivers - may be ignored by the AM")
+    v3group.add_option("--start-time", dest='geni_start_time',
+                      help="Requested start time for any allocated slivers - NOW if not provided, could be for future reservations")
 # Sample options file content:
 #{
 # "option_name_1": "value",
@@ -1037,6 +1098,9 @@ def getParser():
                       help="Supply given URN as user we are speaking for in Speaks For option")
     v3group.add_option("-u", "--sliver-urn", dest="slivers", action="append",
                       help="Sliver URN (not name) on which to act. Supply this option multiple times for multiple slivers, or not at all to apply to the entire slice")
+    # For Update. See http://groups.geni.net/geni/wiki/GAPI_AM_API_DRAFT/Adopted#ChangestoDescribe
+    v3group.add_option("--cancelled", action="store_true", default=False,
+                       help="Should Describe show sliver state of only geni_provisioned slivers, ignoring any geni_updating and geni_allocated slivers (default %default)")
     parser.add_option_group( v3group )
 
     # logging levels
@@ -1062,6 +1126,8 @@ def getParser():
                       help="Python logging output file [use %(logfilename)s in logging config file]. Default: '%default'")
     loggroup.add_option("--tostdout", default=False, action="store_true",
                       help="Print results like rspecs to STDOUT instead of to log stream")
+    loggroup.add_option("--noLoggingConfiguration", default=False, action="store_true",
+                        help="Do not configure python logging; for use by other tools.")
     parser.add_option_group( loggroup )
 
     # output to files
@@ -1098,6 +1164,8 @@ def getParser():
     gvgroup.add_option("--GetVersionCacheName", dest='getversionCacheName',
                       default="~/.gcf/get_version_cache.json",
                       help="File where GetVersion info will be cached, default is %default")
+    gvgroup.add_option("--noCacheFiles", default=False, action="store_true",
+                       help="Disable both GetVersion and Aggregate Nickname cache functionality completely; no files are downloaded, saved, or loaded.")
     parser.add_option_group( gvgroup )
 
     # AggNick
@@ -1141,6 +1209,8 @@ def getParser():
     devgroup.add_option("--raise-error-on-v2-amapi-error", dest='raiseErrorOnV2AMAPIError',
                       default=False, action="store_true",
                       help="In AM API v2, if an AM returns a non-0 (failure) result code, raise an AMAPIError. Default is %default. For use by scripts.")
+    devgroup.add_option("--maxBusyRetries", default=4, action="store", type="int",
+                      help="Max times to retry AM or CH calls on getting a 'busy' error. Default: %default")
     devgroup.add_option("--no-compress", dest='geni_compressed', 
                       default=True, action="store_false",
                       help="Do not compress returned values")

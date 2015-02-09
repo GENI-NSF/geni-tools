@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2014 Raytheon BBN Technologies
+# Copyright (c) 2011-2015 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -59,7 +59,13 @@ def _do_ssl(framework, suppresserrors, reason, fn, *args):
     otherwise returns None. And (2) A message explaining any errors."""
 
     # Change exception name?
+
+    # How many times should we retry if we get a busy error (sleeping how long?)
     max_attempts = 4
+    if hasattr(framework,'opts') and hasattr(framework.opts,'maxBusyRetries'):
+        if max_attempts != framework.opts.maxBusyRetries:
+            max_attempts = framework.opts.maxBusyRetries
+            framework.logger.debug("Resetting max retries based on option to %d", max_attempts)
     attempt = 0
     retry_pause_seconds = 20
 
@@ -136,14 +142,15 @@ def _do_ssl(framework, suppresserrors, reason, fn, *args):
                 if expiredAt:
                     msg += " at %s" % expiredAt
                 msg += ". "
-                if issuer.find("boss") == 0:
+                if "boss" in issuer:
                     msg += "ProtoGENI users should log in to their account at the ProtoGENI website at http://%s and create and download a new certificate. " % issuer
-                elif issuer.find("plc.") == 0:
+                elif "plc" in issuer:
                     msg += "PlanetLab users should email PlanetLab support (support@planet-lab.org) to get a new user certificate."
-                elif issuer.find("ch.geni") == 0:
+                elif "ch.geni" in issuer:
                     msg += "GENI Clearinghouse users should email Portal help (portal-help@geni.net) to get a new certificate."
                 else:
                     msg += "Contact your certificate issuer: %s. " % issuer
+                    msg += "GENI Clearinghouse users should email Portal help (portal-help@geni.net) to get a new certificate. "
                     msg += "ProtoGENI users should log in to their SA website and create and download a new certificate. "
                     msg += "PlanetLab users should email PlanetLab support (support@planet-lab.org) to get a new user certificate."
                 framework.logger.error("Can't do %s. %s", reason, msg)

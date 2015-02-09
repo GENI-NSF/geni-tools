@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2012-2014 Raytheon BBN Technologies
+# Copyright (c) 2012-2015 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -26,6 +26,12 @@ the GENI AM API version 3. This AggregateManager has only fake resources.
 Invoked from gcf-am.py
 The GENI AM API is defined in the AggregateManager class.
 """
+
+# Note: This AM uses SFA authorization to check that the caller
+# has appropriate credentials to make the call. If this AM is used in 
+# conjunction with the policy-based authorization capability (in gcf.geni.auth)
+# then this code needs to only extract expiration times from the credentials
+# which can be done using the gcf.sfa.credential module
 
 from __future__ import absolute_import
 
@@ -55,6 +61,8 @@ from ...gcf_version import GCF_VERSION
 
 from ...omnilib.util import credparsing as credutils
 
+from ..auth.base_authorizer import *
+from .am_method_context import AMMethodContext
 
 # See sfa/trust/rights.py
 # These are names of operations
@@ -145,6 +153,8 @@ class Sliver(object):
         self._resource = resource
         self._slice = parent_slice
         self._expiration = None
+        self._start_time = None
+        self._end_time = None
         self._allocation_state = STATE_GENI_UNALLOCATED
         self._operational_state = OPSTATE_GENI_PENDING_ALLOCATION
         self._urn = None
@@ -179,6 +189,18 @@ class Sliver(object):
     def expiration(self):
         return self._expiration
 
+    def setStartTime(self, new_start_time):
+        self._start_time = new_start_time
+
+    def startTime(self):
+        return self._start_time
+
+    def setEndTime(self, new_end_time):
+        self._end_time = new_end_time
+
+    def endTime(self):
+        return self._end_time
+
     def _setUrnFromParent(self, parent_urn):
         authority = urn.URN(urn=parent_urn).getAuthority()
         self._urn = str(urn.URN(authority=authority,
@@ -210,8 +232,14 @@ class Sliver(object):
         """
         expire_with_tz = self.expiration().replace(tzinfo=dateutil.tz.tzutc())
         expire_string = expire_with_tz.isoformat()
+        start_with_tz = self.startTime().replace(tzinfo=dateutil.tz.tzutc())
+        start_string = start_with_tz.isoformat()
+        end_with_tz = self.endTime().replace(tzinfo=dateutil.tz.tzutc())
+        end_string = end_with_tz.isoformat()
         return dict(geni_sliver_urn=self.urn(),
                     geni_expires=expire_string,
+                    geni_start_time=start_string,
+                    geni_end_time=end_string,
                     geni_allocation_status=self.allocationState(),
                     geni_operational_status=self.operationalState(),
                     geni_error=geni_error)
@@ -226,6 +254,8 @@ class Slice(object):
         self._slivers = list()
         self._resources = dict()
         self._shutdown = False
+
+    def getURN(self): return self.urn
 
     def add_resource(self, resource):
         sliver = Sliver(self, resource)
@@ -264,7 +294,7 @@ class ReferenceAggregateManager(object):
         self._am_type = "gcf"
         self._slices = dict()
         self._agg = Aggregate()
-        self._agg.add_resources([FakeVM(self._agg) for _ in range(3)])
+        self._agg.add_resources([FakeVM(self._agg) for _ in range(20)])
         self._my_urn = publicid_to_urn("%s %s %s" % (self._urn_authority, 'authority', 'am'))
         self.max_lease = datetime.timedelta(minutes=REFAM_MAXLEASE_MINUTES)
         self.max_alloc = datetime.timedelta(seconds=ALLOCATE_EXPIRATION_SECONDS)
@@ -330,7 +360,7 @@ class ReferenceAggregateManager(object):
         credentials = [self.normalize_credential(c) for c in credentials]
         credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         try:
-            self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                     credentials,
                                                     None,
                                                     privileges,
@@ -427,7 +457,7 @@ class ReferenceAggregateManager(object):
         credentials = [self.normalize_credential(c) for c in credentials]
         credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         try:
-            creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            creds = self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                             credentials,
                                                             slice_urn,
                                                             privileges,
@@ -435,12 +465,11 @@ class ReferenceAggregateManager(object):
         except Exception, e:
             raise xmlrpclib.Fault('Insufficient privileges', str(e))
 
+        # Grab the user_urn
+        user_urn = gid.GID(string=options['geni_true_caller_cert']).get_urn()
+
         # If we get here, the credentials give the caller
         # all needed privileges to act on the given target.
-        if slice_urn in self._slices:
-            self.logger.error('Slice %s already exists.', slice_urn)
-            return self.errorResult(AM_API.ALREADY_EXISTS,
-                                    'Slice %s already exists' % (slice_urn))
 
         rspec_dom = None
         try:
@@ -484,11 +513,64 @@ class ReferenceAggregateManager(object):
                                      ('geni_end_time' in options
                                       and options['geni_end_time']))
 
-        newslice = Slice(slice_urn)
+        # determine end time as min of the slice 
+        # and the requested time (if any)
+        end_time = self.min_expire(creds, 
+                                   requested=('geni_end_time' in options 
+                                              and options['geni_end_time']))
+
+        # determine the start time as bounded by slice expiration and 'now'
+        now = datetime.datetime.utcnow()
+        start_time = now
+        if 'geni_start_time' in options:
+            # Need to parse this into datetime
+            start_time_raw = options['geni_start_time']
+            start_time = self._naiveUTC(dateutil.parser.parse(start_time_raw))
+        start_time = max(now, start_time)
+        if (start_time > self.min_expire(creds)):
+            return self.errorResult(AM_API.BAD_ARGS, 
+                                    "Can't request start time on sliver after slice expiration")
+
+        # determine max expiration time from credentials
+        # do not create a sliver that will outlive the slice!
+        expiration = self.min_expire(creds, self.max_alloc,
+                                     ('geni_end_time' in options
+                                      and options['geni_end_time']))
+
+        # If we're allocating something for future, give a window
+        # from start time in which to reserve
+        if start_time > now:
+            expiration = min(start_time + self.max_alloc, 
+                             self.min_expire(creds))
+
+        # if slice exists, check accept only if no  existing sliver overlaps
+        # with requested start/end time. If slice doesn't exist, create it
+        if slice_urn in self._slices:
+            newslice = self._slices[slice_urn]
+            # Check if any current slivers overlap with requested start/end
+            one_slice_overlaps = False
+            for sliver in newslice.slivers():
+                if sliver.startTime() < end_time and \
+                        sliver.endTime() > start_time:
+                    one_slice_overlaps = True
+                    break
+
+            if one_slice_overlaps:
+                template = "Slice %s already has slivers at requested time"
+                self.logger.error(template % (slice_urn))
+                return self.errorResult(AM_API.ALREADY_EXISTS,
+                                        template % (slice_urn))
+        else:
+            newslice = Slice(slice_urn)
+
         for resource in resources:
             sliver = newslice.add_resource(resource)
             sliver.setExpiration(expiration)
+            sliver.setStartTime(start_time)
+            sliver.setEndTime(end_time)
             sliver.setAllocationState(STATE_GENI_ALLOCATED)
+        self._agg.allocate(slice_urn, newslice.slivers())
+        self._agg.allocate(user_urn, newslice.slivers())
         self._slices[slice_urn] = newslice
 
         # Log the allocation
@@ -524,17 +606,13 @@ class ReferenceAggregateManager(object):
         credentials = [self.normalize_credential(c) for c in credentials]
         credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         try:
-            creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            creds = self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                             credentials,
                                                             the_slice.urn,
                                                             privileges,
                                                             options)
         except Exception, e:
             raise xmlrpclib.Fault('Insufficient privileges', str(e))
-
-        expiration = self.min_expire(creds, self.max_lease,
-                                     ('geni_end_time' in options
-                                      and options['geni_end_time']))
 
         if 'geni_rspec_version' not in options:
             # This is a required option, so error out with bad arguments.
@@ -566,8 +644,24 @@ class ReferenceAggregateManager(object):
                                     'Bad Version: requested RSpec version %s is not a valid option.' % (rspec_version))
         self.logger.info("Provision requested RSpec %s (%s)", rspec_type, rspec_version)
 
+        # Only provision slivers that are in the scheduled time frame
+        now = datetime.datetime.utcnow()
+        provisionable_slivers = \
+            [sliver for sliver in slivers \
+                 if now >= sliver.startTime() and now <= sliver.endTime()]
+        slivers = provisionable_slivers
+
+        if len(slivers) == 0:
+            return self.errorResult(AM_API.UNAVAILABLE,
+                                    "No slivers available to provision at this time")
+
+        max_expiration = self.min_expire(creds, self.max_lease, 
+                                     ('geni_end_time' in options
+                                      and options['geni_end_time']))
         for sliver in slivers:
             # Extend the lease and set to PROVISIONED
+            expiration = min(sliver.getEndTime(), max_expiration)
+            sliver.setEndTime(expiration)
             sliver.setExpiration(expiration)
             sliver.setAllocationState(STATE_GENI_PROVISIONED)
             sliver.setOperationalState(OPSTATE_GENI_NOT_READY)
@@ -586,13 +680,16 @@ class ReferenceAggregateManager(object):
         credentials = [self.normalize_credential(c) for c in credentials]
         credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         try:
-            self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                     credentials,
                                                     the_slice.urn,
                                                     privileges,
                                                     options)
         except Exception, e:
             raise xmlrpclib.Fault('Insufficient privileges', str(e))
+
+        # Grab the user_urn
+        user_urn = gid.GID(string=options['geni_true_caller_cert']).get_urn()
 
         # If we get here, the credentials give the caller
         # all needed privileges to act on the given target.
@@ -602,6 +699,9 @@ class ReferenceAggregateManager(object):
             return self.errorResult(AM_API.UNAVAILABLE,
                                     ("Unavailable: Slice %s is unavailable."
                                      % (the_slice.urn)))
+
+        self._agg.deallocate(the_slice.urn, slivers)
+        self._agg.deallocate(user_urn, slivers)
         for sliver in slivers:
             slyce = sliver.slice()
             slyce.delete_sliver(sliver)
@@ -630,7 +730,7 @@ class ReferenceAggregateManager(object):
         credentials = [self.normalize_credential(c) for c in credentials]
         credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         try:
-            _ = self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            _ = self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                         credentials,
                                                         the_slice.urn,
                                                         privileges,
@@ -710,7 +810,7 @@ class ReferenceAggregateManager(object):
         credentials = [self.normalize_credential(c) for c in credentials]
         credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         try:
-            self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                     credentials,
                                                     the_slice.urn,
                                                     privileges,
@@ -721,10 +821,14 @@ class ReferenceAggregateManager(object):
         geni_slivers = list()
         for sliver in slivers:
             expiration = self.rfc3339format(sliver.expiration())
+            start_time = self.rfc3339format(sliver.startTime())
+            end_time = self.rfc3339format(sliver.endTime())
             allocation_state = sliver.allocationState()
             operational_state = sliver.operationalState()
             geni_slivers.append(dict(geni_sliver_urn=sliver.urn(),
                                      geni_expires=expiration,
+                                     geni_start_time=start_time,
+                                     geni_end_time=end_time,
                                      geni_allocation_status=allocation_state,
                                      geni_operational_status=operational_state,
                                      geni_error=''))
@@ -753,7 +857,7 @@ class ReferenceAggregateManager(object):
         credentials = [self.normalize_credential(c) for c in credentials]
         credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         try:
-            self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                     credentials,
                                                     the_slice.urn,
                                                     privileges,
@@ -822,7 +926,7 @@ class ReferenceAggregateManager(object):
         credentials = [self.normalize_credential(c) for c in credentials]
         credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         try:
-            creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            creds = self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                             credentials,
                                                             the_slice.urn,
                                                             privileges,
@@ -866,6 +970,8 @@ class ReferenceAggregateManager(object):
             # Renew all the named slivers
             for sliver in slivers:
                 sliver.setExpiration(requested)
+                end_time = max(sliver.endTime(), requested)
+                sliver.setEndTime(end_time)
 
         geni_slivers = [s.status() for s in slivers]
         return self.successResult(geni_slivers)
@@ -879,7 +985,7 @@ class ReferenceAggregateManager(object):
         credentials = [self.normalize_credential(c) for c in credentials]
         credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         try:
-            self._cred_verifier.verify_from_strings(self._server.pem_cert,
+            self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
                                                     credentials,
                                                     slice_urn,
                                                     privileges,
@@ -1142,9 +1248,13 @@ class AggregateManager(object):
     XMLRPC interface and invokes a delegate for all the operations.
     """
 
-    def __init__(self, delegate):
+    def __init__(self, trust_roots_dir, delegate, authorizer=None,
+                 resource_manager=None):
+        self._trust_roots_dir = trust_roots_dir
         self._delegate = delegate
         self.logger = logging.getLogger('gcf.am3')
+        self.authorizer = authorizer
+        self.resource_manager = resource_manager
 
     def _exception_result(self, exception):
         output = str(exception)
@@ -1180,13 +1290,16 @@ class AggregateManager(object):
         If geni_available is specified in the options,
         then only report available resources. If geni_compressed
         option is specified, then compress the result.'''
-        try:
-            return self._delegate.ListResources(credentials, options)
-        except ApiErrorException as e:
-            return self._api_error(e)
-        except Exception as e:
-            traceback.print_exc()
-            return self._exception_result(e)
+        args = {}
+        with AMMethodContext(self, AM_Methods.LIST_RESOURCES_V3,
+                             self.logger, self.authorizer, 
+                             self.resource_manager,
+                             credentials,
+                             args, options, is_v3=True) as amc:
+            if not amc._error:
+                amc._result = \
+                    self._delegate.ListResources(credentials, amc._options)
+        return amc._result
 
     def Allocate(self, slice_urn, credentials, rspec, options):
         """Allocate resources to a slice. This is a low-effort call
@@ -1195,39 +1308,52 @@ class AggregateManager(object):
         'Provision'. This is step 1 in the process of acquiring
         usable resources from an aggregate.
         """
-        try:
-            return self._delegate.Allocate(slice_urn, credentials, rspec,
-                                           options)
-        except ApiErrorException as e:
-            return self._api_error(e)
-        except Exception as e:
-            traceback.print_exc()
-            return self._exception_result(e)
+        args = {'slice_urn' : slice_urn, 'rspec' : rspec}
+        with AMMethodContext(self, AM_Methods.ALLOCATE_V3,
+                             self.logger, self.authorizer, 
+                             self.resource_manager,
+                             credentials,
+                             args, options, is_v3=True, 
+                             resource_bindings=True) as amc:
+            if not amc._error:
+                slice_urn = amc._args['slice_urn']
+                rspec = amc._args['rspec']
+                amc._result = \
+                    self._delegate.Allocate(slice_urn, credentials, 
+                                            rspec, amc._options)
+        return amc._result
 
     def Provision(self, urns, credentials, options):
         """Make a reservation 'real' by instantiating the resources
         reserved in a previous allocate invocation. This is step 2 in
         the process of acquiring usable resources from an aggregate.
         """
-        try:
-            return self._delegate.Provision(urns, credentials, options)
-        except ApiErrorException as e:
-            return self._api_error(e)
-        except Exception as e:
-            traceback.print_exc()
-            return self._exception_result(e)
+        args = {'urns' : urns }
+        with AMMethodContext(self, AM_Methods.PROVISION_V3,
+                             self.logger, self.authorizer, 
+                             self.resource_manager,
+                             credentials,
+                             args, options, is_v3=True) as amc:
+            if not amc._error:
+                urns = amc._args['urns']
+                amc._result = \
+                    self._delegate.Provision(urns, credentials, amc._options)
+        return amc._result
 
     def Delete(self, urns, credentials, options):
         """Delete the given resources.
         """
-        try:
-            return self._delegate.Delete(urns, credentials,
-                                           options)
-        except ApiErrorException as e:
-            return self._api_error(e)
-        except Exception as e:
-            traceback.print_exc()
-            return self._exception_result(e)
+        args = {'urns' : urns }
+        with AMMethodContext(self, AM_Methods.DELETE_V3,
+                             self.logger, self.authorizer, 
+                             self.resource_manager,
+                             credentials,
+                             args, options, is_v3=True) as amc:
+            if not amc._error:
+                urns = amc._args['urns']
+                amc._result = \
+                    self._delegate.Delete(urns, credentials, amc._options)
+        return amc._result
 
     def PerformOperationalAction(self, urns, credentials, action, options):
         """Perform the given action on the objects named by the given URNs.
@@ -1235,62 +1361,86 @@ class AggregateManager(object):
         This is the third and final step in the process of acquiring usable
         resources from an aggregate.
         """
-        try:
-            return self._delegate.PerformOperationalAction(urns, credentials,
-                                                           action, options)
-        except ApiErrorException as e:
-            return self._api_error(e)
-        except Exception as e:
-            traceback.print_exc()
-            return self._exception_result(e)
+        args = {'urns' : urns, 'action' : action }
+        with AMMethodContext(self, AM_Methods.PERFORM_OPERATIONAL_ACTION_V3,
+                             self.logger, self.authorizer, 
+                             self.resource_manager,
+                             credentials,
+                             args, options, is_v3=True) as amc:
+            if not amc._error:
+                urns = amc._args['urns']
+                action = amc._args['action']
+                amc._result = \
+                    self._delegate.PerformOperationalAction(urns, credentials, 
+                                                            action, 
+                                                            amc._options)
+        return amc._result
 
     def Status(self, urns, credentials, options):
         """Report the status of the specified resources.
         """
-        try:
-            return self._delegate.Status(urns, credentials, options)
-        except ApiErrorException as e:
-            return self._api_error(e)
-        except Exception as e:
-            traceback.print_exc()
-            return self._exception_result(e)
+        args = {'urns' : urns }
+        with AMMethodContext(self, AM_Methods.STATUS_V3,
+                             self.logger, self.authorizer, 
+                             self.resource_manager,
+                             credentials,
+                             args, options, is_v3 = True) as amc:
+            if not amc._error:
+                urns = amc._args['urns']
+                amc._result = \
+                    self._delegate.Status(urns, credentials, amc._options)
+        return amc._result
 
     def Describe(self, urns, credentials, options):
         """Describe the specified resources.
         Return a manifest RSpec of the resources as well
         as their current status.
         """
-        try:
-            return self._delegate.Describe(urns, credentials, options)
-        except ApiErrorException as e:
-            return self._api_error(e)
-        except Exception as e:
-            traceback.print_exc()
-            return self._exception_result(e)
+        args = {'urns' : urns }
+        with AMMethodContext(self, AM_Methods.DESCRIBE_V3,
+                             self.logger, self.authorizer, 
+                             self.resource_manager,
+                             credentials,
+                             args, options, is_v3 = True) as amc:
+            if not amc._error:
+                urns = amc._args['urns']
+                amc._result = \
+                    self._delegate.Describe(urns, credentials, amc._options)
+        return amc._result
 
     def Renew(self, urns, credentials, expiration_time, options):
         """Extend the life of the given slice until the given
         expiration time."""
-        try:
-            return self._delegate.Renew(urns, credentials,
-                                        expiration_time, options)
-        except ApiErrorException as e:
-            return self._api_error(e)
-        except Exception as e:
-            traceback.print_exc()
-            return self._exception_result(e)
+        args = {'urns' : urns, 'expiration_time' : expiration_time }
+        with AMMethodContext(self, AM_Methods.RENEW_V3,
+                             self.logger, self.authorizer, 
+                             self.resource_manager,
+                             credentials,
+                             args, options, is_v3 = True,
+                             resource_bindings=True) as amc:
+            if not amc._error:
+                urns = amc._args['urns']
+                expiration_time = amc._args['expiration_time']
+                amc._result = \
+                    self._delegate.Renew(urns, credentials, expiration_time, 
+                                         amc._options)
+        return amc._result
 
     def Shutdown(self, slice_urn, credentials, options):
         '''For Management Authority / operator use: shut down a badly
         behaving sliver, without deleting it to allow for forensics.'''
-        try:
-            return self._delegate.Shutdown(slice_urn, credentials, options)
-        except ApiErrorException as e:
-            return self._api_error(e)
-        except Exception as e:
-            traceback.print_exc()
-            return self._exception_result(e)
-        return self._delegate.Shutdown(slice_urn, credentials, options)
+        args = {'slice_urn' : slice_urn }
+        with AMMethodContext(self, AM_Methods.SHUTDOWN_V3,
+                             self.logger, self.authorizer, 
+                             self.resource_manager,
+                             credentials,
+                             args, options, is_v3 = True) as amc:
+            if not amc._error:
+                slice_urn = amc._args['slice_urn']
+                amc._result = \
+                    self._delegate.Shutdown(slice_urn, credentials, 
+                                            amc._options)
+        return amc._result
 
 
 class AggregateManagerServer(object):
@@ -1299,7 +1449,8 @@ class AggregateManagerServer(object):
 
     def __init__(self, addr, keyfile=None, certfile=None,
                  trust_roots_dir=None,
-                 ca_certs=None, base_name=None):
+                 ca_certs=None, base_name=None,
+                 authorizer=None, resource_manager=None):
         # ca_certs arg here must be a file of concatenated certs
         if ca_certs is None:
             raise Exception('Missing CA Certs')
@@ -1313,7 +1464,9 @@ class AggregateManagerServer(object):
         # FIXME: set logRequests=true if --debug
         self._server = SecureXMLRPCServer(addr, keyfile=keyfile,
                                           certfile=certfile, ca_certs=ca_certs)
-        self._server.register_instance(AggregateManager(delegate))
+        aggregate_manager = AggregateManager(trust_roots_dir, delegate, 
+                                             authorizer, resource_manager)
+        self._server.register_instance(aggregate_manager)
         # Set the server on the delegate so it can access the
         # client certificate.
         delegate._server = self._server

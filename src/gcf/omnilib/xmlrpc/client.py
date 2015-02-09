@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2014 Raytheon BBN Technologies
+# Copyright (c) 2011-2015 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -21,14 +21,24 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
-import xmlrpclib
 import os
+import urllib
+import xmlrpclib
 
 class SafeTransportWithCert(xmlrpclib.SafeTransport):
 
     def __init__(self, use_datetime=0, keyfile=None, certfile=None,
                  timeout=None):
-        xmlrpclib.SafeTransport.__init__(self, use_datetime)
+        # Ticket #776: As of Python 2.7.9, server certs are verified by default.
+        # But we don't have those. To preserve old functionality with new python,
+        # pass an explicit context
+        # Thanks to Ezra Kissel
+        import sys
+        if sys.version_info >= (2,7,9):
+            import ssl
+            xmlrpclib.SafeTransport.__init__(self, use_datetime, context=ssl._create_unverified_context())
+        else:
+            xmlrpclib.SafeTransport.__init__(self, use_datetime)
         self.__x509 = dict()
         if keyfile:
             self.__x509['key_file'] = keyfile
@@ -48,10 +58,38 @@ class SafeTransportWithCert(xmlrpclib.SafeTransport):
                 conn.timeout = self._timeout
         return conn
 
+class SafeTransportNoCert(xmlrpclib.SafeTransport):
+    # A standard SafeTransport that honors the requested SSL timeout
+    def __init__(self, use_datetime=0, timeout=None):
+        # Ticket #776: As of Python 2.7.9, server certs are verified by default.
+        # But we don't have those. To preserve old functionality with new python,
+        # pass an explicit context
+        # Thanks to Ezra Kissel
+        import sys
+        if sys.version_info >= (2,7,9):
+            import ssl
+            xmlrpclib.SafeTransport.__init__(self, use_datetime, context=ssl._create_unverified_context())
+        else:
+            xmlrpclib.SafeTransport.__init__(self, use_datetime)
+        self.__x509 = dict()
+        self._timeout = timeout
+
+    def make_connection(self, host):
+        host_tuple = (host, self.__x509)
+        conn = xmlrpclib.SafeTransport.make_connection(self, host_tuple)
+        if self._timeout:
+            if hasattr(conn, '_conn'):
+                # Python 2.6
+                conn._conn.timeout = self._timeout
+            else:
+                # Python 2.7
+                conn.timeout = self._timeout
+        return conn
 
 def make_client(url, keyfile, certfile, verbose=False, timeout=None,
                 allow_none=False):
-    """Create an SSL connection to an XML RPC server.
+    """Create a connection to an XML RPC server, using SSL with client certificate
+    authentication if requested.
     Returns the XML RPC server proxy.
     """
     cert_transport = None
@@ -69,6 +107,19 @@ def make_client(url, keyfile, certfile, verbose=False, timeout=None,
         cert_transport = SafeTransportWithCert(keyfile=keyfile,
                                                certfile=certfile,
                                                timeout=timeout)
+    else:
+        # Note that the standard transport you get for https connections
+        # does not take the requested timeout. So here we extend
+        # that standard transport to get our timeout honored if we are using
+        # SSL / https
+        if isinstance(url, unicode):
+            url2 = url.encode('ISO-8859-1')
+        else:
+            url2 = url
+        type, uri = urllib.splittype(url2.lower())
+        if type == "https":
+            cert_transport = SafeTransportNoCert(timeout=timeout)
+
     return xmlrpclib.ServerProxy(url, transport=cert_transport,
                                  verbose=verbose, allow_none=allow_none)
 

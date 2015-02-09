@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #----------------------------------------------------------------------
-# Copyright (c) 2014 Raytheon BBN Technologies
+# Copyright (c) 2014-2015 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -30,19 +30,37 @@
 
 ## Function that writes aliases to the specified rc file
 writeAliases () {
-    echo $'\n' >> $1
-    echo "# Aliases for commands in the GENI omniTools-2.7 package" >> $1
-    echo "alias omni='/Applications/omniTools-2.7/omni.app/Contents/MacOS/omni'" >> $1
-    echo "alias stitcher='/Applications/omniTools-2.7/stitcher.app/Contents/MacOS/stitcher'" >> $1
-    echo "alias omni-configure='/Applications/omniTools-2.7/omni-configure.app/Contents/MacOS/omni-configure'" >> $1
-    echo "alias readyToLogin='/Applications/omniTools-2.7/readyToLogin.app/Contents/MacOS/readyToLogin'" >> $1
-    echo "alias addMemberToSliceAndSlivers='/Applications/omniTools-2.7/addMemberToSliceAndSlivers.app/Contents/MacOS/addMemberToSliceAndSlivers'" >> $1
-    echo "alias clear-passphrases='/Applications/omniTools-2.7/clear-passphrases.app/Contents/MacOS/clear-passphrases'" >> $1
-    echo "alias remote-execute='/Applications/omniTools-2.7/remote-execute.app/Contents/MacOS/remote-execute'" >> $1
+    # Append a blank last line if there isn't one already
+    lastline=`tail -1 $1`
+    if [ "$lastline" != "" ]; then
+	echo $'\n' >> $1
+    fi
+    echo "# Aliases for commands in the GENI omniTools-2.8 package" >> $1
+    echo "alias omni='/Applications/omniTools-2.8/omni.app/Contents/MacOS/omni'" >> $1
+    echo "alias stitcher='/Applications/omniTools-2.8/stitcher.app/Contents/MacOS/stitcher'" >> $1
+    echo "alias omni-configure='/Applications/omniTools-2.8/omni-configure.app/Contents/MacOS/omni-configure'" >> $1
+    echo "alias readyToLogin='/Applications/omniTools-2.8/readyToLogin.app/Contents/MacOS/readyToLogin'" >> $1
+    echo "alias addMemberToSliceAndSlivers='/Applications/omniTools-2.8/addMemberToSliceAndSlivers.app/Contents/MacOS/addMemberToSliceAndSlivers'" >> $1
+    echo "alias clear-passphrases='/Applications/omniTools-2.8/clear-passphrases.app/Contents/MacOS/clear-passphrases'" >> $1
+    echo "alias remote-execute='/Applications/omniTools-2.8/remote-execute.app/Contents/MacOS/remote-execute'" >> $1
+}
+
+# Function that removes lines that look like what writeAliases adds
+removeAliases () {
+   sed -i".bak" '/\/Applications\/omniTools/d;/# Aliases for commands in the GENI omniTools/d' $1
 }
 
 wroteAliases=false
 
+# Look for a file with aliases in 3 usual spots
+# First, delete any existing aliases
+for rcFile in $HOME/.bash_profile $HOME/.bash_login $HOME/.profile ; do
+    if [ -f $rcFile ] ; then
+	removeAliases $rcFile
+    fi
+done
+
+# Then add the new aliases - but only once
 for rcFile in $HOME/.bash_profile $HOME/.bash_login $HOME/.profile ; do
     if [ -f $rcFile ] ; then
         writeAliases $rcFile

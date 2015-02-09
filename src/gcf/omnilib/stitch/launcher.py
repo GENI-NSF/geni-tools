@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2013-2014 Raytheon BBN Technologies
+# Copyright (c) 2013-2015 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -24,6 +24,7 @@
 
 from __future__ import absolute_import
 
+import datetime
 import logging
 import time
 
@@ -32,10 +33,11 @@ from .objects import Aggregate
 
 class Launcher(object):
 
-    def __init__(self, options, slicename, aggs=[], logger=None):
+    def __init__(self, options, slicename, aggs=[], timeoutTime=datetime.datetime.max, logger=None):
         self.aggs = aggs # Aggregate objects
         self.opts = options # Omni options
         self.slicename = slicename
+        self.timeoutTime = timeoutTime
         self.logger = logger or logging.getLogger('stitch.launcher')
 
     def launch(self, rspec, scsCallCount):
@@ -43,6 +45,9 @@ class Launcher(object):
         make a reservation there.'''
         lastAM = None
         while not self._complete():
+            if datetime.datetime.utcnow() >= self.timeoutTime:
+                msg = "Reservation attempt timed out after %d minutes." % self.opts.timeout
+                raise StitchingError(msg)
             ready_aggs = self._ready_aggregates()
             if len(ready_aggs) == 0 and not self._complete():
                 self.logger.debug("Error! No ready aggregates and not all complete!")
@@ -54,6 +59,10 @@ class Launcher(object):
             self.logger.debug("\nThere are %d ready aggregates: %s",
                               len(ready_aggs), ready_aggs)
             for agg in ready_aggs:
+                if datetime.datetime.utcnow() >= self.timeoutTime:
+                    msg = "Reservation attempt timed out after %d minutes." % self.opts.timeout
+                    raise StitchingError(msg)
+
                 lastAM = agg
                 # FIXME: Need a timeout mechanism on AM calls
                 try:
@@ -67,6 +76,13 @@ class Launcher(object):
                     if not isinstance(se, StitchingRetryAggregateNewVlanImmediatelyError):
                         if agg.dcn:
                             secs = Aggregate.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS
+
+                    if datetime.datetime.utcnow() + datetime.timedelta(seconds=secs) >= self.timeoutTime:
+                        # We'll time out. So quit now.
+                        self.logger.debug("After planned sleep for %d seconds we will time out", secs)
+                        msg = "Reservation attempt timing out after %d minutes." % self.opts.timeout
+                        raise StitchingError(msg)
+
                     self.logger.info("Pausing for %d seconds for Aggregates to free up resources...\n\n", secs)
                     time.sleep(secs)
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2014 Raytheon BBN Technologies
+# Copyright (c) 2011-2015 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -351,6 +351,10 @@ def getParser() :
   parser.add_option("--fallbackToStatusForPG",
                     dest="fallback_status_PG",
                     help="For ProtoGENI/InstaGENI nodes, fallback to querying login info from SliverStatus if it contains login info not found in the manifest.",
+                    action="store_true", default=False)
+  parser.add_option("--ansible-inventory",
+                    dest="ansible_inventory",
+                    help="Create an ansible inventory containing a single line for each host in your slice.",
                     action="store_true", default=False)
   return parser
 
@@ -731,6 +735,10 @@ def main_no_print(argv=None, opts=None, slicen=None):
   options.warn = True
   framework, config, args, opts = omni.initialize( [], options )
 
+  # If creating an ansible inventory don't check the keys
+  if options.ansible_inventory:
+      options.include_keys = False
+
   keyList = findUsersAndKeys( )
   if options.include_keys and sum(len(val) for val in keyList.itervalues())== 0:
     print "ERROR: There are no keys. You can not login to your nodes."
@@ -809,17 +817,63 @@ def main_no_print(argv=None, opts=None, slicen=None):
       #    print "Not getting node status for %s" % amUrl
   return loginInfoDict, keyList
 
+def createAnsibleInventory(loginInfoDict, keyList):
+  global options
+  '''List the Login Information from all AMs and all hosts '''
+
+  # Check if the output option is set
+  defaultAnswer = not options.donotoverwrite
+  prefix = ""
+  if options.prefix and options.prefix.strip() != "":
+    prefix = options.prefix.strip() + "-"
+  if options.output :
+    filename = getFileName(prefix+"inventory", defaultAnswer)
+    f = open(filename, "w")
+    print "Host info saved in inventory file: %s" % filename
+  else :
+    f = sys.stdout
+
+  firstTime = {}
+
+  for amUrl, amInfo in loginInfoDict.items() :
+    sortedAMInfo = {}
+    for item in amInfo['info']:
+      if not sortedAMInfo.has_key( item['client_id'] ):
+          sortedAMInfo[ item['client_id'] ] = []
+      sortedAMInfo[ item['client_id'] ].append(item)
+
+    for client_id, itemList in sortedAMInfo.items():
+      for item in itemList:
+          output = ""
+          if not firstTime.has_key( amUrl ):
+              firstTime[amUrl] = {}
+          if not firstTime[amUrl].has_key( item['client_id'] ):
+              firstTime[amUrl][item['client_id'] ] = {}
+              output += inventoryInfoForOneUser( item )
+          f.write(output)
+
+def inventoryInfoForOneUser( item, key=None ):
+    output = "%s " % item['client_id']
+    output += " ansible_ssh_host=%s " % item['hostname']
+    if str(item['port']) != '22' :
+        output += " ansible_ssh_port=%s " % item['port']
+    # output += " ansible_ssh_user=%s " % item['username']
+    output += "\n"
+    return output
 
 def main(argv=None):
     if not argv:
         argv = sys.argv[1:]
     loginInfoDict, keyList = main_no_print(argv=argv)
-    printSSHConfigInfo(loginInfoDict, keyList)
-#    for am, amInfo in loginInfoDict.items():
-#        print "+++ "+am+" +++"
-#        for info in amInfo["info"]:
-#            print "+++ "+ info['username']+" on "+ info['hostname']+":"+info['port'] +" +++"
-    printLoginInfo(loginInfoDict, keyList) 
+    if not options.ansible_inventory:
+        printSSHConfigInfo(loginInfoDict, keyList)
+        #    for am, amInfo in loginInfoDict.items():
+        #        print "+++ "+am+" +++"
+        #        for info in amInfo["info"]:
+        #            print "+++ "+ info['username']+" on "+ info['hostname']+":"+info['port'] +" +++"
+        printLoginInfo(loginInfoDict, keyList)
+    else:
+        createAnsibleInventory(loginInfoDict, keyList)
     if not loginInfoDict:
       print "No login information found!!"
     if not keyList:

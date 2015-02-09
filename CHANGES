@@ -1,5 +1,110 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 2.8:
+ * Omni
+  * Allow configuring how many times Omni retries on a busy error from
+    an AM or CH. Use `--maxBusyRetries`. Default remains 4. (#749)
+  * Support `Update()` and `Cancel()` from AM APIv4 in any v3+ implementation. Support
+    is only known at ProtoGENI, and is limited. (#589)
+  * New option `--noCacheFiles` completely disables reading or writing the !GetVersion and
+    Aggregate nickname cache files. (#772)
+  * New config that sets the current release number and a release message,
+    so Omni can alert you if a new release is available. (#698)
+  * Better control of Omni logging configuration. (#458)
+   * Allow a Python logging configuration dictionary, and configure
+     logging from that if possible.
+   * New option `--noLoggingConfiguration` completely disables
+     configuring Python loggers from Omni. A script might use this to
+     allow it to configure logging later in its own way.
+  * Fix error message on expired user cert. (#756)
+  * Remove ticket #722 workaround (bug fixed at ION AM). (#724)
+  * Mac installer: remove old aliases before adding new ones. (#556)
+  * Clean up `listresources` summary string and include sliver expiration if known. (#704)
+  * Add support for `--start-time` option to specify a `geni_start_time` option
+    for any aggregates that support such a value. (#660)
+  * Update copyrights to 2015 (#764)
+  * Add nicknames for !CloudLab and Apt. (#767)
+  * Avoid exception on empty aggregate in `-a` argument. (#771)
+  * Support python 2.7.9+ where we must request not verifying server certificates
+    for the SSL connection. Thanks to Ezra Kissel. (#776)
+
+ * Stitcher
+  * Catch keyboard interrupts to warn if you interrupt your run and have 
+    left over reservations. (#754)
+  * Added `--timeout` option to specify that stitcher runs time out 
+    (default is no timeout as before), deleting any partial reservations. (#730)
+  * SCS requires a valid client certificate and uses SSL. (#757)
+   * As a result, the SSL timeout on calls to the SCS should work. (#346)
+   * When calling `scs.py` directly, you must now provide the `--key` and `--cert`
+     arguments to reach the default SCS or any SCS that uses https.
+  * Check current VLAN tag availability at AMs before trying reservations, where it
+    works and will help. Disable this with new option `--noAvailCheck`. (#566,#545)
+  * Better support for requests using multiple ExoGENI sites. (#738)
+   * Use ExoGENI stitching between ExoGENI sites by default (as before).
+   * Allow reserving resources from multiple individual ExoGENI sites,
+     not through the ExoSM. This is a change.
+   * Allow using GENI stitching between ExoGENI sites by going through individual
+     ExoGENI sites and not the ExoSM. This is a change.
+     * A request with no link among ExoGENI sites will not use the ExoSM, unless
+       you specify `--useExoSM`. This is a change - previously, you would get the ExoSM.
+     * A request that does include a link among ExoGENI sites will by default continue to
+       use the ExoSM and ExoGENI stitching. But you can choose to use GENI stitching: 
+       supply `--noExoSM` or `--noEGStitching` or `--noEGStitchingOnLink`.
+     * Note however that passing options `--noExoSM` or `--noEGStitching` means that any links between ExoGENI
+       sites will attempt to use a GENI stitched link, which may not be possible. Using
+       `--noEGStitchingOnLink` means that only the named links between ExoGENI sites will attempt
+       to use a GENI stitched link.
+     * See README-stitching.txt for more on `--noEGStitching` and `--noEGStitchingOnLink`.
+  * Allow recreating the combined manifest RSpec. (#284)
+   * Call `stitcher listresources <slice>` or `stitcher describe <slice>`.
+   * If you specify `--useSliceAggregates`, any local stitcher file listing AMs in the slice
+     will be ignored.
+   * Return matches that for Omni, with the combined manifest returned under the key
+     `combined` for `describe`, and `('combined','combined')` for `listresources`.
+  * Add new production AL2S server to nickname cache and support identifying the OESS AM
+    using the new URL. (#775)
+  * Use the SCS instance maintained by Internet2 by default. (#761)
+  * Limit available range on a hop that doesn't import to tags available at hops that 
+    import from it. (#747)
+  * Support only generating and saving the expanded request. (#763)
+   * Supply new option `--genRequest`.
+   * No reservation is done, and no slice credential check is done.
+   * Includes SCS expansion and checking current availability.
+  * Handle PG AMs taking longer to delete a previous reservation. (#769)
+   * Better handle delete errors that really mean there was nothing here to delete.
+   * Before allocating, if stitcher did a previous delete at this aggregate in this run,
+     check `sliverstatus` to ensure that delete completed.
+  * `Invalid slice urn` is fatal at ExoGENI. (#746)
+  * Remove note about capacity at ExoGENI, now that it is in kbps. (#678)
+  * Error and exit if the request uses Speaks For and requires AL2S 
+    (since AL2S does not support Speaks For yet). (#753)
+  * Accept `--scsURL` in `scs.py` to specify the SCS URL. (#755)
+  * Add logic to print status when deleting reservations. (#750)
+  * Factor out determining if AM type supports requesting 'any' VLAN tag. (#758)
+  * Allow `--verbosessl` to `scs.py` to turn on debug SSL logging. (#770)
+  * Allow re-setting default sliver expiration times by aggregate type with a new
+    `omni_defaults` value (like from the agg_nick_cache). (#694)
+
+ * readyToLogin
+  * Add `--ansible-inventory` option which creates a host file to use with Ansible. Works 
+    with `-o` and `--prefix`. (#759)
+
+ * remote-execute
+  * Add `-A`/`--forwardAgent` option to enable SSH agent forward (like using `-A` with SSH). (#774)
+
+ * gcf
+  * Add support for policy-based authorizer to interpose between authentication
+    and delegate invocation. (#660)
+   * Allow ABAC-like per aggregate authorization policies. See README-authorization.txt
+   * Support scheduled reservations. See README-scheduling.txt
+   * Refactored the AM base class to use a Method Context to handle most per method
+     processing and error handling.
+    * Instead of wrapping calls to the delegate in a try/except block, we use a
+      `with AMMethodContext` call to check and authorize arguments before making the call
+      to the delegate.
+   * Add a getter for fetching the PEM certificate from the server, to support safely fetching
+     that certificate in a multithreaded environment.
+
 gcf 2.7:
  * Omni
   * Calls to `status` and `sliverstatus` will also call the CH

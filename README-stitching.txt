@@ -172,6 +172,16 @@ aggregates at which it made reservations. This file is used by
 `renewsliver` or `deletesliver`. This file is named something like
 `slice.hrn-amlist.txt`.
 
+To recreate the combined manifest RSpec for your entire slice as one
+file, you can call stitcher with the `listresource` or `describe`
+command.
+ - Specify `--useSliceAggregates` to ignore the local stitcher file of
+ aggregates in your slice, and instead query the clearinghouse.
+ - The combined RSpec will be saved to a file as usual.
+ - The return signature for the stitcher call (when used as a tool)
+ matches that for Omni, with the combined manifest stored under
+ `combined`.
+
 When done, be sure to delete your reservations, at ''all''
 aggregates involved in your reservation. `stitcher` remembers the
 aggregates at which it made reservations (see above), so this is easy
@@ -225,7 +235,9 @@ Additionally, these options are used for some topologies:
  - `--noExoSM`: Avoid using the ExoGENI ExoSM. If an aggregate is an
  ExoGENI aggregate and the URL we get is the ExoSM URL, then try to
  instead use the local rack URL, and therefore only local rack
- allocated VMs and VLANs. For this to work, your `omni_config` or the
+ allocated VMs and VLANs. This is inconsistent with `--useExoSM` and
+ implies `--noEGStitching` (use GENI stitching where possible).
+ For this to work, your `omni_config` or the
  base aggregate nicknames must have an entry for the local ExoGENI
  rack that specifies both the aggregate URN as well as the URL, EG:
 {{{
@@ -235,12 +247,19 @@ eg-fiu=urn:publicid:IDN+exogeni.net:fiuvmsite+authority+am,https://fiu-hn.exogen
 }}}
  - `--useExoSM`: Try to use the ExoGENI ExoSM for ExoGENI
  reservations. If we get an individual ExoGENI rack URL for an
- aggregate, then try to use the ExoSM URL. For this to work, your
+ aggregate, then try to use the ExoSM URL. This is inconsistent with
+ `--noExoSM` or `--noEGStitching` or `--noEGStitchingOnLink`; ExoGENI stitching wil be used where
+ applicable. For this to work, your
  `omni_config`  or the base aggregate nicknames must have an entry for
  the ExoGENI rack that specifies the URN and URL, as well as an entry
  for the ExoSM.
  - `--noEGStitching`: Force use of GENI stitching (send the request to
- the SCS), and not ExoGENI stitching between EG aggregates.
+ the SCS) on all links, and not ExoGENI stitching between EG aggregates. This is
+ inconsistent with `--useExoSM`.
+ - `--noEGStitchingOnLink <link clien_id>`: Force use of GENI stitching (send the request to
+ the SCS) only on the named Link, and do not use ExoGENI stitching on
+ this link. This is inconsistent with `--useExoSM`. You can supply
+ this argument many times for multiple links between ExoGENI resources.
 
 Other options you should not need to use:
  - `--fileDir`: Save _all_ files to this directory, and not the usual
@@ -262,16 +281,27 @@ Other options you should not need to use:
   entry in the `agg_nick_cache`.
  - `--noReservation`: Do not try to reserve at aggregates; instead,
    just save the expanded request RSpec.
+ - `--logconfig` to use a non standard logging configuration. Stitcher
+ expects one `StreamHandler` for the console. Default configuration is
+ in `gcf\stitcher_logging.conf`.
+ - `--timeout`: Maximum number of minutes to allow stitcher to run,
+ before timing out. Default is no timeout (`0` minutes). Note that
+ by far most runs complete within 45 minutes, and usually much less. Some
+ successful stitching runs take 90 minutes or more. On timeout,
+ existing reservations are deleted.
+ - `--noAvailCheck`: Disable checking for currently available VLAN
+ tags at aggregates that support doing such checks.
+ - `--genRequest`: Generate the fully expanded request (including SCS
+ inputs and checking current availability), but do not do the
+ reservation. Instead, save that request to a file.
  - `--fakeModeDir <directory>`: When supplied, does not make any
  actual reservations at aggregates. For testing only.
  - `--savedSCSResults`: Use the specified JSON file of saved results
    from calling the SCS, instead of actually calling the SCS.
- - `--logconfig` to use a non standard logging configuration. Stitcher
- expects one `StreamHandler` for the console. Default configuration is
- in `gcf\stitcher_logging.conf`.
  - `--useSCSugg`: Always use the VLAN tag suggested by the
  SCS. Usually stitcher asks the aggregate to pick, despite what the
  SCS suggested.
+
 
 == Tips and Details ==
 
@@ -283,7 +313,7 @@ In running stitcher, follow these various tips:
  - Be sure all nodes in the request are bound to specific aggregates.
  - This script can take a while - it must make reservations at all the
  aggregates, and keeps retrying at aggregates that can't provide
- matching VLAN tags. Stitcher must pause 30 seconds or more between
+ matching VLAN tags. Stitcher must pause 45 seconds or more between
  retries. Be patient.
  - Stitcher will retry when something goes wrong, up to a point. If
  the failure is isolated to a single aggregate failing to find a VLAN,
@@ -321,20 +351,22 @@ In running stitcher, follow these various tips:
 {{{
 cd <omni install directory>
 export PYTHONPATH=$PYTHONPATH:.
-python src/gcf/omnilib/stitch/scs.py --listaggregates
+python src/gcf/omnilib/stitch/scs.py --listaggregates --key <path-to-key> --cert <path-to-cert>
 }}}
  - Stitching to fixed endpoints:
   - A fixed endpoint is any switch/port that happens to connect to
   other things but not an explicit node. Use the `--fixedEndpoint`
   option to be sure aggregates can handle this.
  - Stitching to ExoGENI aggregates
-  - Note that in ExoGENI, capacity is in ''bps''.
   - ExoGENI reservations can come from the specific rack, or from the
   ExoSM's allocation of resources at that rack. You can control in
   stitcher whether you use the local racks or the ExoSM, by using the
   `--useExoSM` or `--noExoSM` options.
-  - If your request uses multiple ExoGENI sites, stitcher will get
-    those resources from the ExoSM (an ExoGENI requirement).
+  - By default, stitcher uses ExoGENI stitching between ExoGENI
+  aggregates, by submitting such requests to the ExoSM. Supplying
+  `--noEGStitching` forces stitcher to try to use GENI stitching
+  between all such aggregates. Use `--noEGStitchingOnLink` to force
+  using GENI stitching only on the named link between ExoGENI racks.
  - Be sure to see the list of Known Issues below.
 
 === Stitching Computation Service ===
@@ -358,6 +390,9 @@ various aggregates.
 The SCS URL is set by code, may be updated via a new value in the
 aggregate nickname cache, and may be over-ridden by developers or
 testers using the `--scsURL` option.
+
+This service was developed by engineers at MAX, and the default
+instance is operated by Internet2.
 
 Known issues with this service can be found on the
 [http://groups.geni.net/geni/query?status=new&status=assigned&status=reopened&component=MAXSCS GENI Trac]
@@ -544,6 +579,10 @@ Cannot find the set of paths for the RequestTopology. '.
  - The ExoGENI aggregate is in maintenance. Try a different aggregate
  or try again later. Monitor the mailing list: https://groups.google.com/forum/#!forum/geni-orca-users
 
+`Invalid slice urn`
+ - This is a fatal error from ExoGENI. Did you request more than 1
+   GENI stitching link at a single ExoGENI site?
+
 === Errors in the tool – you may need to report this as a bug ===
 
 ` … has request tag XXX that is already in use by …`
@@ -593,9 +632,11 @@ Cannot find the set of paths for the RequestTopology. '.
  current aggregates, and VLAN translation support is limited. VLAN
  tags available at each aggregate are limited, and may run out.
  - Stitching to ExoGENI is limited:
-  - Reservations at ExoGENI AMs work. If you request resources at
-  multiple ExoGENI AMs, you must use the ExoSM. Stitcher will ensure
-  this.
+  - Reservations at ExoGENI AMs work.
+   - Previously if you requested resources at
+  multiple ExoGENI AMs, Stitcher would use the ExoSM for all ExoGENI
+  reservations. Currently, stitcher allows you to continue using the
+  individual ExoGENI racks, unless you specify --useExoSM.
   - Stitching within ExoGENI, by submitting a request to the ExoSM
   with only ExoGENI resources, works fine.
   - Stitching between ExoGENI and non ExoGENI resources only works at
@@ -618,24 +659,20 @@ Cannot find the set of paths for the RequestTopology. '.
  an existing reservation.
  - Some fatal errors at aggregates are not recognized, so the script keeps trying longer
  than it should.
- - In order to make resources expire at rougly the same time, stitcher
- currently hard-codes expected new sliver expiration times as of
- September, 2014. This should be retrieved dynamically somehow
- instead. New aggregate types or local policies may cause problems.
  - [http://trac.gpolab.bbn.com/gcf/query?status=accepted&status=assigned&status=new&status=reopened&component=stitcher&order=priority&col=id&col=summary&col=status&col=type&col=priority&col=milestone&col=component Known stitcher defects] 
  are listed on the gcf trac.
+ - Python2.6 has a 60 second delay talking to the SSL protected SCS
+   run by Internet2. If you are running python2.6, use `--scsURL http://geni-scs.net.internet2.edu:8081/geni/xmlrpc`
 
 == To Do items ==
  - With ExoGENI AMs: After reservation, loop checking sliverstatus for
  success or failure, then get the manifest after that
  - Thread all calls to omni
- - Add Aggregate specific top level RSpec elements in combined
- manifest
  - Summarize errors at the end of the run.
  - Support stitch-to-aggregate at ProtoGENI based aggregates if supported
- - Support recreating the combined manifest RSpec
  - Clean up hard-coded aggregate-specific sliver expiration policy handling
- - Support AM API v3
+ - Support AM API v3; specifically, use `allocate` where supported to
+ more rapidly negotiate VLAN tags.
  - Consolidate constants
  - Fully handle negotiating among AMs for a VLAN tag to use
   - As in when the returned `suggestedVLANRange` is not what was requested
@@ -643,7 +680,6 @@ Cannot find the set of paths for the RequestTopology. '.
  - Tune counters, sleep durations, etc
  - Return a struct with detailed results (not just comments in manifest)
  - Return a struct on errors
- - Use authentication with the SCS
  - `opts.warn` is used to suppress omni output. Clean that up. A `scriptMode` option?
  - Implement `confirmSafeRequest()` to ensure no dangerous requests are made
  - Expand to additional aggregates

@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2010-2014 Raytheon BBN Technologies
+# Copyright (c) 2010-2015 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -99,11 +99,19 @@ class SecureXMLRPCServer(SimpleXMLRPCServer):
                                       certfile=certfile,
                                       server_side=True,
                                       cert_reqs=ssl.CERT_REQUIRED,
-                                      ssl_version=ssl.PROTOCOL_SSLv23,
+#                                      ssl_version=ssl.PROTOCOL_TLSv1,
+                                      ssl_version=ssl.PROTOCOL_SSLv23, # Ideally we'd accept any TLS but no SSL. Sigh.
                                       ca_certs=ca_certs)
+#                                      ciphers='HIGH:MEDIUM:!ADH:!SSLv2:!MD5:!RC4:@STRENGTH') # Hopefully this effectively exclues SSLv2 and 3?
         if bind_and_activate:
             # This next throws a socket.error on error, eg
             # Address already in use or Permission denied. 
             # Catch for clearer error message?
             self.server_bind()
             self.server_activate()
+
+    # Return the PEM cert for current XMLRPC client connection
+    # This works for the single threaded case. Need to override
+    # This method for the threaded case
+    def get_pem_cert(self):
+        return self.pem_cert

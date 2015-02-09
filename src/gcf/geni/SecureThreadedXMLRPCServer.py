@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------         
-# Copyright (c) 2010-2014 Raytheon BBN Technologies
+# Copyright (c) 2010-2015 Raytheon BBN Technologies
 #                                                                               
 # Permission is hereby granted, free of charge, to any person obtaining         
 # a copy of this software and/or hardware specification (the "Work") to         
@@ -95,4 +95,10 @@ class SecureThreadedXMLRPCServer(SocketServer.ThreadingMixIn, SecureXMLRPCServer
                                         bind_and_activate=bind_and_activate, \
                                         keyfile=keyfile, certfile=certfile, ca_certs=ca_certs)
 
+
+
+    # Threaded version of get_pem_cert: pull from 
+    # request_specific_info (per thread)
+    def get_pem_cert(self) :
+        return SecureThreadedXMLRPCRequestHandler.get_pem_cert()
 

@@ -41,6 +41,33 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
 
+New in v2.8:
+ * Allow configuring how many times Omni retries on a busy error from
+   an AM or CH. Use `--maxBusyRetries`. Default remains 4. (#749)
+ * Support `Update()` and `Cancel()` from AM APIv4 in any v3+ implementation. Support
+   is only known at ProtoGENI, and is limited. (#589)
+ * New option `--noCacheFiles` completely disables reading or writing the !GetVersion and
+   Aggregate nickname cache files. (#772)
+ * New config that sets the current release number and a release message,
+   so Omni can alert you if a new release is available. (#698)
+ * Better control of Omni logging configuration. (#458)
+  * Allow a Python logging configuration dictionary, and configure
+    logging from that if possible.
+  * New option `--noLoggingConfiguration` completely disables
+    configuring Python loggers from Omni. A script might use this to
+    allow it to configure logging later in its own way.
+ * Fix error message on expired user cert. (#756)
+ * Remove ticket #722 workaround (bug fixed at ION AM). (#724)
+ * Mac installer: remove old aliases before adding new ones. (#556)
+ * Clean up `listresources` summary string and include sliver expiration if known. (#704)
+ * Add support for `--start-time` option to specify a `geni_start_time` option
+   for any aggregates that support such a value. (#660)
+ * Update copyrights to 2015 (#764)
+ * Add nicknames for !CloudLab and Apt. (#767)
+ * Avoid exception on empty aggregate in `-a` argument. (#771)
+ * Support python 2.7.9+ where we must request not verifying server certificates
+   for the SSL connection. Thanks to Ezra Kissel. (#776)
+
 New in v2.7:
  * Calls to `status` and `sliverstatus` will also call the CH
    to try to sync up the CH records of slivers with truth
@@ -592,7 +619,9 @@ commands for details.
 
 Omni output is done through the python logging package, and
 prints to STDERR by default. Logging levels, format, and output
-destinations are configurable by supplying a custom Python logging
+destinations are configurable by either supplying a Pythong logging
+configuration dictionary (to `oscript.call` or `oscript.initialize`),
+or by supplying a custom Python logging
 configuration file, using the `-l` option. Note that these settings
 will apply to the entire Python process. For help creating a logging
 config file, see
@@ -605,6 +634,17 @@ etc. If multiple log level options are supplied, Omni uses the most
 verbose setting specified. Note that at WARN and ERROR levels, command
 outputs are not printed: use the `-o` option to save command results
 to files, or --tostdout to print results to STDOUT.
+
+You may also completely disable Omni output, by specifying the option
+`--noLoggingConfiguration`. Unless you use Omni as a library and your
+tool configures Python logging, Omni will not write any output to
+Python logging streams. For example, a tool might include
+`--noLoggingConfiguration` when initializing the Omni library, and
+then programmatically configure Python logging itself. Note that you
+should generally configure some logging; many errors will cause Python
+to stop Omni immediately if a log message is called for and no logging
+configuration has been done. (You will see an error like:
+'`No handlers could be found for logger "omni"`'.)
 
 For further control of Omni output, use Omni as a library from your
 own python script (see [#OmniasaLibrary below] for details). 
@@ -646,7 +686,7 @@ Omni scripting allows a script to:
  * Programmatically set other omni options (like inferring the "-a")
  * Accept omni options (like "-f") in your script to pass along to Omni
  * Parse the returns from Omni commands and use those values in subsequent Omni calls
- * Control or suppress the logging in Omni
+ * Control or suppress the logging in Omni (see the above section for details)
 
 For examples, see `src/stitcher.py` or `examples/expirationofmyslices.py` and `examples/myscript.py` in the gcf distribution.
 Or [http://trac.gpolab.bbn.com/gcf/wiki/OmniScriptingExpiration Omni Scripting Expiration] 
@@ -822,8 +862,8 @@ Omni supports the following command-line options.
 {{{
 $ ~/gcf/src/omni.py -h                            
 Usage: 
-GENI Omni Command Line Aggregate Manager Tool Version 2.7
-Copyright (c) 2014 Raytheon BBN Technologies
+GENI Omni Command Line Aggregate Manager Tool Version 2.8
+Copyright (c) 2011-2015 Raytheon BBN Technologies
 
 omni.py [options] [--project <proj_name>] <command and arguments> 
 
@@ -845,6 +885,8 @@ omni.py [options] [--project <proj_name>] <command and arguments>
  			 deletesliver <slicename> [AM API V1&2 only] 
  			 delete <slicename> [AM API V3 only] 
  			 shutdown <slicename> 
+ 			 update <slicename> <rspec URL, filename, or nickname> [Some AM API V3 AMs only] 
+ 			 cancel <slicename> [Some AM API V3 AMs only] 
  		Non AM API aggregate functions (supported by some aggregates): 
  			 createimage <slicename> <imagename> [optional: false (keep image private)] -u <sliver urn> [ProtoGENI/InstaGENI only] 
  			 snapshotimage <slicename> <imagename> [optional: false (keep image private)] -u <sliver urn> [ProtoGENI/InstaGENI only] 
@@ -917,6 +959,9 @@ Options:
     --end-time=GENI_END_TIME
                         Requested end time for any newly allocated or
                         provisioned slivers - may be ignored by the AM
+    --start-time=GENI_START_TIME
+                        Requested start time for any allocated slivers
+                        - NOW if not provided, could be for future reservations
     --optionsfile=JSON_OPTIONS_FILENAME
                         Send all options defined in named JSON format file to
                         methods that take options
@@ -927,6 +972,9 @@ Options:
                         Sliver URN (not name) on which to act. Supply this
                         option multiple times for multiple slivers, or not at
                         all to apply to the entire slice
+    --cancelled         Should Describe show sliver state of only
+                        geni_provisioned slivers, ignoring any geni_updating
+                        and geni_allocated slivers (default False)
 
   Logging and Verboseness:
     Control the amount of output to the screen and/or to a log
@@ -959,6 +1007,9 @@ Options:
                         logging config file]. Default: 'omni.log'
     --tostdout          Print results like rspecs to STDOUT instead of to log
                         stream
+    --noLoggingConfiguration
+                        Do not configure python logging; for use by other
+                        tools.
 
   File Output:
     Control name of output file and whether to output to a file
@@ -1003,6 +1054,9 @@ Options:
     --GetVersionCacheName=GETVERSIONCACHENAME
                         File where GetVersion info will be cached, default is
                         ~/.gcf/get_version_cache.json
+    --noCacheFiles      Disable both GetVersion and Aggregate Nickname cache
+                        functionality completely; no files are downloaded,
+                        saved, or loaded.
 
   Aggregate Nickname Cache:
     Control Aggregate Nickname Cache
@@ -1053,6 +1107,9 @@ Options:
                         In AM API v2, if an AM returns a non-0 (failure)
                         result code, raise an AMAPIError. Default is False.
                         For use by scripts.
+    --maxBusyRetries=MAXBUSYRETRIES
+                        Max times to retry AM or CH calls on getting a 'busy'
+                        error. Default: 4
     --no-compress       Do not compress returned values
     --abac              Use ABAC authorization
     --arbitrary-option  Add an arbitrary option to ListResources (for testing
@@ -1159,10 +1216,17 @@ Advanced / Developer Options:
  clearinghouses, specifically the GENI Clearinghouse. Note also that
  `useslicemembers` in the `omni` section of your `omni_config` file
  can be set to `false` to disable `useSliceMembers`.
- - `--ignoreConfigUsers: By default, `createsliver` and `provision`
+ - `--ignoreConfigUsers`: By default, `createsliver` and `provision`
  tell the aggregate to create accounts including for users listed in the users
  section of your `omni_config`, and install the listed SSH keys. With
  this option, Omni will not use those keys. See also `--noSliceMembers`.
+ - `--noCacheFiles`: Completely disable reading, writing or
+ downloading the aggregate nickname and !GetVersion cache files. This
+ may be useful for tools using Omni as a library when multiple
+ instances may run in parallel.
+ - `--noLoggingConfiguration`: Omni will not configure the Python
+ loggers. Without such a configuration, output only goes to STDOUT if
+ you supply `--tostdout`, or to files if you specify `-o`.
 
 === Supported commands ===
 Omni supports the following commands.
@@ -1815,6 +1879,8 @@ Other options:
  - --no-compress: Request the returned RSpec not be compressed (default is to compress)
  - `-l <path>` to specify a logging configuration file
  - `--logoutput <filename>` to specify a logging output filename
+ - `--cancelled`: For use with `Update()`: Show only slivers that are
+ `geni_provisioned`, not slivers that are only `geni_allocated` or `geni_updating`.
 
 Options for development and testing:
  - `--devmode`: Continue on error if possible
@@ -2599,6 +2665,162 @@ Aggregates queried:
  nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
+
+==== update ====
+Call GENI AM API Update <slice name> <rspec file name>
+
+For use with AM API v3+ only, and only at some AMs. 
+Technically adopted for AM API v4, but may be implemented by v3 AMs. 
+See http://groups.geni.net/geni/wiki/GAPI_AM_API_DRAFT/Adopted#ChangeSetC:Update
+
+Update resources as described in a request RSpec argument in a slice with 
+the named URN. Update the named slivers if specified, or all slivers in the slice at the aggregate.
+On success, new resources in the RSpec will be allocated in new slivers, existing resources in the RSpec will
+be updated, and slivers requested but missing in the RSpec will be deleted.
+
+Return a string summarizing results, and a dictionary by AM URL of the return value from the AM.
+
+Format: `omni.py -V3 [-a AM_url_or_nickname] [-u sliver_urn] update <slicename> <rspec file or nickname>`
+
+Sample usage:
+ - Basic update of resources at 1 AM into myslice
+   `omni.py -V3 -a http://myaggregate/url update myslice my-request-rspec.xml`
+ - Update resources in 2 AMs, requesting a specific sliver end time, save results into specificly named files that include an AM name calculated from the AM URL,
+   using the slice credential saved in the given file
+   `omni.py -V3 -a http://myaggregate/url -a http://myother/aggregate --end-time 20120909 -o --outputfile myslice-manifest-%a.json --slicecredfile mysaved-myslice-slicecred.xml update myslice my-update-rspec.xml`
+
+After update, slivers that were `geni_allocated` remain `geni_allocated` (unless they were left
+out of the RSpec, indicating they should be deleted, which is then immediate). Slivers that were 
+`geni_provisioned` or `geni_updating` will be `geni_updating`.
+Clients must `Renew` or `Provision` any new (`geni_updating`) slivers before the expiration time
+(given in the return struct), or the aggregate will automatically revert the changes 
+(delete new slivers or revert changed slivers to their original state). 
+Slivers that were `geni_provisioned` that you do not include in the RSpec will be deleted, 
+but only after calling `Provision`.
+Slivers that were `geni_allocated` or `geni_updating` are immediately changed.
+
+Slice name could be a full URN, but is usually just the slice name portion.
+Note that PLC Web UI lists slices as <site name>_<slice name>
+(e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
+
+Slice credential is usually retrieved from the Slice Authority. But
+with the `--slicecredfile` option it is read from that file, if it exists.
+
+Aggregates queried:
+ - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+   '''and''' any aggregates specified with the `-a` option.
+  - Only supported at some clearinghouses, and the list of aggregates is only advisory
+ - Each URL given in an `-a` argument or URL listed under that given
+ nickname in omni_config, if provided, ELSE
+ - List of URLs given in omni_config `aggregates` option, if provided, ELSE
+ - List of URNs and URLs provided by the selected clearinghouse
+Note that if multiple aggregates are supplied, the same RSpec will be submitted to each.
+Aggregates should ignore parts of the Rspec requesting specific non-local resources (bound requests), but each 
+aggregate should attempt to satisfy all unbound requests. 
+
+Options:
+ - `--sliver-urn` or `-u` option: each specifies a sliver URN to update. If specified,
+   only the listed slivers will be updated. Otherwise, all slivers in the slice will be updated.
+ - `--best-effort`: If supplied, slivers that can be updated, will be; some slivers
+   may not be updated, in which case check the geni_error return for that sliver.
+   If not supplied, then if any slivers cannot be updated, the whole call fails
+   and sliver allocation states do not change.
+   Note that some aggregates may require updating all slivers in the same state at the same 
+   time, per the `geni_single_allocation` !GetVersion return.
+ - `--end-time <time>`: Request that new slivers expire at the given time.
+   The aggregates may provision the resources, but not be able to grant the requested
+   expiration time.
+   Note that per the AM API, expiration times will be timezone aware.
+   Unqualified times are assumed to be in UTC.
+   Note that the expiration time cannot be past your slice expiration
+   time (see `renewslice`).
+
+Output directing options:
+ - `-o`: Save result in per-aggregate files
+ - `-p <prefix>` (used with `-o`): Prefix for resulting files
+ - `--outputfile <path>`: If supplied, use this output file name: substitute the AM for any `%a`, and slicename for any `%s`
+ - If not saving results to a file, they are logged.
+ - If `--tostdout` option, then instead of logging, print to STDOUT.
+ - When using `-o` and not `--outputfile`, file names will indicate the
+   slice name, file format, and which aggregate is represented.
+   e.g.: `myprefix-myslice-update-localhost-8001.json`
+
+Other options:
+ - `--api-version #` or `-V #` or `-V#`: AM API Version # (default: 2)
+ - `-l <path>` to specify a logging config file
+ - `--logoutput <filename>` to specify a logging output filename
+
+Options for development and testing:
+ - `--devmode`: Continue on error if possible
+
+==== cancel ====
+Call GENI AM API Cancel <slice name>
+
+For use with AM API v3+ only, and only at some AMs. 
+Technically adopted for AM API v4, but may be implemented by v3 AMs. 
+See http://groups.geni.net/geni/wiki/GAPI_AM_API_DRAFT/Adopted#ChangeSetC:Update
+
+Cancel pending changes in a slice with 
+the named URN. Cancel the changes to the named slivers if specified, or all slivers in the slice at the aggregate.
+On success, any slivers that were being allocated will be deleted
+(geni_unallocated), and any slivers that were being updated
+('geni_updating'), will revert to their previous state
+('geni_provisioned' with all state and properties as before).
+
+Return a string summarizing results, and a dictionary by AM URL of the return value from the AM.
+
+Format: `omni.py -V3 [-a AM_url_or_nickname] [-u sliver_urn] cancel <slicename>`
+
+Sample usage:
+ - Basic cancel of changes at 1 AM into myslice
+   `omni.py -V3 -a http://myaggregate/url cancel myslice`
+ - Cancel changes in 2 AMs, save results into specificly named files that include an AM name calculated from the AM URL,
+   using the slice credential saved in the given file
+   `omni.py -V3 -a http://myaggregate/url -a http://myother/aggregate -o --outputfile myslice-manifest-%a.json --slicecredfile mysaved-myslice-slicecred.xml cancel myslice`
+
+Slice name could be a full URN, but is usually just the slice name portion.
+Note that PLC Web UI lists slices as <site name>_<slice name>
+(e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
+
+Slice credential is usually retrieved from the Slice Authority. But
+with the `--slicecredfile` option it is read from that file, if it exists.
+
+Aggregates queried:
+ - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+   '''and''' any aggregates specified with the `-a` option.
+  - Only supported at some clearinghouses, and the list of aggregates is only advisory
+ - Each URL given in an `-a` argument or URL listed under that given
+ nickname in omni_config, if provided, ELSE
+ - List of URLs given in omni_config `aggregates` option, if provided, ELSE
+ - List of URNs and URLs provided by the selected clearinghouse
+
+Options:
+ - `--sliver-urn` or `-u` option: each specifies a sliver URN to revert. If specified,
+   only the changes to the listed slivers will be canceled. Otherwise, all changes in the slice will be canceled.
+ - `--best-effort`: If supplied, slivers that can be canceled, will be; some slivers
+   may not be canceled, in which case check the geni_error return for that sliver.
+   If not supplied, then if any slivers cannot be canceled, the whole call fails
+   and sliver allocation states do not change.
+   Note that some aggregates may require canceling all changes in the same state at the same 
+   time, per the `geni_single_allocation` !GetVersion return.
+
+Output directing options:
+ - `-o`: Save result in per-aggregate files
+ - `-p <prefix>` (used with `-o`): Prefix for resulting files
+ - `--outputfile <path>`: If supplied, use this output file name: substitute the AM for any `%a`, and slicename for any `%s`
+ - If not saving results to a file, they are logged.
+ - If `--tostdout` option, then instead of logging, print to STDOUT.
+ - When using `-o` and not `--outputfile`, file names will indicate the
+   slice name, file format, and which aggregate is represented.
+   e.g.: `myprefix-myslice-cancel-localhost-8001.json`
+
+Other options:
+ - `--api-version #` or `-V #` or `-V#`: AM API Version # (default: 2)
+ - `-l <path>` to specify a logging config file
+ - `--logoutput <filename>` to specify a logging output filename
+
+Options for development and testing:
+ - `--devmode`: Continue on error if possible
 
 ==== createimage ====
 Call the ProtoGENI / InstaGENI !CreateImage method, to snapshot the

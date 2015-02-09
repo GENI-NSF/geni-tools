@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2013-2014 Raytheon BBN Technologies
+# Copyright (c) 2013-2015 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -75,7 +75,7 @@ import gcf.omnilib.stitch.objects
 #from gcf.omnilib.stitch.objects import DCN_AM_RETRY_INTERVAL_SECS as DCN_AM_RETRY_INTERVAL_SECS
 
 # URL of the SCS service
-SCS_URL = "http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc"
+SCS_URL = "https://geni-scs.net.internet2.edu:8443/geni/xmlrpc"
 
 DEFAULT_CAPACITY = 20000 # in Kbps
 
@@ -96,7 +96,7 @@ def call(argv, options=None):
     parser = omni.getParser()
     # update usage for help message
     omni_usage = parser.get_usage()
-    parser.set_usage("\n" + "GENI Omni Stitching Tool\n" + "Copyright (c) 2014 Raytheon BBN Technologies\n" + 
+    parser.set_usage("\n" + "GENI Omni Stitching Tool\n" + "Copyright (c) 2013-2015 Raytheon BBN Technologies\n" + 
                      omni_usage+
                      "\nstitcher.py reserves multi-aggregate fully bound topologies, including stitching, if the call is createsliver or allocate; else it just calls Omni.\n")
 
@@ -134,8 +134,14 @@ def call(argv, options=None):
     parser.add_option("--scsURL",
                       help="URL to the SCS service. Default: Value of 'scs_url' in omni_config or " + SCS_URL,
                       default=None)
+    parser.add_option("--timeout", default=0, type="int",
+                      help="Max minutes to allow stitcher to run before killing a reservation attempt (default %default minutes, 0 means no timeout).")
+    parser.add_option("--noAvailCheck", default=False, action="store_true",
+                      help="Disable checking current VLAN availability where possible.")
+    parser.add_option("--genRequest", default=False, action="store_true",
+                      help="Generate and save an expanded request RSpec, but do no reservation.")
     parser.add_option("--fakeModeDir",
-                      help="If supplied, use canned server responses from this directory",
+                      help="Developers only: If supplied, use canned server responses from this directory",
                       default=None)
     parser.add_option("--savedSCSResults", default=None,
                       help="Developers only: Use this saved file of SCS results instead of calling SCS (saved previously using --debug)")
@@ -143,6 +149,8 @@ def call(argv, options=None):
                       help="Developers only: Always use the VLAN tags the SCS suggests, not 'any'.")
     parser.add_option("--noEGStitching", default=False, action="store_true",
                       help="Developers only: Use GENI stitching, not ExoGENI stitching.")
+    parser.add_option("--noEGStitchingOnLink", metavar="LINK_ID", action="append",
+                      help="Developers only: Use GENI stitching on this particular link only, not ExoGENI stitching.")
     #  parser.add_option("--script",
     #                    help="If supplied, a script is calling this",
     #                    action="store_true", default=False)
@@ -395,9 +403,28 @@ def call(argv, options=None):
         logger.debug(omni.getSystemInfo() + "\nStitcher: " + omni.getOmniVersion())
         logger.debug("Running stitcher ... %s Args: %s" % (nondefOpts, " ".join(args)))
 
+    omni.checkForUpdates(config, logger)
+
     if options.defaultCapacity < 1:
         logger.warn("Specified a tiny default link capacity of %dKbps!", options.defaultCapacity)
     # FIXME: Warn about really big capacities too?
+
+    if options.useExoSM and options.noExoSM:
+        sys.exit("Cannot specify both useExoSM and noExoSM")
+
+    if options.useExoSM and options.noEGStitching:
+        sys.exit("Cannot specify both useExoSM and noEGStitching")
+
+    if options.useExoSM and options.noEGStitchingOnLink:
+        sys.exit("Cannot specify both useExoSM and noEGStitchingOnLink")
+
+    if options.noExoSM:
+        if not options.noEGStitching:
+            logger.debug("Per options avoiding ExoSM. Therefore, not using EG Stitching")
+            options.noEGStitching = True
+            # Note that the converse is not true: You can require noEGStitching and still use
+            # the ExoSM, assuming we edit the request to the ExoSM carefully.
+
     handler = StitchingHandler(options, config, logger)
     return handler.doStitching(args)
 

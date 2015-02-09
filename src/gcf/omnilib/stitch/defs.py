@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2013-2014 Raytheon BBN Technologies
+# Copyright (c) 2013-2015 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -25,8 +25,10 @@
 RSPEC_TAG = 'rspec'
 LINK_TAG = 'link'
 NODE_TAG = 'node'
+PORT_TAG = 'port'
 STITCHING_TAG = 'stitching'
 PATH_TAG = 'path'
+SLIVER_TYPE_TAG = 'sliver_type'
 EXPIRES_ATTRIBUTE = 'expires'
 # Capabilities element names
 CAPABILITIES_TAG = 'capabilities'
@@ -56,6 +58,91 @@ DEF_SLIVER_EXPIRATION_IG = 90
 DEF_SLIVER_EXPIRATION_GRAM = 7
 DEF_SLIVER_EXPIRATION_EG = 14
 
+# Singleton class for getting the default sliver expirations for some AM types
+# Allows the config to have an omni_defaults section with values for these defaults to over-ride the values specified here
+# Stitchhandler should call defs.DefaultSliverExpirations.getInstance(config, logger)
+# Then uses of defs.DEF_...  in objects.py should instead do:
+# defs_getter = defs.DefaultSliverExpirations.getInstance()
+# defaultUtah = defs_getter.getUtah() ....
+class DefaultSliverExpirations(object):
+    instance = None
+
+    def __init__(self, config, logger):
+        self.config = config
+        self.logger = logger
+        self.utah = None
+        self.ig = None
+        self.gram = None
+        self.eg = None
+
+    @classmethod
+    def getInstance(cls, config=None, logger=None):
+        if DefaultSliverExpirations.instance:
+            if config:
+                DefaultSliverExpirations.instance.config = config
+        else:
+            DefaultSliverExpirations.instance = DefaultSliverExpirations(config, logger)
+        return DefaultSliverExpirations.instance
+
+    # Parse the new value, allowing for # to denote start of end-of-line comment
+    def parseConfig(self, value):
+        if not value:
+            raise Exception("No value supplied")
+        import re
+        match = re.match(r'^\s*(\d+)\s*#*', value)
+        if not match:
+            raise Exception("Could not find integer in value")
+        return int(match.group(1))
+
+    def getUtah(self):
+        if self.utah:
+            return self.utah
+        self.utah = DEF_SLIVER_EXPIRATION_UTAH
+        if self.config and self.config.has_key('omni_defaults') and self.config['omni_defaults'].has_key('def_sliver_expiration_utah') and self.config['omni_defaults']['def_sliver_expiration_utah']:
+            try:
+                self.utah = self.parseConfig(self.config['omni_defaults']['def_sliver_expiration_utah'])
+                self.logger.debug("Resetting default Utah sliver expiration to %s", self.utah)
+            except Exception, e:
+                self.logger.info("Failed to parse def_sliver_expiration_utah from omni_defaults. Parsing '%s' gave: %s", self.config['omni_defaults']['def_sliver_expiration_utah'], e)
+        return self.utah
+
+    def getIG(self):
+        if self.ig:
+            return self.ig
+        self.ig = DEF_SLIVER_EXPIRATION_IG
+        if self.config and self.config.has_key('omni_defaults') and self.config['omni_defaults'].has_key('def_sliver_expiration_ig') and self.config['omni_defaults']['def_sliver_expiration_ig']:
+            try:
+                self.ig = self.parseConfig(self.config['omni_defaults']['def_sliver_expiration_ig'])
+                self.logger.debug("Resetting default IG sliver expiration to %s", self.ig)
+            except Exception, e:
+                self.logger.info("Failed to parse def_sliver_expiration_ig from omni_defaults. Parsing '%s' gave: %s", self.config['omni_defaults']['def_sliver_expiration_ig'], e)
+        return self.ig
+
+    def getGram(self):
+        if self.gram:
+            return self.gram
+        self.gram = DEF_SLIVER_EXPIRATION_GRAM
+        if self.config and self.config.has_key('omni_defaults') and self.config['omni_defaults'].has_key('def_sliver_expiration_gram') and self.config['omni_defaults']['def_sliver_expiration_gram']:
+            try:
+                self.gram = self.parseConfig(self.config['omni_defaults']['def_sliver_expiration_gram'])
+                self.logger.debug("Resetting default GRAM sliver expiration to %s", self.gram)
+            except Exception, e:
+                self.logger.info("Failed to parse def_sliver_expiration_gram from omni_defaults. Parsing '%s' gave: %s", self.config['omni_defaults']['def_sliver_expiration_gram'], e)
+        return self.gram
+
+    def getEG(self):
+        if self.eg:
+            return self.eg
+        self.eg = DEF_SLIVER_EXPIRATION_EG
+        if self.config and self.config.has_key('omni_defaults') and self.config['omni_defaults'].has_key('def_sliver_expiration_eg') and self.config['omni_defaults']['def_sliver_expiration_eg']:
+            try:
+                self.eg = self.parseConfig(self.config['omni_defaults']['def_sliver_expiration_eg'])
+                self.logger.debug("Resetting default EG sliver expiration to %s", self.eg)
+            except Exception, e:
+                self.logger.info("Failed to parse def_sliver_expiration_eg from omni_defaults. Parsing '%s' gave: %s", self.config['omni_defaults']['def_sliver_expiration_eg'], e)
+        return self.eg
+
+
 # schema paths for switching between v1 and v2
 STITCH_V1_BASE = "hpn.east.isi.edu/rspec/ext/stitch/0.1"
 STITCH_V2_BASE = "geni.net/resources/rspec/ext/stitch/2"
@@ -63,3 +150,6 @@ STITCH_V1_SCHEMA = "http://hpn.east.isi.edu/rspec/ext/stitch/0.1/ http://hpn.eas
 STITCH_V1_NS = "http://hpn.east.isi.edu/rspec/ext/stitch/0.1"
 STITCH_V2_SCHEMA = "http://www.geni.net/resources/rspec/ext/stitch/2/ http://www.geni.net/resources/rspec/ext/stitch/2/stitch-schema.xsd"
 STITCH_V2_NS = "http://www.geni.net/resources/rspec/ext/stitch/2"
+
+# Minutes since last VLAN availability check before bothing to check again
+CHECK_AVAIL_INTERVAL_MINS=60

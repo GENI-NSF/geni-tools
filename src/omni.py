@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2014 Raytheon BBN Technologies
+# Copyright (c) 2011-2015 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -65,6 +65,8 @@
        [string (successList, failList)] = omni.py shutdown SLICENAME
        In AM API v3:
        [string dictionary] = omni.py shutdown SLICENAME
+       [string dictionary] = omni.py update SLICENAME RSPEC_FILENAME # AM API V3+ only
+       [string dictionary] = omni.py cancel SLICENAME # AM API V3+ only
 
        Non-AM API functions exported by aggregates, supported by Omni:
        From ProtoGENI/InstaGENI:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2013-2014 Raytheon BBN Technologies
+# Copyright (c) 2013-2015 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -30,6 +30,7 @@ import json
 import os.path
 import pprint
 import sys
+import urllib
 import xmlrpclib
 
 try:
@@ -48,6 +49,7 @@ HOP_EXCLUSION_TAG = 'hop_exclusion_list'
 HOP_INCLUSION_TAG = 'hop_inclusion_list'
 GENI_PROFILE_TAG = 'geni_routing_profile'
 GENI_PATHS_MERGED_TAG = 'geni_workflow_paths_merged'
+ATTEMPT_PATH_FINDING_TAG = 'attempt_path_finding'
 
 class Result(object):
     '''Hold and parse the raw result from the SCS'''
@@ -77,13 +79,24 @@ class Result(object):
 
 # FIXME: Support authentication by the service at some point
 class Service(object):
-    def __init__(self, url, timeout=None, verbose=False):
+    def __init__(self, url, key=None, cert=None, timeout=None, verbose=False):
         self.url = url
         self.timeout=timeout
         self.verbose=verbose
+        if isinstance(url, unicode):
+            url2 = url.encode('ISO-8859-1')
+        else:
+            url2 = url
+        type, uri = urllib.splittype(url2.lower())
+        if type == "https":
+            self.key=key
+            self.cert=cert
+        else:
+            self.key=None
+            self.cert=None
 
     def GetVersion(self, printResult=True):
-        server = make_client(self.url, keyfile=None, certfile=None, verbose=self.verbose, timeout=self.timeout)
+        server = make_client(self.url, keyfile=self.key, certfile=self.cert, verbose=self.verbose, timeout=self.timeout)
         try:
             result = server.GetVersion()
         except xmlrpclib.Error as v:
@@ -97,7 +110,7 @@ class Service(object):
         return result
 
     def ListAggregates(self, printResult=True):
-        server = make_client(self.url, keyfile=None, certfile=None, verbose=self.verbose, timeout=self.timeout)
+        server = make_client(self.url, keyfile=self.key, certfile=self.cert, verbose=self.verbose, timeout=self.timeout)
         try:
             result = server.ListAggregates()
         except xmlrpclib.Error as v:
@@ -127,7 +140,7 @@ class Service(object):
                 print "ERROR", e, traceback.format_exc()
                 raise
         if result is None:
-            server = make_client(self.url, keyfile=None, certfile=None, verbose=self.verbose, timeout=self.timeout)
+            server = make_client(self.url, keyfile=self.key, certfile=self.cert, verbose=self.verbose, timeout=self.timeout)
             arg = dict(slice_urn=slice_urn, request_rspec=request_rspec,
                        request_options=options)
 #        import json
@@ -220,23 +233,63 @@ class Link(object):
 def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
-    SCS_URL = "http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc"
-    # Dev SCS: http://geni.maxgigapop.net:8081/geni/xmlrpc
-    # Test SCS: http://nutshell.maxgigapop.net:8081/geni/xmlrpc
+    # I2 SSL 
+    SCS_URL = "https://geni-scs.net.internet2.edu:8443/geni/xmlrpc"
+    # I2 non SSL (deprecated) SCS_URL = "http://geni-scs.net.internet2.edu:8081/geni/xmlrpc"
+    # MAX SCS_URL (will go away) = "https://oingo.dragon.maxgigapop.net:8443/geni/xmlrpc"
+    # Non SSL MAX SCS_URL (deprecated, will go away) = "http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc"
+    # Test SCS (for untested AMs): https://nutshell.maxgigapop.net:8443/geni/xmlrpc
+    # Non SSL Test SCS (deprecated): http://nutshell.maxgigapop.net:8081/geni/xmlrpc
+    # Dev (usually down) SCS: http://geni.maxgigapop.net:8081/geni/xmlrpc
+
+    # FIXME: Ideally we'd support loading your omni_config and finding the cert/key that way
     
     ind = -1
     printR = True
     listAMs = False
+    keyfile=None
+    certfile=None
+    verbose = False
+    if "-h" in argv or "-?" in argv:
+        print "Usage: scs.py [--scs_url <URL of SCS server if not standard (%s)] [--monitoring to suppress printouts] --key <path-to-trusted-key> --cert <path-to-trusted-client-cert>" % SCS_URL
+        print "    Key and cert are not required for an SCS not running at an https URL."
+        print "    Supply --listaggregates to list known AMs at the SCS instead of running GetVersion"
+        print "    Supply --verbosessl to turn on detailed SSL logging"
+        return 0
     for arg in argv:
         ind = ind + 1
-        if "--scs_url" == arg and (ind+1) < len(argv):
+        if ("--scs_url" == arg or "--scsURL" == arg) and (ind+1) < len(argv):
             SCS_URL = argv[ind+1]
         if "--monitoring" == arg:
             printR = False
         if arg.lower() == "--listaggregates":
             listAMs = True
+        if ("--key" == arg or "--keyfile" == arg) and (ind+1) < len(argv):
+            keyfile = argv[ind+1]
+        if ("--cert" == arg or "--certfile" == arg) and (ind+1) < len(argv):
+            certfile = argv[ind+1]
+        if arg.lower() == "--verbosessl":
+            verbose = True
+
+    if SCS_URL.lower().strip().startswith('https') and (keyfile is None or certfile is None):
+        print "ERROR: When using an SCS with an https URL, you must supply the --key and --cert arguments to provide the paths to your key file and certificate"
+        return 1
+
+    if keyfile is not None:
+        # Ensure have a good path for it
+        if not os.path.exists(keyfile) or not os.path.getsize(keyfile) > 0:
+            print "ERROR: Key file %s doesn't exist or is empty" % keyfile
+            return 1
+        keyfile = os.path.expanduser(keyfile)
+    if certfile is not None:
+        # Ensure have a good path for it
+        if not os.path.exists(certfile) or not os.path.getsize(certfile) > 0:
+            print "ERROR: Cert file %s doesn't exist or is empty" % certfile
+            return 1
+        certfile = os.path.expanduser(certfile)
+
     try:
-        scsI = Service(SCS_URL)
+        scsI = Service(SCS_URL, key=keyfile, cert=certfile, verbose=verbose)
         if listAMs:
             result = scsI.ListAggregates(printR)
         else:

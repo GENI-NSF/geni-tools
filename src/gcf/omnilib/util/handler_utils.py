@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2012-2014 Raytheon BBN Technologies
+# Copyright (c) 2012-2015 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -105,10 +105,12 @@ def _isBetterNick(retNick, nick, logger=None):
             (retNick.startswith('ig-') and nick.endswith('-ig')) or \
             (retNick.startswith('og-') and nick.endswith('-og')) or \
             (retNick.startswith('pg-') and nick.endswith('-pg')) or \
+            (retNick.startswith('clab-') and nick.endswith('-clab')) or \
+            (retNick.startswith('apt-') and nick.endswith('-apt')) or \
             (retNick.startswith('eg-') and nick.endswith('-eg')):
         # Don't flip back to type-site to get something shorter
-        if retNick and retNick.split('-')[-1] in ['ig', 'pg', 'eg', 'og'] and \
-                nick.split('-')[-1] not in ['ig', 'pg', 'eg', 'og']:
+        if retNick and retNick.split('-')[-1] in ['ig', 'pg', 'eg', 'og', 'clab', 'apt'] and \
+                nick.split('-')[-1] not in ['ig', 'pg', 'eg', 'og', 'clab', 'apt']:
 #            if logger:
 #                logger.debug(" .. but this nickname flips site/type")
             return False
@@ -121,6 +123,7 @@ def _isBetterNick(retNick, nick, logger=None):
 def _lookupAggNick(handler, aggregate_urn_or_url):
     retNick = None
     for nick, (urn, url) in handler.config['aggregate_nicknames'].items():
+        # Case 1
         if aggregate_urn_or_url == urn or aggregate_urn_or_url == url:
 #            handler.logger.debug("For urn/url %s found match: %s=%s,%s", aggregate_urn_or_url, nick, urn, url)
             if _isBetterNick(retNick, nick, handler.logger):
@@ -128,6 +131,7 @@ def _lookupAggNick(handler, aggregate_urn_or_url):
     if retNick is not None:
         return retNick
     for nick, (urn, url) in handler.config['aggregate_nicknames'].items():
+        # Case 2
         if aggregate_urn_or_url.startswith(url):
 #            handler.logger.debug("Queried %s startswith url for nick %s", aggregate_urn_or_url, nick)
             if _isBetterNick(retNick, nick, handler.logger):
@@ -136,6 +140,7 @@ def _lookupAggNick(handler, aggregate_urn_or_url):
         return retNick
     aggregate_urn_or_url = _extractURL(handler.logger, aggregate_urn_or_url)
     for nick, (urn, url) in handler.config['aggregate_nicknames'].items():
+        # Case 3
         if _extractURL(handler.logger,url) == aggregate_urn_or_url:
 #            handler.logger.debug("Queried & trimmed %s is end of url %s for nick %s", aggregate_urn_or_url, url, nick)
             if _isBetterNick(retNick, nick, handler.logger):
@@ -143,14 +148,20 @@ def _lookupAggNick(handler, aggregate_urn_or_url):
     if retNick is not None:
         return retNick
     for nick, (urn, url) in handler.config['aggregate_nicknames'].items():
+        # Case 4
         if aggregate_urn_or_url in urn:
 #            handler.logger.debug("Trimmed %s is in urn for %s=%s,%s", aggregate_urn_or_url, nick, urn, url)
             if _isBetterNick(retNick, nick, handler.logger):
                 retNick = nick
         elif _extractURL(handler.logger, url).startswith(aggregate_urn_or_url):
+            # Case 5
 #            handler.logger.debug("Trimmed %s is in url for %s=%s,%s", aggregate_urn_or_url, nick, urn, url)
             if _isBetterNick(retNick, nick, handler.logger):
                 retNick = nick
+#    if retNick is None:
+#        handler.logger.debug("Found no match for %s", aggregate_urn_or_url)
+#    else:
+#        handler.logger.debug("Returning %s", retNick)
     return retNick
 
 def _lookupAggURNFromURLInNicknames(logger, config, agg_url):
@@ -241,6 +252,8 @@ def _lookupAggNickURLFromURNInNicknames(logger, config, agg_urn):
                         (nick.startswith('ig-') and amNick.endswith('-ig')) or \
                         (nick.startswith('pg-') and amNick.endswith('-pg')) or \
                         (nick.startswith('og-') and amNick.endswith('-og')) or \
+                        (nick.startswith('clab-') and amNick.endswith('-clab')) or \
+                        (nick.startswith('apt-') and amNick.endswith('-apt')) or \
                         (nick.startswith('eg-') and amNick.endswith('-eg')):
                     url = amURL.strip()
                     nick = amNick.strip()
@@ -327,6 +340,9 @@ def _listaggregates(handler):
             # otherwise it is the url directly
             # Either way, if we have no URN, we fill in 'unspecified_AM_URN'
             url, urn = _derefAggNick(handler, agg)
+            if url is None or urn is None:
+                handler.logger.info("Aggregate '%s' unknown", agg)
+                continue
             url = url.strip()
             urn = urn.strip()
             aggURNAlt = None
@@ -352,11 +368,13 @@ def _listaggregates(handler):
                 handler.logger.debug("Adding aggregate %s (%s) to query list", agg, urn)
                 ret[urn] = url
             else:
-                handler.logger.info("Aggregate %s unknown", agg)
+                handler.logger.info("Aggregate '%s' unknown", agg)
         return (ret, "")
     elif not handler.omni_config.get('aggregates', '').strip() == '':
         aggs = {}
         for url in handler.omni_config['aggregates'].strip().split(','):
+            if url is None:
+                continue
             url = url.strip()
             if url != '':
                 # Try treating that as a nickname

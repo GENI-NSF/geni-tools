@@ -477,6 +477,9 @@ Options:
     --end-time=GENI_END_TIME
                         Requested end time for any newly allocated or
                         provisioned slivers - may be ignored by the AM
+    --start-time=GENI_START_TIME
+                        Requested start time for any allocated slivers
+                        - NOW if not provided, could be for future reservations
     --optionsfile=JSON_OPTIONS_FILENAME
                         Send all options defined in named JSON format file to
                         methods that take options
@@ -487,6 +490,9 @@ Options:
                         Sliver URN (not name) on which to act. Supply this
                         option multiple times for multiple slivers, or not at
                         all to apply to the entire slice
+    --cancelled         Should Describe show sliver state of only
+                        geni_provisioned slivers, ignoring any geni_updating
+                        and geni_allocated slivers (default False)
 
   Logging and Verboseness:
     Control the amount of output to the screen and/or to a log
@@ -613,6 +619,9 @@ Options:
                         In AM API v2, if an AM returns a non-0 (failure)
                         result code, raise an AMAPIError. Default is False.
                         For use by scripts.
+    --maxBusyRetries=MAXBUSYRETRIES
+                        Max times to retry AM or CH calls on getting a 'busy'
+                        error. Default: 4
     --no-compress       Do not compress returned values
     --abac              Use ABAC authorization
     --arbitrary-option  Add an arbitrary option to ListResources (for testing

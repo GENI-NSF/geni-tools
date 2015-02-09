@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2013-2014 Raytheon BBN Technologies
+# Copyright (c) 2013-2015 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -57,8 +57,9 @@ PATH_ID = 'id'
 class ManifestRSpecCombiner:
 
     # Constructor
-    def __init__(self):
+    def __init__(self, useReqs=False):
         self.logger = logging.getLogger('stitch.ManifestRSpecCombiner')
+        self.useReqs = useReqs
 
     # Combine the manifest, replacing elements in the dom_template
     # with the appropriate pieces from the manifests
@@ -111,9 +112,18 @@ class ManifestRSpecCombiner:
 #            self.logger.debug("Template had element: '%s'...", cstr[:min(len(cstr), 60)])
 
         for am in ams_list:
-            am_manifest_dom = am.manifestDom
+            if self.useReqs:
+                if not am.requestDom:
+                    am.requestDom = am.getEditedRSpecDom(dom_template)
+                am_manifest_dom = am.requestDom
+            else:
+                am_manifest_dom = am.manifestDom
             if am_manifest_dom == dom_template:
                 continue
+            if am_manifest_dom is None:
+                self.logger.debug("%s had no manifest DOM", am)
+                continue
+
             am_doc_root = am_manifest_dom.documentElement
             am_rspec_node = None
             if am_doc_root.nodeType == Node.ELEMENT_NODE and \
@@ -142,7 +152,7 @@ class ManifestRSpecCombiner:
                     continue
                 self.logger.debug("%s manifest had new top level element: '%s'...", am, cstr[:min(len(cstr), 60)])
                 if cstr not in template_kids:
-                    rspec_node.appendChild(child)
+                    rspec_node.appendChild(child.cloneNode(True))
                     self.logger.debug("... appended it")
 
     def combineNSes(self, ams_list, dom_template):
@@ -166,9 +176,18 @@ class ManifestRSpecCombiner:
             self.logger.debug("Couldn't find rspec in template!")
             return
         for am in ams_list:
-            am_manifest_dom = am.manifestDom
+            if self.useReqs:
+                if not am.requestDom:
+                    am.requestDom = am.getEditedRSpecDom(dom_template)
+                am_manifest_dom = am.requestDom
+            else:
+                am_manifest_dom = am.manifestDom
             if am_manifest_dom == dom_template:
                 continue
+            if am_manifest_dom is None:
+                self.logger.debug("%s had no manifest DOM", am)
+                continue
+
             am_doc_root = am_manifest_dom.documentElement
             am_rspec_node = None
             if am_doc_root.nodeType == Node.ELEMENT_NODE and \
@@ -261,7 +280,17 @@ class ManifestRSpecCombiner:
         # Match the manifest from a given AMs manifest if that AM's urn is the 
         # component_manager_id attribute on that node and the client_ids match
         for am in ams_list:
-            am_manifest_dom = am.manifestDom
+            if self.useReqs:
+                if not am.requestDom:
+                    am.requestDom = am.getEditedRSpecDom(dom_template)
+                am_manifest_dom = am.requestDom
+            else:
+                am_manifest_dom = am.manifestDom
+
+            if am_manifest_dom is None:
+                self.logger.debug("%s had no manifest DOM", am)
+                continue
+
             am_doc_root = am_manifest_dom.documentElement
 
             # For each node in this AMs manifest for which this AM
@@ -273,8 +302,10 @@ class ManifestRSpecCombiner:
                     cid = child.getAttribute(CLIENT_ID)
                     cmid = child.getAttribute(COMPONENT_MGR_ID)
                     key = cid + cmid
-                    if not key in template_node_cids and cmid in am.urn_syns:
-                        doc_root.appendChild(child)
+                    # self.logger.debug("Found possible node to add. client_id: %s; comp_mgr: %s; from AM: %s", cid, cmid, am)
+                    if key not in template_node_cids and cmid in am.urn_syns:
+                        # self.logger.debug(".... adding it")
+                        doc_root.appendChild(child.cloneNode(True))
             # Now do the node replacing as necessary
             for urn in am.urn_syns:
                 if template_nodes_by_cmid.has_key(urn):
@@ -286,8 +317,8 @@ class ManifestRSpecCombiner:
                                 child_cmid = child.getAttribute(COMPONENT_MGR_ID)
                                 child_client_id = child.getAttribute(CLIENT_ID)
                                 if child_cmid == urn and child_client_id == template_client_id:
-                                    #self.logger.debug("Replacing " + str(template_node) + " with " + str(child) + " " + child_cmid)
-                                    doc_root.replaceChild(child, template_node)
+                                    # self.logger.debug(("Replacing template for node %s (" % template_client_id) + str(template_node) + (") with that from %s" % am) + " (" + str(child) + "). Node comp_mgr ID: " + child_cmid)
+                                    doc_root.replaceChild(child.cloneNode(True), template_node)
 
     def combineLinks(self, ams_list, dom_template):
         '''Replace each link in dom_template with matching link from (an) AM with same URN.
@@ -312,7 +343,15 @@ class ManifestRSpecCombiner:
         # loop over AMs. If an AM has a link client_id not in template_link_ids
         # and the link has that AM as a component_manager, then append this link to the template
         for agg in ams_list:
-            man = agg.manifestDom
+            if self.useReqs:
+                if not agg.requestDom:
+                    agg.requestDom = agg.getEditedRSpecDom(dom_template)
+                man = agg.requestDom
+            else:
+                man = agg.manifestDom
+            if man is None:
+                self.logger.debug("%s had no manifest DOM", agg)
+                continue
             man_root = man.documentElement
             man_kids = man_root.childNodes
             for link2 in man_kids:
@@ -329,16 +368,16 @@ class ManifestRSpecCombiner:
                 # In this case this is OK cause stitcher forces the link to list all
                 # the component_managers
                 myLink = False
-                for cme in link.childNodes:
+                for cme in link2.childNodes:
                     if cme.nodeType != Node.ELEMENT_NODE or cme.localName != COMP_MGR:
                         continue
                     cmid = str(cme.getAttribute(COMP_MGR_NAME))
-                    if cmid in agg.urn_syns:
+                    if cmid == agg.urn or cmid in agg.urn_syns:
                         myLink = True
                         break
                 if myLink:
 #                    self.logger.debug("Adding link %s (%s)", cid, link2.toxml(encoding="utf-8"))
-                    doc_root.appendChild(link2)
+                    doc_root.appendChild(link2.cloneNode(True))
                     template_link_cids.append(cid)
 
         # Now go through the links in the template, swapping in info from the appropriate manifest RSpecs
@@ -413,7 +452,15 @@ class ManifestRSpecCombiner:
 #                    else:
 #                        self.logger.debug("Looking at AM %s for link %s", agg.urn, client_id)
 
-                    man = agg.manifestDom
+                    if self.useReqs:
+                        if not agg.requestDom:
+                            agg.requestDom = agg.getEditedRSpecDom(dom_template)
+                        man = agg.requestDom
+                    else:
+                        man = agg.manifestDom
+                    if man is None:
+                        self.logger.debug("%s had no manifest DOM", agg)
+                        continue
                     for link2 in man.documentElement.childNodes:
                         if link2.nodeType != Node.ELEMENT_NODE or \
                                 link2.localName != defs.LINK_TAG:
@@ -430,7 +477,7 @@ class ManifestRSpecCombiner:
 #                            self.logger.debug("Found AM %s link %s that has vlantag %s", agg.urn, client_id, link2.getAttribute('vlantag'))
                             if needSwap:
 #                                self.logger.debug("Swapping link in template with this element")
-                                doc_root.replaceChild(link2, link)
+                                doc_root.replaceChild(link2.cloneNode(True), link)
                                 needSwap = False
                                 # Need to pull out the irefs with a sliver id or component_id from link
                                 # Before completing this swap
@@ -444,7 +491,7 @@ class ManifestRSpecCombiner:
                                                     str(intf2.getAttribute(CLIENT_ID)) == str(intf.getAttribute(CLIENT_ID)) and \
                                                     (not intf2.hasAttribute(SLIVER_ID) and not intf2.hasAttribute(COMP_ID)):
 #                                                self.logger.debug("from old template saving iref %s", intf2.getAttribute(CLIENT_ID))
-                                                link2.replaceChild(intf, intf2)
+                                                link2.replaceChild(intf.cloneNode(True), intf2)
                                                 break
 
                                 # Need to recreate intfs dict
@@ -495,7 +542,7 @@ class ManifestRSpecCombiner:
                                         if intf.hasAttribute(SLIVER_ID):
                                             sid = intf.getAttribute(SLIVER_ID)
 #                                        self.logger.debug("replacing iref cid %s, sid %s, comp_id %s: %s for old %s", cid, sid, compid, intf, intfs[cid])
-                                        link.replaceChild(intf, intfs[cid])
+                                        link.replaceChild(intf.cloneNode(True), intfs[cid])
 #                                        self.logger.debug("Copied iref %s from AM %s", cid, agg.urn)
                                         del intfs[cid]
                                 # End of loop over this Aggs link's children, looking for i_refs
@@ -535,18 +582,73 @@ class ManifestRSpecCombiner:
     # hop in the template dom
     def combineHops(self, ams_list, dom_template):
         template_stitching = self.getStitchingElement(dom_template)
+
+        # If the template has no stitching element, add one from the
+        # first AM that does, if any
+        if template_stitching is None:
+            newStitch = None
+            for am in ams_list:
+                if len(am.hops) > 0:
+                    self.logger.debug("Template DOM had no stitching node. Using stitching node from %s", am)
+                    if self.useReqs:
+                        if not am.requestDom:
+                            am.requestDom = am.getEditedRSpecDom(dom_template)
+                        am_manifest_dom = am.requestDom
+                    else:
+                        am_manifest_dom = am.manifestDom
+                    newStitch = self.getStitchingElement(am_manifest_dom)
+                    break
+            if newStitch is not None:
+                # Append newStitch to dom_template
+                doc_root = dom_template.documentElement
+                children = doc_root.childNodes
+                rspec_node = None
+                if doc_root.nodeType == Node.ELEMENT_NODE and \
+                   doc_root.localName == defs.RSPEC_TAG:
+                    rspec_node = doc_root
+                else:
+                    for child in children:
+                        if child.nodeType == Node.ELEMENT_NODE and \
+                           child.localName == defs.RSPEC_TAG:
+                            rspec_node = child
+                        break
+                if rspec_node is None:
+                    self.logger.debug("Couldn't find rspec in template!")
+                    return
+                rspec_node.appendChild(newStitch.cloneNode(True))
+                template_stitching = self.getStitchingElement(dom_template)
+            else:
+                return
+
         for am in ams_list:
             if am.dcn:
                 self.logger.debug("Pulling hops from a DCN AM: %s", am)
 
-            if am.manifestDom == dom_template:
+            if self.useReqs:
+                if not am.requestDom:
+                    am.requestDom = am.getEditedRSpecDom(dom_template)
+                am_manifest_dom = am.requestDom
+            else:
+                am_manifest_dom = am.manifestDom
+            if am_manifest_dom == dom_template:
                 self.logger.debug("AM %s's manifest is the dom_template- no need to do combineHops here.", am)
                 continue
+
+            if am_manifest_dom is None:
+                self.logger.debug("%s had no manifest DOM", am)
+                continue
+
+            amStitch = self.getStitchingElement(am_manifest_dom)
+            if amStitch == template_stitching:
+                self.logger.debug("%s's stitching element is same as the template. No need to combine.", am)
+                continue
+            if not amStitch and len(am.hops) > 0:
+                self.logger.error("%s has no stitching element but has %d hops?!", am, len(am.hops))
 
             # FIXME: Should this be am._hops or is am.hops OK as is?
             # In my testing, everything in _hops is in .hops
             for hop in am.hops:
-                self.logger.debug("computeHops: replacing hop %s from am.hops", hop)
+                self.logger.debug("computeHops: replacing hop %s from %s.hops", hop, am)
                 hop_id = hop._id
                 path_id = hop.path.id
                 if hop_id is None:
@@ -555,14 +657,20 @@ class ManifestRSpecCombiner:
                 if path_id is None:
                     self.logger.error("%s had am.hops entry %s with a path that has no ID: %s", am, hop, hop.path)
                     continue
+                if hop.aggregate != am:
+                    self.logger.error("%s says AM is %s, but expected %s", hop, hop.aggregate, am)
                 template_path = self.findPathByID(template_stitching, path_id)
                 if template_path is None:
-                    self.logger.error("Cannot find path %s in template manifest", path_id)
+                    self.logger.debug("Cannot find path %s in template manifest", path_id)
+                    # Find it on the AM and append it to the template
+                    am_path = self.findPathByID(amStitch, path_id)
+                    template_stitching.appendChild(am_path.cloneNode(True))
+                    self.logger.debug(" ... added it from this AM")
                     continue
                 #self.logger.debug("Found path %s in template manifest: %s", path_id, template_path.toxml(encoding="utf-8"))
                 #                print "AGG " + str(am) + " HID " + str(hop_id)
                 if not am.isEG:
-                    self.replaceHopElement(template_path, self.getStitchingElement(am.manifestDom), hop_id, path_id)
+                    self.replaceHopElement(template_path, self.getStitchingElement(am_manifest_dom), hop_id, path_id)
 #                    for child in template_path.childNodes:
 #                        if child.nodeType == Node.ELEMENT_NODE and \
 #                                child.localName == HOP and \
@@ -571,7 +679,7 @@ class ManifestRSpecCombiner:
                 else:
                     self.logger.debug("Had EG AM in combineHops: %s", am)
                     link_id = hop._hop_link.urn
-                    self.replaceHopLinkElement(template_path, self.getStitchingElement(am.manifestDom), hop_id, path_id, link_id)
+                    self.replaceHopLinkElement(template_path, amStitch, hop_id, path_id, link_id)
 #            self.logger.debug("After swapping hops for %s, stitching extension is %s", am, stripBlankLines(template_stitching.toprettyxml(encoding="utf-8")))
 
     # Add details about allocations to each aggregate in a 
@@ -613,7 +721,10 @@ class ManifestRSpecCombiner:
         user_requested = am.userRequested
         hops_info = []
         for hop in am._hops:
-            tEntry = {'urn':hop._hop_link.urn, 'vlan_tag':str(hop._hop_link.vlan_suggested_manifest), 'path_id':hop.path.id, 'id':hop._id}
+            if self.useReqs:
+                tEntry = {'urn':hop._hop_link.urn, 'vlan_tag':str(hop._hop_link.vlan_suggested_request), 'vlan_range':str(hop._hop_link.vlan_range_request), 'path_id':hop.path.id, 'id':hop._id}
+            else:
+                tEntry = {'urn':hop._hop_link.urn, 'vlan_tag':str(hop._hop_link.vlan_suggested_manifest), 'path_id':hop.path.id, 'id':hop._id}
             if hop.globalId:
                 tEntry['path_global_id'] = hop.globalId
             if hop._hop_link.ofAMUrl:
@@ -653,12 +764,13 @@ class ManifestRSpecCombiner:
                     am_hop = child
                     break
         else:
-            self.logger.error("Cannot find path %s in AM's stitching extension", path_id)
+            self.logger.error("Cannot find path %s in AM's stitching extension when looking to use AM's version of hop %s", path_id, hop_id)
+            # self.logger.debug("%s" % am_stitching)
             return
 
         if am_hop is not None and template_hop is not None:
 #            self.logger.debug("Replacing " + template_hop.toxml(encoding="utf-8") + " with " + am_hop.toxml(encoding="utf-8"))
-            template_path.replaceChild(am_hop, template_hop)
+            template_path.replaceChild(am_hop.cloneNode(True), template_hop)
         else:
             self.logger.error ("Can't replace hop %s from path %s in template: AM HOP %s TEMPLATE HOP %s" % (hop_id, path_id, am_hop, template_hop))
             return
@@ -685,8 +797,35 @@ class ManifestRSpecCombiner:
                     return
                 break
         if template_hop is None:
-            self.logger.warn("Did not find stitching hop %s in template manifest RSpec for path %s", template_hop_id, path_id)
-            return
+            if "exogeni.net" in link_id:
+                self.logger.debug("Failed to find hop %s on path %s in template; hop_link is exogeni (%s)", template_hop_id, path_id, link_id)
+                template_hop = None
+                template_link = None
+                found_hop_id = None
+                for child in template_path.childNodes:
+                    if child.nodeType == Node.ELEMENT_NODE and \
+                       child.localName == HOP:
+                        template_hop = child
+                        found_hop_id = child.getAttribute(HOP_ID)
+                        #self.logger.debug("Trying template hop %s", found_hop_id)
+                        for child2 in child.childNodes:
+                            if child2.nodeType == Node.ELEMENT_NODE and \
+                               child2.localName == LINK and \
+                               child2.getAttribute(LINK_ID) == link_id:
+                                template_link = child2
+                                break
+                        if template_link is not None:
+                            break
+                if template_hop is not None and template_link is not None:
+                    self.logger.debug("Found path %s EG hop_link %s on hop %s (went looking for hop ID %s)", path_id, link_id, found_hop_id, template_hop_id)
+                else:
+                    # Failing to find an EG hop happens sometimes. I think this is OK...
+                    self.logger.debug("Did not find path %s EG hop_link %s hop ID %s. I think this is OK...", path_id, link_id, template_hop_id)
+                    return
+            else:
+                # Failed and not an EG link
+                self.logger.warn("Did not find stitching hop %s in template manifest RSpec for path %s", template_hop_id, path_id)
+                return
 
         # Find the path for the given path_id (there may be more than one)
         am_path = self.findPathByID(am_stitching, path_id)
@@ -710,21 +849,23 @@ class ManifestRSpecCombiner:
 
         if am_link is not None and template_link is not None and template_hop is not None:
 #            self.logger.debug("Replacing " + template_link.toxml(encoding="utf-8") + " with " + am_link.toxml(encoding="utf-8"))
-            template_hop.replaceChild(am_link, template_link)
+            template_hop.replaceChild(am_link.cloneNode(True), template_link)
         else:
             # This error happens at EG AMs and is harmless. See ticket #321
 #            self.logger.debug("Can't replace hop link %s in path %s in template: AM HOP LINK %s; TEMPLATE HOP %s; TEMPLATE HOP LINK %s" % (link_id, path_id, am_link, template_hop, template_link))
             pass
 
     def findPathByID(self, stitching, path_id):
-        path = None
+        if stitching is None:
+            self.logger.debug("findPathByID: stitching element was None")
+            return None
         for child in stitching.childNodes:
             if child.nodeType == Node.ELEMENT_NODE and \
                     child.localName == defs.PATH_TAG and \
                     child.getAttribute(PATH_ID) == path_id:
-                path = child
-                break
-        return path
+                # self.logger.debug("Found child for path: %s", child)
+                return child
+        return None
 
     def getStitchingElement(self, manifest_dom):
         rspec_node = None
@@ -738,10 +879,12 @@ class ManifestRSpecCombiner:
                 if child.nodeType == Node.ELEMENT_NODE and \
                         child.localName == defs.STITCHING_TAG:
                     return child
+        else:
+            self.logger.debug("Failed to find rspec node from manifest_dom")
         return None
 
-def combineManifestRSpecs(ams_list, dom_template):
+def combineManifestRSpecs(ams_list, dom_template, useReqs=False):
     '''Combine the manifests from the given Aggregate objects into the given DOM template (a manifest). Return a DOM'''
-    mrc = ManifestRSpecCombiner()
+    mrc = ManifestRSpecCombiner(useReqs)
     return mrc.combine(ams_list, dom_template)
 

@@ -3,7 +3,7 @@
 from __future__ import absolute_import
 
 #----------------------------------------------------------------------
-# Copyright (c) 2012-2014 Raytheon BBN Technologies
+# Copyright (c) 2012-2015 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -38,7 +38,7 @@ class CallHandler(object):
     """Handle calls on the framework. Valid calls are all
     methods without an underscore: getversion, createslice, deleteslice, 
     getslicecred, listresources, createsliver, deletesliver,
-    renewsliver, sliverstatus, shutdown, listmyslices, listaggregates, renewslice
+    renewsliver, sliverstatus, shutdown, listmyslices, listaggregates, renewslice, etc
     """
 
     def __init__(self, framework, config, opts):

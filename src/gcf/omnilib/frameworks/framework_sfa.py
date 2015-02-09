@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2014 Raytheon BBN Technologies
+# Copyright (c) 2011-2015 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -169,6 +169,7 @@ class Framework(Framework_Base):
 
         self.config = config
         self.logger = logging.getLogger('omni.sfa')
+        self.opts = opts
 
         # Download a cert from PLC if necessary
         if (not os.path.exists(config['cert'])) or (os.path.getsize(config['cert']) < 1):
