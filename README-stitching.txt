@@ -659,12 +659,10 @@ Cannot find the set of paths for the RequestTopology. '.
  an existing reservation.
  - Some fatal errors at aggregates are not recognized, so the script keeps trying longer
  than it should.
- - In order to make resources expire at roughly the same time, stitcher
- currently hard-codes expected new sliver expiration times as of
- September, 2014. This should be retrieved dynamically somehow
- instead. New aggregate types or local policies may cause problems.
  - [http://trac.gpolab.bbn.com/gcf/query?status=accepted&status=assigned&status=new&status=reopened&component=stitcher&order=priority&col=id&col=summary&col=status&col=type&col=priority&col=milestone&col=component Known stitcher defects] 
  are listed on the gcf trac.
+ - Python2.6 has a 60 second delay talking to the SSL protected SCS
+   run by Internet2. If you are running python2.6, use `--scsURL http://geni-scs.net.internet2.edu:8081/geni/xmlrpc`
 
 == To Do items ==
  - With ExoGENI AMs: After reservation, loop checking sliverstatus for

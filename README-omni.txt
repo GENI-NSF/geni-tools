@@ -44,6 +44,18 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 New in v2.8:
  * Allow configuring how many times Omni retries on a busy error from
    an AM or CH. Use `--maxBusyRetries`. Default remains 4. (#749)
+ * Support `Update()` and `Cancel()` from AM APIv4 in any v3+ implementation. Support
+   is only known at ProtoGENI, and is limited. (#589)
+ * New option `--noCacheFiles` completely disables reading or writing the !GetVersion and
+   Aggregate nickname cache files. (#772)
+ * New config that sets the current release number and a release message,
+   so Omni can alert you if a new release is available. (#698)
+ * Better control of Omni logging configuration. (#458)
+  * Allow a Python logging configuration dictionary, and configure
+    logging from that if possible.
+  * New option `--noLoggingConfiguration` completely disables
+    configuring Python loggers from Omni. A script might use this to
+    allow it to configure logging later in its own way.
  * Fix error message on expired user cert. (#756)
  * Remove ticket #722 workaround (bug fixed at ION AM). (#724)
  * Mac installer: remove old aliases before adding new ones. (#556)
@@ -53,20 +65,8 @@ New in v2.8:
  * Update copyrights to 2015 (#764)
  * Add nicknames for !CloudLab and Apt. (#767)
  * Avoid exception on empty aggregate in `-a` argument. (#771)
- * Support `Update()` and `Cancel()` from AM APIv4 in any v3+ implementation. Support
-   is only known at ProtoGENI, and is limited. (#589)
- * New option `--noCacheFiles` completely disables reading or writing the !GetVersion and
-   Aggregate nickname cache files. (#772)
- * New config that sets the current release number and a release message,
-   so Omni can alert you if a new release is available. (#698)
  * Support python 2.7.9+ where we must request not verifying server certificates
    for the SSL connection. Thanks to Ezra Kissel. (#776)
- * Better control of Omni logging configuration. (#458)
-  * Allow a Python logging configuration dictionary, and configure
-    logging from that if possible.
-  * New option `--noLoggingConfiguration` completely disables
-    configuring Python loggers from Omni. A script might use this to
-    allow it to configure logging later in its own way.
 
 New in v2.7:
  * Calls to `status` and `sliverstatus` will also call the CH

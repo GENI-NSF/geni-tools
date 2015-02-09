@@ -11,6 +11,9 @@
 # May be over-ridden using the commandline option --scsURL
 # 1/6/2015: Use the SCS run by Internet2, not the old MAX instance as specified in the code
 scs_url=https://geni-scs.net.internet2.edu:8443/geni/xmlrpc
+# Portal runs python2.6 which doesn't respect the connection closed vs keep-alive that the SCS uses
+# So use the non SSL connection
+#scs_url=http://geni-scs.net.internet2.edu:8081/geni/xmlrpc
 
 # Default initial sliver expiration times
 # done by aggregate type / category
@@ -556,10 +559,10 @@ utah-clab3=urn:publicid:IDN+utah.cloudlab.us+authority+cm,https://boss.utah.clou
 # ====
 # Apt (https://www.aptlab.net/)
 # ====
-apt=urn:publicid:IDN+boss.apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/2.0
-apt1=urn:publicid:IDN+boss.apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/1.0
-apt2=urn:publicid:IDN+boss.apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/2.0
-apt3=urn:publicid:IDN+boss.apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/3.0
+apt=urn:publicid:IDN+apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/2.0
+apt1=urn:publicid:IDN+apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/1.0
+apt2=urn:publicid:IDN+apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/2.0
+apt3=urn:publicid:IDN+apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/3.0
 
 # ====
 # AL2S (OESS)
