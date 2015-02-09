@@ -41,6 +41,8 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
 
+New in v2.9:
+
 New in v2.8:
  * Allow configuring how many times Omni retries on a busy error from
    an AM or CH. Use `--maxBusyRetries`. Default remains 4. (#749)
@@ -862,7 +864,7 @@ Omni supports the following command-line options.
 {{{
 $ ~/gcf/src/omni.py -h                            
 Usage: 
-GENI Omni Command Line Aggregate Manager Tool Version 2.8
+GENI Omni Command Line Aggregate Manager Tool Version 2.9
 Copyright (c) 2011-2015 Raytheon BBN Technologies
 
 omni.py [options] [--project <proj_name>] <command and arguments> 

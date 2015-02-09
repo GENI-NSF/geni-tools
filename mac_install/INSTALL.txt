@@ -1,9 +1,9 @@
 
 INSTALLING OMNI TOOLS
 ---------------------
-1. Drag the omniTools-2.8 icon to the Applications icon.
+1. Drag the omniTools-2.9 icon to the Applications icon.
 2. Open a terminal window.
-3. Run the script /Applications/omniTools-2.8/addAliases.command.  This script will add aliases for the various
+3. Run the script /Applications/omniTools-2.9/addAliases.command.  This script will add aliases for the various
    Omni Tools in your ~/.bash_profile or ~/.bash_login or ~/.profile.  (The script looks for these 
    files in this order).
 
