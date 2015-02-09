@@ -1961,6 +1961,8 @@ class Aggregate(object):
                 except:
                     pass
 
+                # FIXME: Here we assume a non 24 error code with a PG code of 24 still means vlan unavailable.
+                # But could it mean instead an error giving out the VLAN that we should retry?
                 if ae.returnstruct["code"]["geni_code"] == 24 or (ae.returnstruct["code"].has_key("am_type") and \
                         ae.returnstruct["code"].has_key("am_code") and \
                         ae.returnstruct["code"]["am_type"] == "protogeni" and ae.returnstruct["code"]["am_code"] == 24):
@@ -2037,6 +2039,7 @@ class Aggregate(object):
                                                   code==2 and (amcode==2 or amcode==24)) or \
                                                   ((('vlan tag ' in msg and ' not available' in msg) or "Could not find a free vlan tag for" in msg or \
                                                         "Could not reserve a vlan tag for " in msg) and (code==1 or code==2) and (amcode==1 or amcode==24)):
+                                # FIXME: Sometimes I think this is really a case where I should retry the same tag
                                 self.logger.debug("Looks like a vlan availability issue")
                                 isVlanAvailableIssue = True
                             elif code == 2 and amcode == 2 and "does not run on this hardware type" in msg:

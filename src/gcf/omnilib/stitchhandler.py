@@ -3021,7 +3021,7 @@ class StitchingHandler(object):
             # Save off the aggregate nickname if possible
             agg.nick = handler_utils._lookupAggNick(self, agg.url)
 
-            if not agg.isEG and not agg.isGRAM and not agg.dcn and "protogeni/xmlrpc" in agg.url:
+            if not agg.isEG and not agg.isGRAM and not agg.dcn and not agg.isOESS and "protogeni/xmlrpc" in agg.url:
                 agg.isPG = True
 
  #           self.logger.debug("Remembering done getting extra info for %s", agg)
