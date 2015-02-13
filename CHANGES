@@ -1,6 +1,11 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
 gcf 2.9:
+ * Stitcher
+  * When merging manifests, handle a request for component_manager of the ExoSM,
+    where the manifest component_manager will be more specific. (#780)
+   * If there isn't an exact match and the specific component_manager doesn't belong 
+     to an aggregate we are using, then try to match without the sub-authority.
 
 gcf 2.8:
  * Omni
