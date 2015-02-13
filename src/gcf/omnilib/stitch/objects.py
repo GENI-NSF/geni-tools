@@ -198,7 +198,7 @@ class Aggregate(object):
     REQ_RSPEC_DIR = os.path.normpath(os.getenv("TMPDIR", os.getenv("TMP", "/tmp")))
 
     @classmethod
-    def find(cls, urn):
+    def find(cls, urn, make=True):
         if not urn in cls.aggs:
             syns = Aggregate.urn_syns(urn)
             found = False
@@ -208,9 +208,15 @@ class Aggregate(object):
                     urn = urn2
                     break
             if not found:
+                if not make:
+                    return None
                 m = cls(urn)
                 cls.aggs[urn] = m
         return cls.aggs[urn]
+
+    @classmethod
+    def findDontMake(cls, urn):
+        return cls.find(urn, False)
 
     @classmethod
     def all_aggregates(cls):
