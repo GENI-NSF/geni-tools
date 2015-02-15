@@ -198,7 +198,7 @@ class Aggregate(object):
     REQ_RSPEC_DIR = os.path.normpath(os.getenv("TMPDIR", os.getenv("TMP", "/tmp")))
 
     @classmethod
-    def find(cls, urn):
+    def find(cls, urn, make=True):
         if not urn in cls.aggs:
             syns = Aggregate.urn_syns(urn)
             found = False
@@ -208,9 +208,15 @@ class Aggregate(object):
                     urn = urn2
                     break
             if not found:
+                if not make:
+                    return None
                 m = cls(urn)
                 cls.aggs[urn] = m
         return cls.aggs[urn]
+
+    @classmethod
+    def findDontMake(cls, urn):
+        return cls.find(urn, False)
 
     @classmethod
     def all_aggregates(cls):
@@ -2406,13 +2412,6 @@ class Aggregate(object):
 
         self.editedRequest = False
 
-        # build list of auths
-        agg_urns = Aggregate.aggs.keys()
-        agg_urn_syns = []
-        for urn in agg_urns:
-            agg_urn_syns += Aggregate.urn_syns(urn)
-        all_agg_urns = list(set(agg_urns + agg_urn_syns))
-
         difcnt = 0
 
         idx = 0
@@ -2445,11 +2444,11 @@ class Aggregate(object):
                 # If we have an Aggregate instance we're contacting
                 doEdit = not self.isExoSM
                 if self.isExoSM:
-                    for aggURN in all_agg_urns:
-                        if aggURN.startswith(urn):
-                            self.logger.debug("URN '%s' is a URN for an Aggregate we're contacting (%s), so edit", urn, aggURN)
-                            doEdit = True
-                            break
+                    urn2 = urn + self.urn[self.urn.find('+authority'):]
+                    thatAM = Aggregate.findDontMake(urn2)
+                    if thatAM is not None and thatAM != self:
+                        self.logger.debug("URN '%s' is a URN for a different Aggregate we're contacting (%s), so edit", urn, thatAM)
+                        doEdit = True
                     if not doEdit:
                         self.logger.debug("URN '%s' doesn't match any Aggregate instance we're contacting, so don't edit", urn)
                     # else this URN doesn't have its own AM, so let the ExoSM handle it. so do not edit.

@@ -91,6 +91,7 @@ class StitchingHandler(object):
         self.opts = opts # command line options as parsed
         self.slicecred = None # Cached slice credential to avoid re-fetching
         self.savedSliceCred = None # path to file with slice cred if any
+        self.parsedURNNewAggs = [] # Aggs added from parsed URNs
 
         # Get the framework
         if not self.opts.debug:
@@ -1270,9 +1271,56 @@ class StitchingHandler(object):
 #            self.logger.debug("Did fake workflow parsing")
 
         # Save off existing Aggregate object state
+        parsedURNExistingAggs = [] # Existing aggs that came from a parsed URN, not in workflow
+        self.parsedURNNewAggs = [] # New aggs created not from workflow
         if existingAggs:
             # Copy existingAggs.hops.vlans_unavailable to workflow_parser.aggs.hops.vlans_unavailable? Other state?
             self.saveAggregateState(existingAggs, workflow_parser.aggs)
+
+            # An AM added only from parsed AM URNs will have state lost. Ticket #781
+            if self.parsedSCSRSpec:
+                # Look for existing aggs that came from parsed URN and aren't in workflow
+                for agg in existingAggs:
+                    self.logger.debug("Looking at existing AM %s", agg)
+                    isWorkflow = False
+                    for agg2 in workflow_parser.aggs:
+                        if agg.urn == agg2.urn or agg.urn in agg2.urn_syns:
+                            self.logger.debug("Is a workflow AM; found AM's URN %s in workflow's AMs", agg.urn)
+                            isWorkflow = True
+                            break
+                        else:
+                            for urn2 in agg.urn_syns:
+                                if urn2 == agg2.urn or urn2 in agg2.urn_syns:
+                                    self.logger.debug("Is a workflow AM based on urn_syn; found AM's urn_syn %s in workflow AM", urn2)
+                                    isWorkflow = True
+                                    break
+                        if isWorkflow:
+                            break
+                    if isWorkflow:
+                        continue
+
+                    isParsed = False
+                    if agg.urn in self.parsedSCSRSpec.amURNs:
+                        self.logger.debug("isParsed from main URN %s", agg.urn)
+                        isParsed = True
+                    else:
+                        for urn2 in agg.urn_syns:
+                            if urn2 in self.parsedSCSRSpec.amURNs:
+                                self.logger.debug("isParsed from urn syn %s", urn2)
+                                isParsed = True
+                                break
+                    if not isParsed:
+                        continue
+
+                    # Have an AM that came from parsed URN and is not in the workflow.
+                    # So this agg needs its data copied over.
+                    # this agg wont be in ams_to_process
+                    # need to do self.saveAggregateState(otherExistingAggs, newAggsFromURNs)
+                    self.logger.debug("%s was not in workflow and came from parsed URN", agg)
+                    parsedURNExistingAggs.append(agg)
+                # end loop over existing aggs
+            # End block to handle parsed URNs not in workflow
+
             existingAggs = None # Now done
 
         # FIXME: if notScript, print AM dependency tree?
@@ -1288,6 +1336,14 @@ class StitchingHandler(object):
 
         # Ensure all AM URNs we found in the RSpec are Aggregate objects in ams_to_process
         self.createObjectsFromParsedAMURNs()
+
+        # If we saved off some existing aggs that were from parsed URNs and not in the workflow earlier,
+        # and we also just created some new aggs, then see if those need to have existing data copied over
+        # Ticket #781
+        if len(parsedURNExistingAggs) > 0 and len(self.parsedURNNewAggs) > 0:
+            self.saveAggregateState(parsedURNExistingAggs, self.parsedURNNewAggs)
+        parsedURNExistingAggs = []
+        self.parsedURNNewAggs = []
 
         # Add extra info about the aggregates to the AM objects
         self.add_am_info(self.ams_to_process)
@@ -1622,6 +1678,7 @@ class StitchingHandler(object):
         else:
             self.logger.debug("Adding am to ams_to_process from URN %s, with url %s", amURN, am.url)
             self.ams_to_process.append(am)
+            self.parsedURNNewAggs.append(am) # Save off the new agg as something we just added
         return
     # End of createObjectFromOneURN
 
