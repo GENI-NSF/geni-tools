@@ -2432,7 +2432,8 @@ class Aggregate(object):
                 self.logger.debug("URN '%s' is an EG URN", urn)
                 isMine = False
                 for myurn in self.urn_syns:
-                    if myurn.startswith(urn):
+                    urn2 = urn + self.urn[self.urn.find('+authority'):]
+                    if str(myurn).lower() == str(urn2).lower():
                         isMine=True
                         self.logger.debug("request URN '%s' is for this AM (matches '%s')", urn, myurn)
                         break
