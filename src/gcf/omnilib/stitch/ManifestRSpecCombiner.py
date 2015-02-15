@@ -311,7 +311,7 @@ class ManifestRSpecCombiner:
                         # For reservation from ExoSM the AM manifest lists a cmid for a specific rack, so different than request or any urn_syn on the ExoSM
                         # Ticket #780
                         elif ':' in cmid[len('urn:publicid:IDN+'):cmid.find('+authority')]:
-                            self.logger.debug("Node %s cmid %s shows it is from a sub-AM. See if the parent would be a match at %s", cid, cmid, am)
+                            self.logger.debug("Node %s cmid %s shows it is from a sub-AM. See if the parent would be a match (so need to add the node) at %s", cid, cmid, am)
                             # If the CM on this node had a sub-site, then count it as new from here
                             # if no other AM claims that CM and there is no node with the trimmed (less specific) cmid in the template
 
@@ -345,7 +345,7 @@ class ManifestRSpecCombiner:
                                         self.logger.debug(("Replacing template for node %s (" % template_client_id) + str(template_node) + (") with that from %s" % am) + " (" + str(child) + "). Node comp_mgr ID: " + child_cmid)
                                         doc_root.replaceChild(child.cloneNode(True), template_node)
                                     elif ':' in child_cmid[len('urn:publicid:IDN+'):child_cmid.find('+authority')] and child_cmid not in am.urn_syns:
-                                        self.logger.debug("Node %s cmid %s shows it is from a sub-AM. See if the parent would be a match at %s", child_client_id, child_cmid, am)
+                                        self.logger.debug("Node %s cmid %s shows it is from a sub-AM. See if the parent would be a match (so must replace the node) at %s", child_client_id, child_cmid, am)
                                         # If the CM on this node had a sub-site, then try comparing the non-root cmid with that in the template.
                                         # if no other AM claims that CM and there is no node with the trimmed (less specific) cmid in the template
 
