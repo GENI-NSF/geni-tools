@@ -3254,7 +3254,7 @@ class AMCallHandler(object):
         # Call SliverStatus on each client
         for client in clientList:
             try:
-                ((status, message), client) = self._api_call(client,
+                ((rawstatus, message), client) = self._api_call(client,
                                                    msg + str(client.url),
                                                    op, args)
             except BadClientException, bce:
@@ -3266,9 +3266,20 @@ class AMCallHandler(object):
                     self._raise_omni_error("\nSliverStatus failed: " + retVal)
                 continue
 
-            rawResult = status
-            # Get the dict status out of the result (accounting for API version diffs, ABAC)
-            (status, message) = self._retrieve_value(status, message, self.framework)
+            rawResult = rawstatus
+            amapiError = None
+            status = None
+            try:
+                # Get the dict status out of the result (accounting for API version diffs, ABAC)
+                (status, message) = self._retrieve_value(rawstatus, message, self.framework)
+            except AMAPIError, amapiError:
+                # Would raise an AMAPIError.
+                # But that loses the side-effect of deleting any sliverinfo records.
+                # So if we're doing those, hold odd on raising the error
+                if self.opts.noExtraCHCalls:
+                    raise amapiError
+                else:
+                    self.logger.debug("Got AMAPIError retrieving value from sliverstatus. Hold it until we do any sliver info processing")
 
             if status:
                 if not isinstance(status, dict):
@@ -3468,7 +3479,14 @@ class AMCallHandler(object):
                         self.logger.info('Error ensuring slice has no slivers recorded in SA database at this AM')
                         self.logger.debug(e)
                 else:
-                    self.logger.debug("Per commandline option, not ensuring clearinghouse lists no slivers for this slice.")
+                    if self.opts.noExtraCHCalls:
+                        self.logger.debug("Per commandline option, not ensuring clearinghouse lists no slivers for this slice.")
+                    else:
+                        self.logger.debug("Based on return error code, (%d), not deleting any slivers here.", code)
+
+                if amapiError is not None:
+                    self.logger.debug("Having processed the sliverstatus return, now raise the AMAPI Error")
+                    raise amapiError
 
                 # FIXME: Put the message error in retVal?
                 # FIXME: getVersion uses None as the value in this case. Be consistent
@@ -3600,6 +3618,7 @@ class AMCallHandler(object):
             retItem[client.url] = status
             # Get the dict status out of the result (accounting for API version diffs, ABAC)
             (status, message) = self._retrieve_value(status, message, self.framework)
+
             if not status:
                 # #634:
                 # delete any sliver_infos for this am/slice
