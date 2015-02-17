@@ -45,6 +45,8 @@ New in v2.9:
  * If `sliverstatus` fails in a way that indicates there are no local resources,
    and the caller specified `--raise-error-on-v2-amapi-error`, still delete any
    sliver info records at the clearinghouse (as necessary). (#778)
+ * If `deletesliver` or `delete` fail indicating there are no local resources,
+   delete any sliver info records at teh clearinghouse (as necessary). (#782)
 
 New in v2.8:
  * Allow configuring how many times Omni retries on a busy error from

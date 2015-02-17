@@ -4003,7 +4003,7 @@ class AMCallHandler(object):
         ## where you still have resources.
         for client in clientList:
             try:
-                ((res, message), client) = self._api_call(client,
+                ((rawres, message), client) = self._api_call(client,
                                                    msg + str(client.url),
                                                    op, args)
             except BadClientException, bce:
@@ -4015,8 +4015,19 @@ class AMCallHandler(object):
                     self._raise_omni_error("\nDeleteSliver failed: " + retVal)
                 continue
 
-            # Get the boolean result out of the result (accounting for API version diffs, ABAC)
-            (res, message) = self._retrieve_value(res, message, self.framework)
+            amapiError = None
+            res = None
+            try:
+                # Get the boolean result out of the result (accounting for API version diffs, ABAC)
+                (res, message) = self._retrieve_value(rawres, message, self.framework)
+            except AMAPIError, amapiError:
+                # Would raise an AMAPIError.
+                # But that loses the side-effect of deleting any sliverinfo records.
+                # So if we're doing those, hold odd on raising the error
+                if self.opts.noExtraCHCalls:
+                    raise amapiError
+                else:
+                    self.logger.debug("Got AMAPIError retrieving value from deletesliver. Hold it until we do any sliver info processing")
 
             if res:
                 prStr = "Deleted sliver %s at %s" % (urn,
@@ -4050,6 +4061,41 @@ class AMCallHandler(object):
                 successCnt += 1
                 successList.append( client.url )
             else:
+                doDelete = False
+                code = -1
+                if rawres is not None and isinstance(rawres, dict) and rawres.has_key('code') and isinstance(rawres['code'], dict) and 'geni_code' in rawres['code']:
+                    code = rawres['code']['geni_code']
+                if code==12 or code==15:
+                    doDelete=True
+                if doDelete and not self.opts.noExtraCHCalls:
+                    self.logger.debug("DeleteSliver failed with an error that suggests no slice at this AM - delete all sliverinfo records: %s", message)
+                    # delete sliver info from SA database
+                    try:
+                        # Get the Agg URN for this client
+                        agg_urn = self._getURNForClient(client)
+                        if urn_util.is_valid_urn(agg_urn):
+                            # I'd like to be able to tell the SA to delete all slivers registered for
+                            # this slice/AM, but the API says sliver_urn is required
+                            sliver_urns = self.framework.list_sliverinfo_urns(urn, agg_urn)
+                            for sliver_urn in sliver_urns:
+                                self.framework.delete_sliver_info(sliver_urn)
+                        else:
+                            self.logger.debug("Not ensuring with CH that AM %s slice %s has no slivers - no valid AM URN known")
+                    except NotImplementedError, nie:
+                        self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
+                    except Exception, e:
+                        self.logger.info('Error ensuring slice has no slivers recorded in SA database at this AM')
+                        self.logger.debug(e)
+                else:
+                    if self.opts.noExtraCHCalls:
+                        self.logger.debug("Per commandline option, not ensuring clearinghouse lists no slivers for this slice.")
+                    else:
+                        self.logger.debug("Based on return error code, (%d), not deleting any sliver infos here.", code)
+
+                if amapiError is not None:
+                    self.logger.debug("Having processed the deletesliver return, now raise the AMAPI Error")
+                    raise amapiError
+
                 prStr = "Failed to delete sliver %s at %s (got result '%s')" % (urn, (client.str if client.nick else client.urn), res)
                 if message is None or message.strip() == "":
                     message = "(no reason given)"
@@ -4281,6 +4327,48 @@ class AMCallHandler(object):
                 if len(sliverFails.keys()) == 0:
                     successCnt += 1
             else:
+                doDelete = False
+                raw = retItem[client.url]
+                code = -1
+                if raw is not None and isinstance(raw, dict) and raw.has_key('code') and isinstance(raw['code'], dict) and 'geni_code' in raw['code']:
+                    code = raw['code']['geni_code']
+                # Technically if geni_best_effort and got this failure, then all slivers are bad
+                # But that's only true if the AM honors geni_best_effort, which it may not
+                # So only assume they're all bad if we didn't request any specific slivers.
+                if len(slivers) == 0:
+                    if code==12 or code==15:
+                        doDelete=True
+                if not self.opts.noExtraCHCalls:
+                    if doDelete:
+                        self.logger.debug("Delete failed with an error that suggests no slice at this AM or requested slivers not at this AM - delete all/requested sliverinfo records: %s", message)
+                        # delete sliver info from SA database
+                        try:
+                            if len(slivers) > 0:
+                                self.logger.debug("Delete failed - assuming all %d sliver URNs asked about are invalid and not at this AM - delete from CH", len(slivers))
+                                for sliver in slivers:
+                                    self.framework.delete_sliver_info(sliver)
+                            else:
+                                self.logger.debug("Delete failed: assuming this slice has 0 slivers at this AM. Ensure CH lists none.")
+                                # Get the Agg URN for this client
+                                agg_urn = self._getURNForClient(client)
+                                if urn_util.is_valid_urn(agg_urn):
+                                    # I'd like to be able to tell the SA to delete all slivers registered for
+                                    # this slice/AM, but the API says sliver_urn is required
+                                    sliver_urns = self.framework.list_sliverinfo_urns(urn, agg_urn)
+                                    for sliver_urn in sliver_urns:
+                                        self.framework.delete_sliver_info(sliver_urn)
+                                else:
+                                    self.logger.debug("Not ensuring with CH that AM %s slice %s has no slivers - no valid AM URN known")
+                        except NotImplementedError, nie:
+                            self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
+                        except Exception, e:
+                            self.logger.info('Error ensuring slice has no slivers recorded in SA database at this AM')
+                            self.logger.debug(e)
+                    else:
+                        self.logger.debug("Given AM return code (%d) and # requested slivers (%d), not telling CH to not list these slivers.", code, len(slivers))
+                else:
+                    self.logger.debug("Per commandline option, not ensuring clearinghouse lists no slivers for this slice.")
+
                 if message is None or message.strip() == "":
                     message = "(no reason given)"
                 prStr = "Failed to delete %s at %s: %s" % (descripMsg, (client.str if client.nick else client.urn), message)

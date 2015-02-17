@@ -5,6 +5,8 @@ gcf 2.9:
   * If `sliverstatus` fails in a way that indicates there are no local resources,
     and the caller specified `--raise-error-on-v2-amapi-error`, still delete any
     sliver info records at the clearinghouse (as necessary). (#778)
+  * If `deletesliver` or `delete` fail indicating there are no local resources,
+    delete any sliver info records at teh clearinghouse (as necessary). (#782)
 
  * Stitcher
   * When merging manifests, handle a request for component_manager of the ExoSM,
