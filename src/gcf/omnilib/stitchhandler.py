@@ -260,6 +260,10 @@ class StitchingHandler(object):
         # If any node is unbound: Check that there is exactly 1 -a AM that is not one of the AMs a node is bound to, and then 
         # edit the request to bind the nodes to that AM.
 
+        if self.isBound and not self.isMultiAM and self.opts.fixedEndpoint:
+            self.logger.debug("Got --fixedEndpoint, so pretend this is multi AM")
+            self.isMultiAM = True
+
         # If this is not a bound multi AM RSpec, just let Omni handle this.
         if not self.isBound or not self.isMultiAM:
             self.logger.info("Not a bound multi-aggregate request - let Omni handle this.")
