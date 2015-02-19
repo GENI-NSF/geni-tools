@@ -6,7 +6,7 @@ gcf 2.9:
     and the caller specified `--raise-error-on-v2-amapi-error`, still delete any
     sliver info records at the clearinghouse (as necessary). (#778)
   * If `deletesliver` or `delete` fail indicating there are no local resources,
-    delete any sliver info records at teh clearinghouse (as necessary). (#782)
+    delete any sliver info records at the clearinghouse (as necessary). (#782)
   * Add 11 aggregates to the nickname cache. (#783)
 
  * Stitcher
