@@ -250,8 +250,9 @@ def main(argv=None):
     keyfile=None
     certfile=None
     verbose = False
+    timeout = None
     if "-h" in argv or "-?" in argv:
-        print "Usage: scs.py [--scs_url <URL of SCS server if not standard (%s)] [--monitoring to suppress printouts] --key <path-to-trusted-key> --cert <path-to-trusted-client-cert>" % SCS_URL
+        print "Usage: scs.py [--scs_url <URL of SCS server if not standard (%s)] [--monitoring to suppress printouts] [--timeout SSL timeout in seconds] --key <path-to-trusted-key> --cert <path-to-trusted-client-cert>" % SCS_URL
         print "    Key and cert are not required for an SCS not running at an https URL."
         print "    Supply --listaggregates to list known AMs at the SCS instead of running GetVersion"
         print "    Supply --verbosessl to turn on detailed SSL logging"
@@ -270,6 +271,8 @@ def main(argv=None):
             certfile = argv[ind+1]
         if arg.lower() == "--verbosessl":
             verbose = True
+        if arg.lower() == "--timeout" and (ind+1) < len(argv):
+            timeout = float(argv[ind+1])
 
     if SCS_URL.lower().strip().startswith('https') and (keyfile is None or certfile is None):
         print "ERROR: When using an SCS with an https URL, you must supply the --key and --cert arguments to provide the paths to your key file and certificate"
@@ -289,7 +292,7 @@ def main(argv=None):
         certfile = os.path.expanduser(certfile)
 
     try:
-        scsI = Service(SCS_URL, key=keyfile, cert=certfile, verbose=verbose)
+        scsI = Service(SCS_URL, key=keyfile, cert=certfile, timeout=timeout, verbose=verbose)
         if listAMs:
             result = scsI.ListAggregates(printR)
         else:
