@@ -3560,13 +3560,20 @@ class StitchingHandler(object):
         rspec = rspecs[0]
 
         # Add a node to the dom
+        # FIXME: Check that there is no node with the fake component_manager_id already?
         self.logger.info("Adding fake Node endpoint")
         rspec.appendChild(fakeNode)
 
-        # Also find all links and add an interface_ref to any with only 1 interface_ref
+        # Also find all links for which there is a stitching path and add an interface_ref to any with only 1 interface_ref
         for child in rspec.childNodes:
             if child.localName == defs.LINK_TAG:
                 linkName = child.getAttribute(Node.CLIENT_ID_TAG)
+                stitchPath = self.parsedSCSRSpec.find_path(linkName)
+                if not stitchPath:
+                    # The link has no matching stitching path
+                    # This could be a link all within 1 AM, or a link on a shared VLAN, or an ExoGENI stitched link
+                    self.logger.debug("For fakeEndpoint, skipping main body link %s with no stitching path", linkName)
+                    continue
                 ifcCount = 0
                 ifcAMCount = 0 # Num AMs the interfaces are at
                 propCount = 0
@@ -3605,7 +3612,7 @@ class StitchingHandler(object):
                         child.appendChild(sP)
                         child.appendChild(dP)
                     else:
-                        self.logger.debug("Link %s had only interfaces at 1 am (%d of them), so added the fake interface - but it has %d properties already?", linkName, ifcCount, propCount)
+                        self.logger.debug("Link %s had only interfaces at 1 am (%d interfaces total), so added the fake interface - but it has %d properties already?", linkName, ifcCount, propCount)
                 else:
                     self.logger.debug("Not adding fake endpoint to link %s with %d interfaces at %d AMs", linkName, ifcCount, ifcAMCount)
             # Got a link
