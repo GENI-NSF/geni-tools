@@ -19,6 +19,8 @@ gcf 2.9:
   * When checking if an EG URN belongs to this AM, compare them exactly,
     not using `startswith`, so an EG rack doesn't claim a URN for the ExoSM. (#779)
   * scs.py now honors `--timeout` to set the SSL connection timeout. (#785)
+  * For `--fixedEndpoint` calls, avoid adding the fake interface to links
+    with no stitching path, such as for a LAN within a single AM. (#790)
 
 gcf 2.8:
  * Omni
