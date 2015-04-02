@@ -2237,10 +2237,10 @@ class StitchingHandler(object):
                     if needSCS:
                         self.logger.debug("But we already decided we need the SCS.")
                     elif self.opts.noEGStitching and not needSCS:
-                        self.logger.info("But requested to use GENI stitching instead of ExoGENI stitching")
+                        self.logger.info("Requested to use GENI stitching instead of ExoGENI stitching")
                         needSCS = True
                     elif self.opts.noEGStitchingOnLink and link.id in self.opts.noEGStitchingOnLink and not needSCS:
-                        self.logger.info("But requested to use GENI stitching on link %s instead of ExoGENI stitching", link.id)
+                        self.logger.info("Requested to use GENI stitching on link %s instead of ExoGENI stitching", link.id)
                         needSCS = True
 
                 # FIXME: If the link includes the openflow rspec extension marking a desire to make the link
