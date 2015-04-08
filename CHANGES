@@ -8,6 +8,8 @@ gcf 2.9:
   * If `deletesliver` or `delete` fail indicating there are no local resources,
     delete any sliver info records at the clearinghouse (as necessary). (#782)
   * Add 11 aggregates to the nickname cache. (#783)
+  * Trim fractional seconds from user input datetimes before passing to servers. (#795)
+   * Avoids errors in ProtoGENI based code.
 
  * Stitcher
   * When merging manifests, handle a request for component_manager of the ExoSM,
