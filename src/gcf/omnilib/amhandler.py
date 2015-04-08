@@ -2720,7 +2720,8 @@ class AMCallHandler(object):
             ds = args[1]
         else:
             ds = None
-        (time, time_with_tz, time_string) = self._datetimeFromString(ds, slice_exp, name)
+        # noSec=True so that fractional seconds are dropped
+        (time, time_with_tz, time_string) = self._datetimeFromString(ds, slice_exp, name, noSec=True)
 
         self.logger.info('Renewing Sliver %s until %s (UTC)' % (name, time_with_tz))
 
@@ -3018,7 +3019,8 @@ class AMCallHandler(object):
             ds = args[1]
         else:
             ds = None
-        (time, time_with_tz, time_string) = self._datetimeFromString(ds, slice_exp, name)
+        # noSec=True so that fractional seconds are dropped
+        (time, time_with_tz, time_string) = self._datetimeFromString(ds, slice_exp, name, noSec=True)
 
         self.logger.info('Renewing Slivers in slice %s until %s (UTC)' % (name, time_with_tz))
 
@@ -6150,7 +6152,8 @@ class AMCallHandler(object):
                     self.logger.warn("Got geni_end_time for method %s but using anyhow", op)
                 time = datetime.datetime.max
                 try:
-                    (time, time_with_tz, time_string) = self._datetimeFromString(self.opts.geni_end_time, name=slicename)
+                    # noSec=True so that fractional seconds are dropped
+                    (time, time_with_tz, time_string) = self._datetimeFromString(self.opts.geni_end_time, name=slicename, noSec=True)
                     options["geni_end_time"] = time_string
                 except Exception, exc:
                     msg = 'Couldnt parse geni_end_time from %s: %r' % (self.opts.geni_end_time, exc)
@@ -6165,7 +6168,8 @@ class AMCallHandler(object):
                     self.logger.warn("Got geni_start_time for method %s but using anyhow", op)
                 time = datetime.datetime.min
                 try:
-                    (time, time_with_tz, time_string) = self._datetimeFromString(self.opts.geni_start_time, name=slicename)
+                    # noSec=True so that fractional seconds are dropped
+                    (time, time_with_tz, time_string) = self._datetimeFromString(self.opts.geni_start_time, name=slicename, noSec=True)
                     options['geni_start_time'] = time_string
                 except Exception, exc:
                     msg = 'Couldnt parse geni_start_time from %s: %r' % (self.opts.geni_start_time, exc)
@@ -6467,7 +6471,8 @@ class AMCallHandler(object):
     # name arg: if present then we assume you are trying to
     # renew/create slivers with the given time - so raise an error if
     # the time is invalid
-    def _datetimeFromString(self, dateString, slice_exp = None, name=None):
+    # When noSec is true, fractional seconds are trimmed from the parsed time. Avoid problems at PG servers.
+    def _datetimeFromString(self, dateString, slice_exp = None, name=None, noSec=False):
         '''Get time, time_with_tz, time_string from the given string. Log/etc appropriately
         if given a slice expiration to limit by.
         If given a slice name or slice expiration, insist that the given time is a valid
@@ -6477,6 +6482,11 @@ class AMCallHandler(object):
         try:
             if dateString is not None or self.opts.devmode:
                 time = dateutil.parser.parse(dateString, tzinfos=tzd)
+                if noSec:
+                    time2 = time.replace(microsecond=0)
+                    if (time2 != time):
+                        self.logger.debug("Trimmed fractional seconds from %s to get %s", dateString, time2)
+                        time = time2
         except Exception, exc:
             msg = "Couldn't parse time from '%s': %s" % (dateString, exc)
             if self.opts.devmode:

@@ -273,6 +273,10 @@ class CHCallHandler(object):
         try:
             in_expiration = dateutil.parser.parse(expire_str, tzinfos=tzd)
             self.logger.debug("From '%s' parsed requested new expiration %s", expire_str, in_expiration)
+            in_expiration2 = in_expiration.replace(microsecond=0)
+            if (in_expiration2 != in_expiration):
+                self.logger.debug("Trimmed fractional seconds from parsed time.")
+                in_expiration = in_expiration2
         except:
             msg = 'Unable to parse date "%s".\nTry "YYYYMMDDTHH:MM:SSZ" format'
             msg = msg % (expire_str)

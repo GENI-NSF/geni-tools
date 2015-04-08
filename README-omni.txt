@@ -48,6 +48,8 @@ New in v2.9:
  * If `deletesliver` or `delete` fail indicating there are no local resources,
    delete any sliver info records at teh clearinghouse (as necessary). (#782)
  * Add 11 aggregates to the nickname cache. (#783)
+ * Trim fractional seconds from user input datetimes before passing to servers. (#795)
+  * Avoids errors in ProtoGENI based code.
 
 New in v2.8:
  * Allow configuring how many times Omni retries on a busy error from
