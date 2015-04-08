@@ -30,6 +30,8 @@ gcf 2.9:
  * gcf
   * Make the user credential optional to `ListResources`. (#792)
    * Implement AM API Draft proposal "AD".
+   * `CredentialVerify` now requires a valid credential over the given `target_urn`
+     if supplied, but returns `True` if no credentials are supplied AND no `target_urn`.
 
 gcf 2.8:
  * Omni
