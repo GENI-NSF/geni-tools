@@ -344,6 +344,7 @@ class ReferenceAggregateManager(object):
         option is specified, then compress the result.'''
         self.logger.info('ListResources(%r)' % (options))
         self.expire_slivers()
+
         # Note this list of privileges is really the name of an operation
         # from the privilege_table in sfa/trust/rights.py
         # Credentials will specify a list of privileges, each of which
@@ -352,7 +353,11 @@ class ReferenceAggregateManager(object):
         # listslices, listnodes, policy
 
         # could require list or listnodes?
+        # HOWEVER, we want to make supplying a user credential optional, so
+        # we rely on the knowledge that supplying an empty list of privileges
+        # makes the credential optional.
         privileges = ()
+
         # Note that verify throws an exception on failure.
         # Use the client PEM format cert as retrieved
         # from the https connection by the SecureXMLRPCServer

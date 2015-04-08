@@ -27,6 +27,10 @@ gcf 2.9:
  * Scripts
   * Initial commit of `examples/renewSliceAndSlivers.py`. (#798)
 
+ * gcf
+  * Make the user credential optional to `ListResources`. (#792)
+   * Implement AM API Draft proposal "AD".
+
 gcf 2.8:
  * Omni
   * Allow configuring how many times Omni retries on a busy error from

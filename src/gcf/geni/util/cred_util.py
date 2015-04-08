@@ -234,10 +234,12 @@ class CredentialVerifier(object):
         IE if any of the supplied credentials has a caller that matches gid 
         and a target that matches target_urn, and has all the privileges in 
         the given list, then return the list of credentials that were ok.
+        An empty list of privileges requires no valid credential (but
+        if a credential is supplied, it must be valid).
         Throw an Exception if we fail to verify any credential.'''
 
         # Note that here we treat a list of credentials as being options
-        # Alternatively could accumulate privileges for example
+        # Alternatively could accumulate privileges for example.
         # The semantics of the list of credentials is under specified.
 
         self.logger.debug('Verifying privileges')
@@ -245,7 +247,12 @@ class CredentialVerifier(object):
         failure = ""
         tried_creds = ""
         if len(credentials) == 0:
-            failure = "No credentials found"
+            if len(privileges) > 0:
+                failure = "No credentials found"
+            else:
+                # No privileges required, so supplying no credentials is OK
+                self.logger.debug("No privileges required, so no credentials is OK")
+                return result
         for cred in credentials:
             if cred is None:
                 failure = "Credential was unparseable"
