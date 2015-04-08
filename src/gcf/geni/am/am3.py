@@ -353,9 +353,6 @@ class ReferenceAggregateManager(object):
         # listslices, listnodes, policy
 
         # could require list or listnodes?
-        # HOWEVER, we want to make supplying a user credential optional, so
-        # we rely on the knowledge that supplying an empty list of privileges
-        # makes the credential optional.
         privileges = ()
 
         # Note that verify throws an exception on failure.
