@@ -1123,13 +1123,8 @@ class AMCallHandler(object):
             else:
                 (cred, message) = self.framework.get_user_cred()
             if cred is None:
-                # Dev mode allow doing the call anyhow
-                self.logger.error('Cannot list resources: Could not get user credential')
-                if not self.opts.devmode:
-                    return (None, "Could not get user credential: %s" % message)
-                else:
-                    self.logger.info('... but continuing')
-                    cred = ""
+                # Per AM API Change Proposal AD, allow no user cred to get an ad
+                self.logger.debug("No user credential, but this is now allowed for getting Ads....")
         else:
             (slicename, urn, cred, retVal, slice_exp) = self._args_to_slicecred(args, 1, "listresources")
             if cred is None or cred == "":
@@ -6617,10 +6612,10 @@ def _maybe_add_abac_creds(framework, cred):
     as supplied, as normal.'''
     if is_ABAC_framework(framework):
         creds = get_abac_creds(framework.abac_dir)
-        # FIXME: wrap in JSON as needed?
-        creds.append(cred)
     else:
-        creds = [cred]
+        creds = []
+    if cred:
+        creds.append(cred)
     return creds
 
 # FIXME: Use this frequently in experimenter mode, for all API calls

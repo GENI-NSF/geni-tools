@@ -50,6 +50,9 @@ New in v2.9:
  * Add 11 aggregates to the nickname cache. (#783)
  * Trim fractional seconds from user input datetimes before passing to servers. (#795)
   * Avoids errors in ProtoGENI based code.
+ * Allow getting Ad RSpecs (calling `ListResources` not in slice context)
+   without a user credential. (#793)
+  * Implements AM API Change Proposal AD.
 
 New in v2.8:
  * Allow configuring how many times Omni retries on a busy error from
