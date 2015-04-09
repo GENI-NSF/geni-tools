@@ -28,6 +28,9 @@
 # to handle aggregates that limit slivers to 14 day duration.
 
 # Then call this script as "renewSliceAndSlivers.py <slicename>"
+# or
+# "renewSliceAndSlivers.py <slicename> -r <projectname>"
+
 # Assumes that the GENI Clearinghouse correctly knows all slivers in your slice.
 # To ensure this, use Omni 2.7+ to do 'sliverstatus' at all aggregates with resources in your slice.
 
@@ -35,6 +38,12 @@
 
 # Sample crontab entry renewing slice mySliceName at 01:05 on the 1st, 8th, 15th and 22nd of every month:
 # 5 1 1,8,15,22   *    * (export PYTHONPATH=$PYTHONPATH:/usr/local/gcf/src; /usr/local/gcf/examples/renewSliceAndSlivers.py mySliceName > /dev/null 2>&1)
+
+# Note however that the above crontab entry would hide any errors in renewal; a true
+# production service should be watching errors in the logs and notifying
+# appropriate parties.
+
+# Note that this script uses a standard omni_config file and all the standard omni commandline options.
 
 import datetime
 import os
@@ -61,10 +70,14 @@ def main(argv=None):
   # Get a parser from omni that understands omni options
   ##############################################################################
   parser = omni.getParser()
-  # update usage for help message
-  omni_usage = parser.get_usage()
-  parser.set_usage(omni_usage+"\nrenewSliceAndSlivers.py renews the given slice and all slivers at aggregates known to the GENI CH for 60 days.\n " +
-                   "Takes slice name as argument (required).")
+  # set usage for help message
+  parser.set_usage("renewSliceAndSlivers.py [-r projectname] <slicename>\n" +
+                   "renewSliceAndSlivers.py renews the given slice and all slivers at aggregates known to the GENI CH for 60 days.\n" +
+                   "Uses standard Omni config file and standard omni commandline options. Run 'omni -h' for details.")
+
+  if len(sys.argv[1:]) == 0 or (len(sys.argv[1:]) == 1 and str(sys.argv[1]).lower() in ('-h', '-?', '--help')):
+    parser.print_usage()
+    return 0
 
   # options is an optparse.Values object, and args is a list
   options, args = omni.parse_args(sys.argv[1:], parser=parser)
