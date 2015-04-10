@@ -244,6 +244,11 @@ def loadKeyTextFromFile(filename):
     text = f.read()
     f.close()
     pkey_match = re.findall("^-+BEGIN RSA PRIVATE KEY-+$.*?^-+END RSA PRIVATE KEY-+$", text, re.MULTILINE|re.S)
+    if pkey_match == []:
+        # It appears that now (updated openssl on nye after ubuntu upgrade?) that the key delimiter is different
+        # This version supports PKCS#8, where earlier is PKCS#1.
+        # Openssl v1.0.0 changed the default private key format from #1 to #8
+        pkey_match = re.findall("^-+BEGIN PRIVATE KEY-+$.*?^-+END PRIVATE KEY-+$", text, re.MULTILINE|re.S)
 
     return pkey_match
 
