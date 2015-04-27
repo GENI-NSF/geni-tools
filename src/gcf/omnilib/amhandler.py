@@ -3800,7 +3800,7 @@ class AMCallHandler(object):
                                     self.logger.debug("entry in result list was not a dict")
                                     continue
                                 if not sliver.has_key('geni_sliver_urn') or str(sliver['geni_sliver_urn']).strip() == "":
-                                    self.logger.debug("entry in result had no 'geni_sliver'urn'")
+                                    self.logger.debug("entry in result had no 'geni_sliver_urn'")
                                 else:
                                     slivurn = sliver['geni_sliver_urn']
                                     status_structs[slivurn] = sliver
@@ -6273,7 +6273,7 @@ class AMCallHandler(object):
                 self.logger.debug("entry in result list was not a dict")
                 continue
             if not sliver.has_key('geni_sliver_urn') or str(sliver['geni_sliver_urn']).strip() == "":
-                self.logger.debug("entry in result had no 'geni_sliver'urn'")
+                self.logger.debug("entry in result had no 'geni_sliver_urn'")
             else:
                 sliverUrn = sliver['geni_sliver_urn']
             if not sliver.has_key('geni_allocation_status') or str(sliver['geni_allocation_status']).strip() == "":
@@ -6314,7 +6314,7 @@ class AMCallHandler(object):
                 self.logger.debug("entry in result list was not a dict")
                 continue
             if not sliver.has_key('geni_sliver_urn') or str(sliver['geni_sliver_urn']).strip() == "":
-                self.logger.debug("entry in result had no 'geni_sliver'urn'")
+                self.logger.debug("entry in result had no 'geni_sliver_urn'")
                 continue
 #            sliver['geni_error'] = 'testing' # TESTING CODE
             if sliver.has_key('geni_error') and sliver['geni_error'] is not None and str(sliver['geni_error']).strip() != "":
@@ -6346,7 +6346,7 @@ class AMCallHandler(object):
                 self.logger.debug("entry in result list was not a dict")
                 continue
             if not sliver.has_key('geni_sliver_urn') or str(sliver['geni_sliver_urn']).strip() == "":
-                self.logger.debug("entry in result had no 'geni_sliver'urn'")
+                self.logger.debug("entry in result had no 'geni_sliver_urn'")
                 continue
             retSlivers.append(sliver['geni_sliver_urn'])
 
@@ -6410,7 +6410,7 @@ class AMCallHandler(object):
                 self.logger.debug("entry in result list was not a dict")
                 continue
             if not sliver.has_key('geni_sliver_urn') or str(sliver['geni_sliver_urn']).strip() == "":
-                self.logger.debug("entry in result had no 'geni_sliver'urn'")
+                self.logger.debug("entry in result had no 'geni_sliver_urn'")
                 continue
             if not sliver.has_key('geni_expires'):
                 self.logger.debug("Sliver %s missing 'geni_expires'", sliver['geni_sliver_urn'])
@@ -6453,7 +6453,7 @@ class AMCallHandler(object):
                 self.logger.debug("entry in result list was not a dict")
                 continue
             if not sliver.has_key('geni_sliver_urn') or str(sliver['geni_sliver_urn']).strip() == "":
-                self.logger.debug("entry in result had no 'geni_sliver'urn'")
+                self.logger.debug("entry in result had no 'geni_sliver_urn'")
                 continue
             if not sliver.has_key('geni_allocation_status'):
                 self.logger.debug("Sliver %s missing 'geni_allocation_status'", sliver['geni_sliver_urn'])
