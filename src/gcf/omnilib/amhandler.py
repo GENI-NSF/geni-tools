@@ -2626,17 +2626,20 @@ class AMCallHandler(object):
                     self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
 
                 # Save result
+                ftype = ".json"
                 if isinstance(realresult, dict):
                     prettyResult = json.dumps(realresult, ensure_ascii=True, indent=2)
                     # Some POAs return a top level geni_credential
                     # Save it off separately for convenience
                     if realresult.has_key('geni_credential'):
-                        fname = _maybe_save_slicecred(self, slicename + '-sharedlan', realresult['geni_credential'])
+                        cred = realresult['geni_credential'].replace("\\n", "\n")
+                        fname = _maybe_save_slicecred(self, slicename + '-sharedlan', cred)
                         if fname is not None:
                             prstr = "Saved shared LAN credential to file '%s'" % fname
                             retVal += prstr + "\n"
                             self.logger.info(prstr)
                 else:
+                    ftype = ".txt"
                     prettyResult = pprint.pformat(realresult)
                     # Some POAs return a credential per sliver
                     # Save those as separate files for readability
@@ -2648,9 +2651,9 @@ class AMCallHandler(object):
                                 if sliver.has_key('geni_sliver_urn'):
                                     sliverurn = sliver['geni_sliver_urn']
                                 if sliver.has_key('geni_credential'):
-                                    cred = sliver['geni_credential']
+                                    cred = sliver['geni_credential'].replace("\\n", "\n")
                             if cred is not None:
-                                fname = _maybe_save_slicecred(self, slicename + '-' + sliverurn + '-sharedlan', realresult['geni_credential'])
+                                fname = _maybe_save_slicecred(self, slicename + '-' + sliverurn + '-sharedlan', cred)
                                 if fname is not None:
                                     prstr = "Saved shared LAN %s credential to file '%s'" % (sliverurn, fname)
                                     retVal += prstr + "\n"
@@ -2659,7 +2662,7 @@ class AMCallHandler(object):
                 header="PerformOperationalAction result for %s at AM %s:" % (descripMsg, client.str)
                 filename = None
                 if self.opts.output:
-                    filename = _construct_output_filename(self.opts, slicename, client.url, client.urn, "poa-" + action, ".json", numClients)
+                    filename = _construct_output_filename(self.opts, slicename, client.url, client.urn, "poa-" + action, ftype, numClients)
                     #self.logger.info("Writing result of poa %s at AM: %s to file %s", descripMsg, client.url, filename)
 
                 _printResults(self.opts, self.logger, header, prettyResult, filename)

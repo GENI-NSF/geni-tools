@@ -792,6 +792,8 @@ def _printResults(opts, logger, header, content, filename=None):
     # If the content is a single quote quoted XML doc then just drop those single quotes
     if content is not None and content.startswith("'<?xml") and content.endswith("'"):
         content = content[1:-1]
+        if content.find(">\n"):
+            content = content.replace("\\n", "\n")
     # if content starts with <?xml ..... ?> then put the header after that bit
     elif content is not None and content.find("<?xml") > -1 and content.find("'<?xml") < 0:
         cstart = content.find("?>", content.find("<?xml") + len("<?xml"))+2
