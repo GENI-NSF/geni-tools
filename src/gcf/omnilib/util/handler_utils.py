@@ -789,8 +789,11 @@ def _printResults(opts, logger, header, content, filename=None):
     If --tostdout option, then instead of logging, print to STDOUT.
     """
     cstart = 0
+    # If the content is a single quote quoted XML doc then just drop those single quotes
+    if content is not None and content.startswith("'<?xml") and content.endswith("'"):
+        content = content[1:-1]
     # if content starts with <?xml ..... ?> then put the header after that bit
-    if content is not None and content.find("<?xml") > -1:
+    elif content is not None and content.find("<?xml") > -1 and content.find("'<?xml") < 0:
         cstart = content.find("?>", content.find("<?xml") + len("<?xml"))+2
         # push past any trailing \n
         if content[cstart:cstart+2] == "\\n":
