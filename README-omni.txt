@@ -53,6 +53,10 @@ New in v2.9:
  * Allow getting Ad RSpecs (calling `ListResources` not in slice context)
    without a user credential. (#793)
   * Implements AM API Change Proposal AD.
+ * If the return from `POA` is a `geni_credential`, or per sliver has a
+   `geni_credential`, then save that cred in a separate file. (#803)
+  * Also when saving output, JSON that has XML content shouldn't get
+    the header inserted within the XML content.
 
 New in v2.8:
  * Allow configuring how many times Omni retries on a busy error from
