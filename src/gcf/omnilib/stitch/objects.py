@@ -3430,7 +3430,11 @@ class Aggregate(object):
                 if hop._hop_link.vlan_suggested_request == VLANRange.fromString("any") and (not failedHop or hop == failedHop or ((not hop._hop_link.vlan_xlate or not failedHop._hop_link.vlan_xlate) and failedHop.path == hop.path)): # FIXME: And failedHop no xlate?
                     # We said any tag is OK, but none worked.
                     canRedoRequestHere = False
-                    errMsg = "AM says none of the VLAN tags usable on this circuit are available. Asked %s for any tag from '%s' and none worked. VLANs unavailable: '%s'" % (hop, hop._hop_link.vlan_range_request, hop.vlans_unavailable)
+                    hopsReqHere = len(self.hops) # Num hops requested here, aka num VLANs requested
+                    selfstr = self.urn
+                    if self.nick:
+                        selfstr = self.nick
+                    errMsg = "Not enough VLANs available at %s (asked for %d). Try another aggregate? (Asked %s for any tag from '%s' and none worked. VLANs unavailable: '%s')" % (selfstr, hopsReqHere, hop, hop._hop_link.vlan_range_request, hop.vlans_unavailable)
                     self.logger.warn(errMsg)
                     errMsg = errMsg + " (%s)" % exception
                     break
