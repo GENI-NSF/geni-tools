@@ -587,8 +587,10 @@ class Aggregate(object):
                 tags = tagByURN[hop.urn]
                 if hop._hop_link.vlan_suggested_request in tags:
                     if hop._hop_link.vlan_suggested_request != VLANRange.fromString("any"):
-                        # This could happen due to an apparent SCS bug (#1100). I suppose I could treat this as VLANUnavailable?
-                        raise StitchingError("%s %s has request tag %s that is already in use by %s" % (self, hop, hop._hop_link.vlan_suggested_request, hopByURN[hop.urn][tags.index(hop._hop_link.vlan_suggested_request)]))
+                        # SCS does not try to deconflict requests across paths, so this can happen.
+                        # When it does, go back to the SCS with the same request
+
+                        raise StitchingCircuitFailedError("SCS gave same suggested VLAN to 2 paths - retry at the SCS. %s %s has request tag %s that is already in use by %s" % (self, hop, hop._hop_link.vlan_suggested_request, hopByURN[hop.urn][tags.index(hop._hop_link.vlan_suggested_request)]))
                 else:
                     self.logger.debug("%s %s has same URN as other hop(s) on this AM %s. But this hop uses request tag %s, that hop(s) used %s", self, hop, str(hopByURN[hop.urn][0]), hop._hop_link.vlan_suggested_request, str(tagByURN[hop.urn][0]))
                     tagByURN[hop.urn].append(hop._hop_link.vlan_suggested_request)
