@@ -31,6 +31,7 @@ gcf 2.9:
   * For `--fixedEndpoint` calls, avoid adding the fake interface to links
     with no stitching path, such as for a LAN within a single AM. (#790)
   * In debug when printing raw return from SCS, print the name of the path for each hop. (#800)
+  * Clarify error message when request 'any' VLAN and get VLAN_UNAVAILABLE. (#801)
 
  * Scripts
   * Initial commit of `examples/renewSliceAndSlivers.py`. (#798)
