@@ -2573,13 +2573,23 @@ class StitchingHandler(object):
         # A debugging block: print out the VLAN tag the SCS picked for each hop, independent of objects
         if self.logger.isEnabledFor(logging.DEBUG):
             start = 0
+            path = None
             while True:
                 if not content.find("<link id=", start) >= start:
                     break
+
                 hopIdStart = content.find('<link id=', start) + len('<link id=') + 1
                 hopIdEnd = content.find(">", hopIdStart)-1
-                # Print the link ID
+                # Get the link ID
                 hop = content[hopIdStart:hopIdEnd]
+
+                # Look for the name of the path for this hop before the name of the hop
+                if content.find('<path id=', start, hopIdStart) > 0:
+                    pathIdStart = content.find('<path id=', start) + len('<path id=') + 1
+                    pathIdEnd = content.find(">", pathIdStart)-1
+                    self.logger.debug("Found path from %d to %d", pathIdStart, pathIdEnd)
+                    path = content[pathIdStart:pathIdEnd]
+
                 # find suggestedVLANRange
                 suggestedStart = content.find("suggestedVLANRange>", hopIdEnd) + len("suggestedVLANRange>")
                 suggestedEnd = content.find("</suggested", suggestedStart)
@@ -2588,8 +2598,8 @@ class StitchingHandler(object):
                 availStart = content.find("vlanRangeAvailability>", hopIdEnd) + len("vlanRangeAvailability>")
                 availEnd = content.find("</vlanRange", availStart)
                 avail = content[availStart:availEnd]
-                # print that
-                self.logger.debug("SCS gave hop %s suggested VLAN %s, avail: '%s'", hop, suggested, avail)
+                # print that all
+                self.logger.debug("SCS gave hop %s on path %s suggested VLAN %s, avail: '%s'", hop, path, suggested, avail)
                 start = suggestedEnd
 
        # parseRequest

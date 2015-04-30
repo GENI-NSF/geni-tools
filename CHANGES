@@ -30,6 +30,7 @@ gcf 2.9:
   * scs.py now honors `--timeout` to set the SSL connection timeout. (#785)
   * For `--fixedEndpoint` calls, avoid adding the fake interface to links
     with no stitching path, such as for a LAN within a single AM. (#790)
+  * In debug when printing raw return from SCS, print the name of the path for each hop. (#800)
 
  * Scripts
   * Initial commit of `examples/renewSliceAndSlivers.py`. (#798)
