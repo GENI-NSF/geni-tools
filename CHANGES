@@ -32,6 +32,9 @@ gcf 2.9:
     with no stitching path, such as for a LAN within a single AM. (#790)
   * In debug when printing raw return from SCS, print the name of the path for each hop. (#800)
   * Clarify error message when request 'any' VLAN and get VLAN_UNAVAILABLE. (#801)
+  * If SCS gave same suggested VLAN tag to 2 paths (same hop), then retry
+    at the SCS. (#802)
+   * The SCS does not deconflict suggestions across paths, so this can happen.
 
  * Scripts
   * Initial commit of `examples/renewSliceAndSlivers.py`. (#798)
