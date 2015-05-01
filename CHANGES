@@ -35,6 +35,11 @@ gcf 2.9:
   * If SCS gave same suggested VLAN tag to 2 paths (same hop), then retry
     at the SCS. (#802)
    * The SCS does not deconflict suggestions across paths, so this can happen.
+  * When a request fails due to VLAN unavailable someplace along a path where the VLAN
+    was a choice from 'any', no need to go back to the SCS; delete the intermediate reservations
+    and mark the failed tag unavailable, and let that first AM pick the tag again.
+    This should mean fewer un-necessary deletes and fewer calls to the SCS. (#648)
+   * Also fix this block to count this as a local VLAN retry.
 
  * Scripts
   * Initial commit of `examples/renewSliceAndSlivers.py`. (#798)
