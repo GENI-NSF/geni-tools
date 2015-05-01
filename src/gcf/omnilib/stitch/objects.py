@@ -3133,12 +3133,26 @@ class Aggregate(object):
 
         # So how figure out no one depends on failedHop. Is that hop.dependsOn?
         # If not, then I probably need to loop over hops on failedHop.path and ask if any of them import_vlans_from == failedHop
+        # Hmm, no. .dependsOn lists hops that this hop depends on. That is, it goes the wrong way.
+
+        # But wait a minute. If a hop depends on failedHop, then how can it have gone yet, if failedHop isn't done? So either there
+        # aren't any hops that depend on this hop, or they haven't run yet. And if they haven't run yet, then why do I care?
+        # I suppose the 1 wrinkle is that in a V3 / negotiation world, I'd want to revise the avail range for downstream AMs so that
+        # they don't pick an unavail tag from the availRange when they can't do the new suggested.
+
+        # Putting that aside for now, we're saying that we can do this block any time the root of the chain is 'any'. But this begs the question I asked myself
+        # earlier; what does the rest of this method do, that this block is skipping out on, and is that OK?
+
+        # This block is only if a single hop was IDed as failed.
+        # The block below bails if the failed hop imports vlans. This block handles the simple case where the hop imports.
+        #  ==> So far, this block handles only where there's just a single failed hop. A future todo would be to handle >1 filed hops.
 
         # If this is something like ION saying the VLAN you asked for isn't available (VLAN_PCE), and
         # we got here cause an AM was asked for 'any', then try re-asking that AM for a different 'any'
         # See ticket #622
-        if failedHop and failedHop._hop_link.vlan_xlate and slicename and failedHop.import_vlans:
-            self.logger.debug("Potential ION VLAN_PCE redo case")
+#        if failedHop and failedHop._hop_link.vlan_xlate and slicename and failedHop.import_vlans:
+        if failedHop and slicename and failedHop.import_vlans:
+            self.logger.debug("Potential easy local redo case (rooted in request for 'any')")
             toDelete = [] # AMs walking up the import tree whose reservation must be deleted
             toDelete.append(self)
             last = self # last AM
@@ -3154,19 +3168,38 @@ class Aggregate(object):
                 parent = parent.import_vlans_from
 
             if lastHop._hop_link.vlan_suggested_request == VLANRange.fromString('any'):
-                self.logger.debug("A simple VLAN PCE case we handle quickly: Root of chain was %s. Chain had %d AMs including the failure at %s", lastHop.aggregate, len(toDelete), self)
+                self.logger.debug("A simple VLAN unavail case we handle quickly: Root of chain was %s. Chain had %d AMs including the failure at %s", lastHop.aggregate, len(toDelete), self)
                 self.logger.debug("Marking failed tag %s unavail at %s and %s", failedTag, lastHop, failedHop)
                 lastHop.vlans_unavailable = lastHop.vlans_unavailable.union(failedTag)
                 lastHop._hop_link.vlan_range_request = lastHop._hop_link.vlan_range_request - lastHop.vlans_unavailable
+
+                failedHop.vlans_unavailable = failedHop.vlans_unavailable.union(failedTag)
+                # the failedHop range must be reset to the one from the SCS, cause edited one is just a single tag
+                failedHop._hop_link.vlan_range_request = failedHop._hop_link.scs_vlan_range_request - failedHop.vlans_unavailable
+
+                if (not self.dcn and self.localPickNewVlanTries > self.MAX_AGG_NEW_VLAN_TRIES) or (self.dcn and self.localPickNewVlanTries >= self.MAX_DCN_AGG_NEW_VLAN_TRIES):
+                    self.logger.debug("Tried too many times to find a new VLAN tag")
+                    errMsg = "Too many failures to find a VLAN tag (%s)" % errMsg
+
+                    if self.userRequested:
+                        self.logger.debug(errMsg)
+                        self.logger.debug("User requested AM had a failed hop that imports VLANs. Fail to SCS (with that tag excluded), in hopes of the upstream AM picking a new tag.")
+                    # Exit to SCS
+                    # If we've tried this AM a few times, set its hops to be excluded
+                    if self.allocateTries > self.MAX_TRIES:
+                        self.logger.debug("%s allocation failed %d times - try excluding the failed hop", self, self.allocateTries)
+                        failedHop.excludeFromSCS = True
+                    self.inProcess = False
+                    raise StitchingCircuitFailedError("Circuit reservation failed at %s. Try again from the SCS. (Error: %s)" % (self, errMsg))
+                else:
+                    self.localPickNewVlanTries = self.localPickNewVlanTries + 1
+
                 if len(lastHop._hop_link.vlan_range_request) == 0:
                     self.logger.debug("After excluding that tag from lastHop %s's range_request, no tags left!", lastHop)
                     if lastHop in self.hops:
                         self.inProcess = False
                         raise StitchingCircuitFailedError("VLAN was unavailable at %s and not enough available VLAN tags at %s to try again locally. Try again from the SCS" % (self, lastHop))
                 hopsDone.append(lastHop)
-                failedHop.vlans_unavailable = failedHop.vlans_unavailable.union(failedTag)
-                # the failedHop range must be reset to the one from the SCS, cause edited one is just a single tag
-                failedHop._hop_link.vlan_range_request = failedHop._hop_link.scs_vlan_range_request - failedHop.vlans_unavailable
                 self.logger.debug("New lastHop range: '%s'; New failedHop range: '%s'", lastHop._hop_link.vlan_range_request, failedHop._hop_link.vlan_range_request)
                 if len(failedHop._hop_link.vlan_range_request) == 0:
                     self.logger.debug("After excluding that tag from failedHop %s's range_request, no tags left!", failedHop)
@@ -3277,8 +3310,8 @@ class Aggregate(object):
                 raise StitchingRetryAggregateNewVlanImmediatelyError(msg)
             else:
                 # else cannot redo just this leg easily. Fall through.
-                self.logger.debug("... not a simple VLAN PCE case, because lastHop (chain root) %s suggested VLAN was not 'any'", lastHop)
-        # End of block to see if this is a simple ION failed and started with 'any' case
+                self.logger.debug("... not a simple local redo VLAN unavail case, because lastHop (chain root) %s suggested VLAN was not 'any'", lastHop)
+        # End of block to see if this is a simple reservation failed and chain started with 'any' case
 
         # For each failed hop (could be all), or hop on same path as failed hop that does not do translation, mark unavail the tag from before
         for hop in failedHops:
