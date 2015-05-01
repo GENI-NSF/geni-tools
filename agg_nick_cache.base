@@ -1,6 +1,6 @@
 ### DO NOT MODIFY THIS FILE BY HAND ###
 # This file lives at: http://trac.gpolab.bbn.com/gcf/raw-attachment/wiki/Omni/agg_nick_cache
-# Last updated on February 18, 2015
+# Last updated on May 1, 2015
 
 [omni_defaults]
 # This section is for updating Omni defaults without updating Omni.
@@ -26,7 +26,7 @@ scs_url=https://geni-scs.net.internet2.edu:8443/geni/xmlrpc
 # Specify the latest version of Omni released, and a message
 # Expected format is "#,Message" EG: "2.8,Omni 2.8 was release 2/1/2015". No commas in the message.
 # If a newer version is available, Omni will log a message at INFO level.
-latest_omni_version=2.8,Omni 2.8 was released 2/9/2015. See http://trac.gpolab.bbn.com/gcf
+latest_omni_version=2.8.1,Omni 2.8.1 was released 5/1/2015. See http://trac.gpolab.bbn.com/gcf
 
 #------AM nicknames
 # Format :

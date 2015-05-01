@@ -38,16 +38,18 @@ gcf 2.9:
 
  * Scripts
   * Initial commit of `examples/renewSliceAndSlivers.py`. (#798)
-  * Give `omni-configure` the ability to find PKCS#8 private keys,
-    not just PKCS#1. With openssl v1.0.0 PKCS#8 is the default, so new
-    keys from the GENI Portal are in the new format, and omni-configure 
-    doesn't find them and complains that you have no private key. (#799) 
 
  * gcf
   * Make the user credential optional to `ListResources`. (#792)
    * Implement AM API Draft proposal "AD".
    * `CredentialVerify` now requires a valid credential over the given `target_urn`
      if supplied, but returns `True` if no credentials are supplied AND no `target_urn`.
+
+gcf 2.8.1:
+ * Give `omni-configure` the ability to find PKCS#8 private keys,
+   not just PKCS#1. With openssl v1.0.0 PKCS#8 is the default, so new
+   keys from the GENI Portal are in the new format, and omni-configure 
+   doesn't find them and complains that you have no private key. (#799) 
 
 gcf 2.8:
  * Omni
