@@ -1,5 +1,11 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 2.8.1:
+ * Give `omni-configure` the ability to find PKCS#8 private keys,
+   not just PKCS#1. With openssl v1.0.0 PKCS#8 is the default, so new
+   keys from the GENI Portal are in the new format, and omni-configure 
+   doesn't find them and complains that you have no private key. (#799) 
+
 gcf 2.8:
  * Omni
   * Allow configuring how many times Omni retries on a busy error from
