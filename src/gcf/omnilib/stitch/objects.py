@@ -3119,6 +3119,21 @@ class Aggregate(object):
             # No single failed hop - must treat them all as failed
             failedHops = self.hops
 
+        # FIXME: Ticket #648: If have a failedHop that imports and root of chain is 'any' but this AM could not give the VLAN,
+        # Then mark that VLAN unavail up the chain and delete at root of chain (or all up the chain?)
+        # The goal is to avoid falling through to saying we can't handle this locally, and therefore risking marking this hop excluded un-necessarily
+        # But is that the same as this ION VLAN_PCE case below? Examine that code
+        # I think code below works, but change failedHop._hop_link.vlan_xlate to a check that no hop imports from failedHop (for simplicity)
+        # And change the comments.
+        # Now, here I require that the root is 'any'. Could I use this code block for a non-any case, having my code pick a new tag?
+        # - well, that would be the handle-it-locally case. And to make my code handle it locally, I'd have to have my canRedoLocally stuff accept the case where it is a chain
+        # that goes back farther but isn't otherwise too complicated (which would be what?), and have it
+        # mark the failed tag unavail up the chain, etc... That is, the code for picking a tag that might work is a little complex.
+        # For now, maybe handle the root is 'any' case...
+
+        # So how figure out no one depends on failedHop. Is that hop.dependsOn?
+        # If not, then I probably need to loop over hops on failedHop.path and ask if any of them import_vlans_from == failedHop
+
         # If this is something like ION saying the VLAN you asked for isn't available (VLAN_PCE), and
         # we got here cause an AM was asked for 'any', then try re-asking that AM for a different 'any'
         # See ticket #622
