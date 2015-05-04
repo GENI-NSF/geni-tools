@@ -908,6 +908,11 @@ class Aggregate(object):
 
         # DCN and PG AMs honor this. GRAM does not, and I doubt AL2S or EG does. But set it everywhere for now anyhow.
 
+        # This code mostly assumes that this is a createsliver (APIv2) call. For APIv3+, this is an Allocate call,
+        # and so the requested expiration should be much shorter - basically, the time to run stitcher.
+        # Using a longer time is OK (assuming AMs allow it). But a better time is probably, say, 6 hours from now. Or 3.
+        # So after doing the larger check, we look if this AM is v3+, and then shorten the requested reservation appropriately.
+
         # Note that this code includes an ugly HACK - it uses constants for expected initial sliver expiration at various AM types.
         # Adding new AM types or if policies change will cause this to work, well, differently.
         # The goal here is to ensure transit networks expire at or before endpoints, and the overall link has
@@ -918,6 +923,9 @@ class Aggregate(object):
         # If not reserving resources after, set expires to the minimum we expect from other AMs on the path
         # min(slice expiration, expiration of other AMs on paths for this AM, default sliver expirations by AM type for other AMs on these paths where no reservation yet)
         # (Note algorithm changes if we are doing renewals after)
+
+        # Number of hours to hold reservation when doing APIv3+
+        allocHours = 3
 
         now = datetime.datetime.utcnow()
 
@@ -1016,6 +1024,15 @@ class Aggregate(object):
                     self.logger.debug("After %s, minDays=%d, newExpires=%s", am, minDays, newExpires)
             # End loop over AMs on path
         # End loop over paths
+
+        # In APIv3+, this should be a temporary hold. So only request the resources for a few hours.
+        if self.api_version > 2:
+            shortExpires = now + datetime.timedelta(hours=allocHours)
+            newExpires2 = min(shortExpires, newExpires)
+            self.logger.debug("But this AM uses APIv%d. So aim for expiration at %s, but within the above limits.", self.api_version, shortExpires)
+            if newExpires != newExpires2:
+                self.logger.debug("Taking the earlier expiration therefore.")
+                newExpires = newExpires2
 
         self.logger.debug("Will request newExpires=%s", newExpires)
 

@@ -491,7 +491,7 @@ class StitchingHandler(object):
                 rspec = am.listResources(opts_copy, self.slicename)
             except StitchingError, se:
                 self.logger.debug("Failed to list current reservation: %s", se)
-            if self.opts.api_version == 2:
+            if am.api_version == 2:
                 retStruct[(am.urn,am.url)] = rspec
             else:
                 retStruct[am.url] = {'code':dict(),'value':rspec,'output':None}
@@ -1983,7 +1983,8 @@ class StitchingHandler(object):
             if self.opts.slicecredfile.endswith("json"):
                 trim = -5
             # -4 is to cut off .xml. It would be -5 if the cred is json
-            handler_utils._save_cred(self, self.opts.slicecredfile[:trim], slicecred)
+            #self.logger.debug("Saving slice cred %s... to %s", str(slicecred)[:15], self.opts.slicecredfile[:trim])
+            self.opts.slicecredfile = handler_utils._save_cred(self, self.opts.slicecredfile[:trim], slicecred)
             self.savedSliceCred = True
 
         # Ensure slice not expired
@@ -3023,6 +3024,11 @@ class StitchingHandler(object):
                             msg = "%s does not speak AM API v2 (max is V%d). APIv2 required!" % (agg, maxVer)
                             #self.logger.error(msg)
                             raise StitchingError(msg)
+                        agg.api_version = self.opts.api_version
+                        if self.opts.api_version > maxVer:
+                            self.logger.debug("Asked for APIv%d but %s only supports v%d", self.opts.api_version, agg, maxVer)
+                            agg.api_version = maxVer
+
 #                        if maxVer != 2:
 #                            self.logger.debug("%s speaks AM API v%d, but sticking with v2", agg, maxVer)
 
