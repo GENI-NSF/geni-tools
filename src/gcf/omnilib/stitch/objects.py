@@ -3136,29 +3136,18 @@ class Aggregate(object):
             # No single failed hop - must treat them all as failed
             failedHops = self.hops
 
-        # FIXME: Ticket #648: If have a failedHop that imports and root of chain is 'any' but this AM could not give the VLAN,
-        # Then mark that VLAN unavail up the chain and delete at root of chain (or all up the chain?)
-        # The goal is to avoid falling through to saying we can't handle this locally, and therefore risking marking this hop excluded un-necessarily
-        # But is that the same as this ION VLAN_PCE case below? Examine that code
-        # I think code below works, but change failedHop._hop_link.vlan_xlate to a check that no hop imports from failedHop (for simplicity)
-        # And change the comments.
+        # Ticket #648: If have a failedHop that imports and root of chain is 'any' but this AM could not give the VLAN requested,
+        # then mark that VLAN unavail up the chain and delete at root of chain (or all up the chain?).
+        # The goal is to avoid falling through to saying we can't handle this locally, and therefore risking marking this hop excluded un-necessarily.
+
+        # Block below originally was only for the ION VLAN_PCE case and so required that the failed hop does translation.
+        # I think code below works, but change failedHop._hop_link.vlan_xlate to a check that no hop imports from failedHop (for simplicity),
+        # and change the comments.
         # Now, here I require that the root is 'any'. Could I use this code block for a non-any case, having my code pick a new tag?
         # - well, that would be the handle-it-locally case. And to make my code handle it locally, I'd have to have my canRedoLocally stuff accept the case where it is a chain
         # that goes back farther but isn't otherwise too complicated (which would be what?), and have it
         # mark the failed tag unavail up the chain, etc... That is, the code for picking a tag that might work is a little complex.
-        # For now, maybe handle the root is 'any' case...
-
-        # So how figure out no one depends on failedHop. Is that hop.dependsOn?
-        # If not, then I probably need to loop over hops on failedHop.path and ask if any of them import_vlans_from == failedHop
-        # Hmm, no. .dependsOn lists hops that this hop depends on. That is, it goes the wrong way.
-
-        # But wait a minute. If a hop depends on failedHop, then how can it have gone yet, if failedHop isn't done? So either there
-        # aren't any hops that depend on this hop, or they haven't run yet. And if they haven't run yet, then why do I care?
-        # I suppose the 1 wrinkle is that in a V3 / negotiation world, I'd want to revise the avail range for downstream AMs so that
-        # they don't pick an unavail tag from the availRange when they can't do the new suggested.
-
-        # Putting that aside for now, we're saying that we can do this block any time the root of the chain is 'any'. But this begs the question I asked myself
-        # earlier; what does the rest of this method do, that this block is skipping out on, and is that OK?
+        # For now, maybe handle the root is 'any' case only...
 
         # This block is only if a single hop was IDed as failed.
         # The block below bails if the failed hop imports vlans. This block handles the simple case where the hop imports.
