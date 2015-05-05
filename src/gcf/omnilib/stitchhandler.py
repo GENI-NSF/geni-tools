@@ -2932,9 +2932,9 @@ class StitchingHandler(object):
 
             # Use GetVersion to determine AM type, AM API versions spoken, etc
             if options_copy.warn:
-                omniargs = ['--ForceUseGetVersionCache', '-a', agg.url, 'getversion']
+                omniargs = ['--ForceUseGetVersionCache', '-V2', '-a', agg.url, 'getversion']
             else:
-                omniargs = ['--ForceUseGetVersionCache', '-o', '--warn', '-a', agg.url, 'getversion']
+                omniargs = ['--ForceUseGetVersionCache', '-o', '--warn', '-V2', '-a', agg.url, 'getversion']
 
             try:
                 self.logger.debug("Getting extra AM info from Omni for AM %s", agg)
@@ -2978,6 +2978,8 @@ class StitchingHandler(object):
                         maxVer = 1
                         hasV2 = False
                         v2url = None
+                        maxVerUrl = None
+                        reqVerUrl = None
                         for key in version[aggurl]['value']['geni_api_versions'].keys():
                             if int(key) == 2:
                                 hasV2 = True
@@ -2998,6 +3000,9 @@ class StitchingHandler(object):
 #                                    agg.url = version[aggurl]['value']['geni_api_versions'][key]
                             if int(key) > maxVer:
                                 maxVer = int(key)
+                                maxVerUrl = version[aggurl]['value']['geni_api_versions'][key]
+                            if int(key) == self.opts.api_version:
+                                reqVerUrl = version[aggurl]['value']['geni_api_versions'][key]
                         # Done loop over api versions
 
                         # This code is just to avoid ugly WARNs from Omni about changing URL to get the right API version.
@@ -3036,6 +3041,21 @@ class StitchingHandler(object):
 #                            self.logger.warn("Testing v3 support")
 #                            agg.api_version = 3
 #                        agg.api_version = maxVer
+
+                        # Change the URL for the AM so that later calls to this AM don't get complaints from Omni
+                        # Here we hard-code knowledge that APIv2 is the default in Omni, the agg_nick_cache, and at AMs
+                        if agg.api_version != 2:
+                            if agg.api_version == maxVer and maxVerUrl is not None and maxVerUrl != agg.url:
+                                self.logger.debug("%s: Swapping URL to v%d URL. Change from %s to %s", agg, agg.api_version, agg.url, maxVerUrl)
+                                if agg.alt_url is None:
+                                    agg.alt_url = agg.url
+                                agg.url = maxVerUrl
+                            elif agg.api_version == self.opts.api_version and reqVerUrl is not None and reqVerUrl != agg.url:
+                                self.logger.debug("%s: Swapping URL to v%d URL. Change from %s to %s", agg, agg.api_version, agg.url, reqVerUrl)
+                                if agg.alt_url is None:
+                                    agg.alt_url = agg.url
+                                agg.url = reqVerUrl
+
                     # Done handling geni_api_versions
 
                     if version[aggurl]['value'].has_key('GRAM_version'):
@@ -3171,7 +3191,10 @@ class StitchingHandler(object):
                     self.logger.debug("   Alternate URL: %s", agg.alt_url)
                 self.logger.debug("   Using AM API version %d", agg.api_version)
                 if agg.manifestDom:
-                    self.logger.debug("   Have a reservation here (%s)!", agg.url)
+                    if agg.api_version > 2:
+                        self.logger.debug("   Have a temporary reservation here (%s)! \n*** You must manually call `omni -a %s -V3 provision %s` and then `omni -a %s -V3 poa %s geni_start`", agg.url, agg.url, self.slicename, agg.url, self.slicename)
+                    else:
+                        self.logger.debug("   Have a reservation here (%s)!", agg.url)
                 if not agg.doesSchemaV1:
                     self.logger.debug("   Does NOT support Stitch Schema V1")
                 if agg.doesSchemaV2:
