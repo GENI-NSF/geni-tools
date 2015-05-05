@@ -115,9 +115,18 @@ are trying to reserve in the RSpec that are not linked with
 a stitching link may not be reserved, because stitcher may not know
 the URL to contact that aggregate. 
 
-All calls use AM APIv2 (hard-coded) currently, due to aggregate
-limitations. If an aggregate does not speak AM API v2, `stitcher`
+All calls use AM APIv2 by default currently, due to aggregate
+limitations. If an aggregate does not speak at least AM API v2, `stitcher`
 exits.
+
+AM API v3 is supported where possible. If you invoke stitcher
+with `-V3`, the stitcher uses APIv3 at aggregates that support
+APIv3. Stitcher will in this case only `allocate` the resources at
+those aggregates. Therefore, you will need to use omni later to call
+`omni -a <AM> -V3 provision <slice>` and `omni -a <AM> -V3 poa <slice>
+geni_start` to complete your reservation. You will then also want to
+use stitcher to renew your resources, as in `stitcher renewsliver
+<slice> <new time>`
 
 Your input request RSpec does ''not'' need a stitching extension, but
 should be a single RSpec for all resources that you want in your slice.
@@ -653,7 +662,8 @@ Cannot find the set of paths for the RequestTopology. '.
    an explicit capacity (whose value defaults to the `--defaultCapacity` option).
   - Works around issues http://groups.geni.net/geni/ticket/1039 and 
     http://groups.geni.net/geni/ticket/1101
- - AM API v3 is not supported - VLAN tag selection is not optimal
+ - AM API v3 support is limited. Users must manually provision, and
+   VLAN tag negotiation is not supported.
  - AM API v1 only aggregates are not supported
  - Aggregates do not support `Update`, so you cannot add a link to
  an existing reservation.
@@ -671,8 +681,7 @@ Cannot find the set of paths for the RequestTopology. '.
  - Summarize errors at the end of the run.
  - Support stitch-to-aggregate at ProtoGENI based aggregates if supported
  - Clean up hard-coded aggregate-specific sliver expiration policy handling
- - Support AM API v3; specifically, use `allocate` where supported to
- more rapidly negotiate VLAN tags.
+ - Fully support AM API v3; specifically, `provision` reservations on success
  - Consolidate constants
  - Fully handle negotiating among AMs for a VLAN tag to use
   - As in when the returned `suggestedVLANRange` is not what was requested
