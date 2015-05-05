@@ -9,9 +9,9 @@ The [GENI Aggregate Manager API](http://groups.geni.net/geni/wiki/GeniApi) defin
 
 For download and installation instructions, see our [Trac site](http://trac.gpolab.bbn.com/gcf).
 
-geni-tools is a community developed package. Please [contribute](blob/master/CONTRIBUTING.md)!
+geni-tools is a community developed package. Please [contribute](CONTRIBUTING.md)!
 
 For further information on Omni, see the [Omni wiki](http://trac.gpolab.bbn.com/gcf)
-and [Omni README](README-omni.txt).
+and [Omni README](README-omni.wiki).
 
 For further information on the GCF aggregate, also see <http://trac.gpolab.bbn.com/gcf> and the [GCF README](README.txt).
