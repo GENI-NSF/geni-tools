@@ -186,6 +186,7 @@ class Aggregate(object):
     SLIVERSTATUS_MAX_TRIES = 10
     SLIVERSTATUS_POLL_INTERVAL_SEC = 30 # Xi says 10secs is short if ION is busy; per ticket 1045, even 20 may be too short
     PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS = 30
+    PAUSE_FOR_V3_AM_TO_FREE_RESOURCES_SECS = 15 # When its a V3 AM and we just allocated, should be quicker to free the resources
     # See DCN_AM_RETRY_INTERVAL_SECS for the DCN AM equiv of PAUSE_FOR_AM_TO_FREE...
     PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS = DCN_AM_RETRY_INTERVAL_SECS # Xi and Chad say ION routers take a long time to reset
     MAX_AGG_NEW_VLAN_TRIES = 50 # Max times to locally pick a new VLAN
@@ -550,6 +551,8 @@ class Aggregate(object):
             sleepSecs = self.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS 
             if self.dcn:
                 sleepSecs = self.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS
+            elif self.api_version > 2:
+                sleepSecs = self.PAUSE_FOR_V3_AM_TO_FREE_RESOURCES_SECS 
 
             if datetime.datetime.utcnow() + datetime.timedelta(seconds=sleepSecs) >= self.timeoutTime:
                 # We'll time out. So quit now.
@@ -823,7 +826,7 @@ class Aggregate(object):
 #        if "nysernet" in self.urn:
 #            self.logger.error("Forcing %s to report an error, delete prior reservation...", self)
 #            self.deleteReservation(opts, slicename)
-#            self.handleVlanUnavailable("reservation", ("fake unavail"))
+#            self.handleVlanUnavailable("reservation", ("fake unavail"), None, False, opts, slicename)
 
         # Parse out the VLANs we got, saving them away on the HopLinks
         # Note and complain if we didn't get VLANs or the VLAN we got is not what we requested
@@ -849,7 +852,7 @@ class Aggregate(object):
             if not suggestedValue:
                 self.logger.error("Didn't find suggested value in rspec for hop %s", hop)
                 # Treat as error? Or as vlan unavailable? FIXME
-                self.handleVlanUnavailable("reservation", ("No suggested value element on hop %s" % hop), hop, True)
+                self.handleVlanUnavailable("reservation", ("No suggested value element on hop %s" % hop), hop, True, opts, slicename)
             elif suggestedValue in ('null', 'None', 'any'):
                 self.logger.error("Hop %s Suggested was invalid in manifest: %s", hop, suggestedValue)
                 # This could be due to the AM simply failing to properly construct the manifest
@@ -859,7 +862,7 @@ class Aggregate(object):
                 # 9/2014: This happens if you request 'any' with a PGv2 schema RSpec at PG AMs
 
                 # Treat as error? Or as vlan unavailable? FIXME
-                self.handleVlanUnavailable("reservation", ("Invalid suggested value %s on hop %s" % (suggestedValue, hop)), hop, True)
+                self.handleVlanUnavailable("reservation", ("Invalid suggested value %s on hop %s" % (suggestedValue, hop)), hop, True, opts, slicename)
             else:
                 suggestedObject = VLANRange.fromString(suggestedValue)
             # If these fail and others worked, this is malformed
@@ -2006,7 +2009,7 @@ class Aggregate(object):
 #                        self.logger.debug("*** %s unavail NOW %s", hop, hop.vlans_unavailable)
 #                        self.deleteReservation(opts, slicename)
 
-                    self.handleVlanUnavailable(opName, ae)
+                    self.handleVlanUnavailable(opName, ae, None, False, opts, slicename)
                 else:
                     # some other AMAPI error code
                     # FIXME: Try to parse the am_code or the output message to decide if this is 
@@ -2299,7 +2302,7 @@ class Aggregate(object):
                             self.logger.info("A requested VLAN was unavailable doing %s %s at %s", opName, slicename, self)
                             self.logger.debug(str(ae))
                             didInfo = True
-                        self.handleVlanUnavailable(opName, ae)
+                        self.handleVlanUnavailable(opName, ae, None, False, opts, slicename)
                     else:
                         if isFatal and self.userRequested:
                             # if it was not user requested, then going to the SCS to avoid that seems right
@@ -2802,7 +2805,7 @@ class Aggregate(object):
             elif self.localPickNewVlanTries >= self.MAX_DCN_AGG_NEW_VLAN_TRIES:
                 # Treat as VLAN was Unavailable - note it could have been a transient circuit failure or something else too
                 # If this imports and xlates then we can do the PCE style thing. Otherwise, this has to fail to the SCS I think
-                self.handleVlanUnavailable('createsliver', msg)
+                self.handleVlanUnavailable('createsliver', msg, None, False, opts, slicename)
             else:
                 self.localPickNewVlanTries = self.localPickNewVlanTries + 1
                 self.inProcess = False
@@ -3759,7 +3762,7 @@ class Aggregate(object):
                     self.logger.debug("%s re-using already picked tag %s", hop, pick)
                 else:
                     # Pick a new tag if we can
-                    if (hop._hop_link.vlan_producer or not hop._import_vlans) and self.supportsAny():
+                    if (hop._hop_link.vlan_producer or not hop._import_vlans) and self.supportsAny() and (opts is None or opts.useSCSSugg == False):
                         # If this hop picks the VLAN tag, and this AM accepts 'any', then we leave pick as 'any'
                         self.logger.debug("%s is a vlan producer or doesn't import vlans and handles suggested of 'any', so after all that let it pick any tag.", hop)
                     elif len(nextRequestRangeByHop[hop]) == 0:

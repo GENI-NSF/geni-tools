@@ -350,6 +350,12 @@ class StitchingHandler(object):
             # Construct and save out a combined manifest
             combinedManifest, filename, retVal = self.getAndSaveCombinedManifest(lastAM)
 
+            # If some AMs used APIv3+, then we only did an allocation. Print something
+            msg = self.getProvisionMessage()
+            if msg:
+                self.logger.info(msg)
+                retVal += msg + "\n"
+
             # Print something about sliver expiration times
             msg = self.getExpirationMessage()
 
@@ -1080,6 +1086,19 @@ class StitchingHandler(object):
         return msg
     # end getExpirationMessage
 
+    def getProvisionMessage(self):
+        # Get a message warning the experimenter to do provision and poa at AMs that are only allocated
+        msg = None
+        for agg in self.ams_to_process:
+            if agg.manifestDom and agg.api_version > 2:
+                if msg is None:
+                    msg = ""
+                aggnick = agg.nick
+                if aggnick is None:
+                    aggnick = agg.url
+                msg += "   Reservation at %s is temporary! \nYou must manually call `omni -a %s -V3 provision %s` and then `omni -a %s -V3 poa %s geni_start`.\n" % (aggnick, aggnick, self.slicename, aggnick, self.slicename)
+        return msg
+
     # Compare the list of AMs in the request with AMs known
     # to the SCS. Any that the SCS does not know means the request
     # cannot succeed if those are AMs in a stitched link
@@ -1215,14 +1234,17 @@ class StitchingHandler(object):
             # We are doing another call.
             # Let AMs recover. Is this long enough?
             # If one of the AMs is a DCN AM, use that sleep time instead - longer
-            sTime = Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS
+            sTime = Aggregate.PAUSE_FOR_V3_AM_TO_FREE_RESOURCES_SECS
             for agg in existingAggs:
                 if agg.dcn and agg.triedRes:
                     # Only need to sleep this much longer time
                     # if this is a DCN AM that we tried a reservation on (whether it worked or failed)
-                    if sTime == Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS:
+                    if sTime < Aggregate.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS:
                         self.logger.debug("Must sleep longer cause had a previous reservation attempt at a DCN AM: %s", agg)
                     sTime = Aggregate.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS
+                elif agg.api_version == 2 and agg.triedRes and sTime < Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS:
+                    self.logger.debug("Must sleep longer cause had a previous v2 reservation attempt at %s", agg)
+                    sTime = Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS
                 # Reset whether we've tried this AM this time through
                 agg.triedRes = False
 
@@ -2931,6 +2953,8 @@ class StitchingHandler(object):
 #                agg.url =  'http://alpha.dragon.maxgigapop.net:12346/'
 
             # Use GetVersion to determine AM type, AM API versions spoken, etc
+            # Hack: Here we hard-code using APIv2 always to call getversion, assuming that v2 is the AM default
+            # and so the URLs are v2 URLs.
             if options_copy.warn:
                 omniargs = ['--ForceUseGetVersionCache', '-V2', '-a', agg.url, 'getversion']
             else:
