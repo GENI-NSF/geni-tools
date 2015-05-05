@@ -1,6 +1,8 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
 gcf 2.9:
+ * Add Markdown style README, CONTRIBUTING and CONTRIBUTORS files. (#551)
+
  * Omni
   * If `sliverstatus` fails in a way that indicates there are no local resources,
     and the caller specified `--raise-error-on-v2-amapi-error`, still delete any
