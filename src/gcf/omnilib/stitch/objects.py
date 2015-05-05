@@ -1831,8 +1831,8 @@ class Aggregate(object):
 #                ret["code"]["geni_code"] = 24
 #                ret["code"]["am_code"] = 2
 #                ret["code"]["am_type"] = "foam"
-#                ret["output"] = "requested VLAN not available on this endpoint"
-#                ret["output"] = "requested VLAN unavailable: sdn-sw.sunn.net.internet2.edu,e5/1 VLAN=1641/"
+#                # Tweak the name of the interface as needed, but be sure some VLAN # is listed.
+#                ret["output"] = "requested VLAN unavailable: sdn-sw.losa.net.internet2.edu,eth5/1 VLAN=1234."
 #                raise AMAPIError("test", ret)
 
             # FIXME: Try disabling all but WARN log messages? But I lose PG Log URL? 
