@@ -45,6 +45,18 @@ GCF / geni-tools has numerous existing tickets on our old Trac system: http://tr
  - Please check [GitHub Issues](https://github.com/GENI-NSF/geni-tools/issues) and our old [Trac tickets](http://trac.gpolab.bbn.com/gcf/report) to see if the issue has already been reported.
  - Please give specific examples, sample outputs, etc
  - When reporting issues, please include the output of `omni --version` at least. Even better, include the complete `stitcher.log` or the output of running `omni --debug`.
+ - To attach your `stitcher.log` or test case RSpecs or other large output, upload the file to some web server and provide a pointer. For example, use Gist:
+  - Log in on `github.com` if you have not done so already
+  - At the top of the github page, click `Gist`
+  - Give your upload a description. For example "Test case input RSpec for geni-nsf/geni-tools issue #123"
+  - Paste in specific content into the text box, OR
+  - Drag and drop a file into the large text box
+   - Optionally, pick the proper language from the dropdown box next to the file name. For example, 'XML' for RSpecs.
+  - If you have additional files to attach, click `Add file`
+  - When all your files are attached, click `Create secret Gist`
+  - Add a comment on your new Gist if it will help other understand how to use it.
+  - On the right hand side, look for 'Embed'. Click the clipboard icon to copy the embedding URL to your clipboard.
+  - Paste that URL from your clipboard into the description of your new issue.
 
 ## Code Style ##
  - Include the [GENI Public License](LICENSE.txt) in all files as a comment at the top
@@ -52,3 +64,4 @@ GCF / geni-tools has numerous existing tickets on our old Trac system: http://tr
  - `geni-tools` attempts to be python2.6 compatible, and is not python3.0 compatible
  - Use relative imports (`from __future__ import absolute_import`).
  - Use 4 space indents
+ - Name classes, methods, arguments and variables to describe their use.
