@@ -5,7 +5,7 @@ geni-tools (formerly known as 'gcf') is a package containing various clients and
 [GENI](http://www.geni.net) is a [National Science Foundation](http://www.nsf.gov) funded suite of software and hardware to support "at scale" research and to share resources for
 experimentation, research and classroom use.
 
-The [GENI Aggregate Manager API](http://groups.geni.net/geni/wiki/GeniApi) defines the interface for software that resource owners run to manage access to their resources
+The [GENI Aggregate Manager API](http://groups.geni.net/geni/wiki/GeniApi) defines the interface for software that resource owners run to manage access to their resources.
 
 For download and installation instructions, see our [Trac site](http://trac.gpolab.bbn.com/gcf).
 
