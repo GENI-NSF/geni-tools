@@ -12,6 +12,6 @@ For download and installation instructions, see our [Trac site](http://trac.gpol
 geni-tools is a community developed package. Please [contribute](CONTRIBUTING.md)!
 
 For further information on Omni, see the [Omni wiki](http://trac.gpolab.bbn.com/gcf)
-and [Omni README](README-omni.rst).
+and [Omni README](README-omni.txt).
 
 For further information on the GCF aggregate, also see <http://trac.gpolab.bbn.com/gcf> and the [GCF README](README.txt).

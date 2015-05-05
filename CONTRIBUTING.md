@@ -1,13 +1,16 @@
 # Contributing to geni-tools
 
 The GENI-NSF repositories are very much a community driven effort, and
-your contributions are critical.
+your contributions are critical. A big thank you to all our [contributors](CONTRIBUTORS.md)!
 
+## Mailing Lists
 GENI developers discuss general GENI development on dev@geni.net. Subscribe here: http://lists.geni.net/mailman/listinfo/dev
 GCF / geni-tools developers can subscribe to gcf-dev@geni.net here: http://lists.geni.net/mailman/listinfo/gcf-dev
 
+## Tracking Issues
 GCF / geni-tools has numerous existing tickets on our old Trac system: http://trac.gpolab.bbn.com/gcf/. Look there first to see if the issue is known, or if there are comments on a suggested solution.
 
+## Guidelines
  - geni-nsf projects use the branching model found at
  http://nvie.com/posts/a-successful-git-branching-model/
   - All work happens in issue-specific branches off of the `develop`
@@ -19,7 +22,7 @@ GCF / geni-tools has numerous existing tickets on our old Trac system: http://tr
  - Note that all `geni-nsf` code is released under the [GENI Public
  License](LICENSE.txt) and should include a copyright notice.
  - Reference the appropriate issue numbers in your commit messages
- - All changes should be listed in the [`CHANGES`](CHANGES) file, with an issue
+ - All changes should be listed in the [CHANGES](CHANGES) file, with an issue
  number.
   - Changes to Omni should additionally be listed in
  [README-omni.txt](README-omni.txt)
