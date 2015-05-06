@@ -1666,13 +1666,16 @@ class Aggregate(object):
             # FIXME: Really, the avail/sugg here should be those reported by that hop. And we should only do this
             # fake thing if those are hops we can't find.
 
+            # To do that: pull the authority out of link_id and find a link_node whose ID shares the same authority, and make those the fake values?
+
             # fake avail and suggested
             fakeAvail = "2-4094"
             fakeSuggested = ""
-            # Find the HopLink on this AM with the given link_id
+            # Find the HopLink on this AM with the given link_id and path_id
             for hop in self.hops:
-                if hop.urn == link_id:
+                if hop.urn == link_id and hop.path.id == path_id:
                     fakeSuggested = hop._hop_link.vlan_suggested_request
+                    fakeAvail = hop._hop_link.vlan_range_request
                     break
             self.logger.debug(" ... returning Fake avail/suggested %s, %s", fakeAvail, fakeSuggested)
             return (path_globalId, fakeAvail, fakeSuggested)
