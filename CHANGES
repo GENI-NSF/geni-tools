@@ -1,5 +1,7 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+ * Print AM version when logging that GENI AM is listening 
+
 gcf 2.8.1:
  * Give `omni-configure` the ability to find PKCS#8 private keys,
    not just PKCS#1. With openssl v1.0.0 PKCS#8 is the default, so new
