@@ -187,7 +187,7 @@ def main(argv=None):
         msg = "Unknown API version: %d. Valid choices are \"1\", \"2\", or \"3\""
         sys.exit(msg % (opts.api_version))
 
-    logging.getLogger('gcf-am').info('GENI AM Listening on port %s...' % (opts.port))
+    logging.getLogger('gcf-am').info('GENI AM (v%s) Listening on port %s...' % (opts.api_version, opts.port))
     ams.serve_forever()
 
 if __name__ == "__main__":
