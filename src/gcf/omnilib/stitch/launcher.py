@@ -72,7 +72,12 @@ class Launcher(object):
 
                     # Aggregate.BUSY_POLL_INTERVAL_SEC = 10 # dossl does 10
                     # Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS = 30
-                    secs = Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS
+                    # Use the v3 AM sleep by default.
+                    # But if any v2 AMs have (or have had) reservations, then use that sleep
+                    secs = Aggregate.PAUSE_FOR_V3_AM_TO_FREE_RESOURCES_SECS
+                    for agg2 in self.aggs:
+                        if agg2.api_version == 2 and secs < Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS and agg2.triedRes:
+                            secs = Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS
                     if not isinstance(se, StitchingRetryAggregateNewVlanImmediatelyError):
                         if agg.dcn:
                             secs = Aggregate.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS

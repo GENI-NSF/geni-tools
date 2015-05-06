@@ -350,6 +350,12 @@ class StitchingHandler(object):
             # Construct and save out a combined manifest
             combinedManifest, filename, retVal = self.getAndSaveCombinedManifest(lastAM)
 
+            # If some AMs used APIv3+, then we only did an allocation. Print something
+            msg = self.getProvisionMessage()
+            if msg:
+                self.logger.info(msg)
+                retVal += msg + "\n"
+
             # Print something about sliver expiration times
             msg = self.getExpirationMessage()
 
@@ -491,7 +497,7 @@ class StitchingHandler(object):
                 rspec = am.listResources(opts_copy, self.slicename)
             except StitchingError, se:
                 self.logger.debug("Failed to list current reservation: %s", se)
-            if self.opts.api_version == 2:
+            if am.api_version == 2:
                 retStruct[(am.urn,am.url)] = rspec
             else:
                 retStruct[am.url] = {'code':dict(),'value':rspec,'output':None}
@@ -1080,6 +1086,19 @@ class StitchingHandler(object):
         return msg
     # end getExpirationMessage
 
+    def getProvisionMessage(self):
+        # Get a message warning the experimenter to do provision and poa at AMs that are only allocated
+        msg = None
+        for agg in self.ams_to_process:
+            if agg.manifestDom and agg.api_version > 2:
+                if msg is None:
+                    msg = ""
+                aggnick = agg.nick
+                if aggnick is None:
+                    aggnick = agg.url
+                msg += "   Reservation at %s is temporary! \nYou must manually call `omni -a %s -V3 provision %s` and then `omni -a %s -V3 poa %s geni_start`.\n" % (aggnick, aggnick, self.slicename, aggnick, self.slicename)
+        return msg
+
     # Compare the list of AMs in the request with AMs known
     # to the SCS. Any that the SCS does not know means the request
     # cannot succeed if those are AMs in a stitched link
@@ -1215,14 +1234,17 @@ class StitchingHandler(object):
             # We are doing another call.
             # Let AMs recover. Is this long enough?
             # If one of the AMs is a DCN AM, use that sleep time instead - longer
-            sTime = Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS
+            sTime = Aggregate.PAUSE_FOR_V3_AM_TO_FREE_RESOURCES_SECS
             for agg in existingAggs:
                 if agg.dcn and agg.triedRes:
                     # Only need to sleep this much longer time
                     # if this is a DCN AM that we tried a reservation on (whether it worked or failed)
-                    if sTime == Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS:
+                    if sTime < Aggregate.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS:
                         self.logger.debug("Must sleep longer cause had a previous reservation attempt at a DCN AM: %s", agg)
                     sTime = Aggregate.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS
+                elif agg.api_version == 2 and agg.triedRes and sTime < Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS:
+                    self.logger.debug("Must sleep longer cause had a previous v2 reservation attempt at %s", agg)
+                    sTime = Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS
                 # Reset whether we've tried this AM this time through
                 agg.triedRes = False
 
@@ -1983,7 +2005,8 @@ class StitchingHandler(object):
             if self.opts.slicecredfile.endswith("json"):
                 trim = -5
             # -4 is to cut off .xml. It would be -5 if the cred is json
-            handler_utils._save_cred(self, self.opts.slicecredfile[:trim], slicecred)
+            #self.logger.debug("Saving slice cred %s... to %s", str(slicecred)[:15], self.opts.slicecredfile[:trim])
+            self.opts.slicecredfile = handler_utils._save_cred(self, self.opts.slicecredfile[:trim], slicecred)
             self.savedSliceCred = True
 
         # Ensure slice not expired
@@ -2930,10 +2953,12 @@ class StitchingHandler(object):
 #                agg.url =  'http://alpha.dragon.maxgigapop.net:12346/'
 
             # Use GetVersion to determine AM type, AM API versions spoken, etc
+            # Hack: Here we hard-code using APIv2 always to call getversion, assuming that v2 is the AM default
+            # and so the URLs are v2 URLs.
             if options_copy.warn:
-                omniargs = ['--ForceUseGetVersionCache', '-a', agg.url, 'getversion']
+                omniargs = ['--ForceUseGetVersionCache', '-V2', '-a', agg.url, 'getversion']
             else:
-                omniargs = ['--ForceUseGetVersionCache', '-o', '--warn', '-a', agg.url, 'getversion']
+                omniargs = ['--ForceUseGetVersionCache', '-o', '--warn', '-V2', '-a', agg.url, 'getversion']
 
             try:
                 self.logger.debug("Getting extra AM info from Omni for AM %s", agg)
@@ -2977,6 +3002,8 @@ class StitchingHandler(object):
                         maxVer = 1
                         hasV2 = False
                         v2url = None
+                        maxVerUrl = None
+                        reqVerUrl = None
                         for key in version[aggurl]['value']['geni_api_versions'].keys():
                             if int(key) == 2:
                                 hasV2 = True
@@ -2997,6 +3024,9 @@ class StitchingHandler(object):
 #                                    agg.url = version[aggurl]['value']['geni_api_versions'][key]
                             if int(key) > maxVer:
                                 maxVer = int(key)
+                                maxVerUrl = version[aggurl]['value']['geni_api_versions'][key]
+                            if int(key) == self.opts.api_version:
+                                reqVerUrl = version[aggurl]['value']['geni_api_versions'][key]
                         # Done loop over api versions
 
                         # This code is just to avoid ugly WARNs from Omni about changing URL to get the right API version.
@@ -3023,6 +3053,11 @@ class StitchingHandler(object):
                             msg = "%s does not speak AM API v2 (max is V%d). APIv2 required!" % (agg, maxVer)
                             #self.logger.error(msg)
                             raise StitchingError(msg)
+                        agg.api_version = self.opts.api_version
+                        if self.opts.api_version > maxVer:
+                            self.logger.debug("Asked for APIv%d but %s only supports v%d", self.opts.api_version, agg, maxVer)
+                            agg.api_version = maxVer
+
 #                        if maxVer != 2:
 #                            self.logger.debug("%s speaks AM API v%d, but sticking with v2", agg, maxVer)
 
@@ -3030,6 +3065,21 @@ class StitchingHandler(object):
 #                            self.logger.warn("Testing v3 support")
 #                            agg.api_version = 3
 #                        agg.api_version = maxVer
+
+                        # Change the URL for the AM so that later calls to this AM don't get complaints from Omni
+                        # Here we hard-code knowledge that APIv2 is the default in Omni, the agg_nick_cache, and at AMs
+                        if agg.api_version != 2:
+                            if agg.api_version == maxVer and maxVerUrl is not None and maxVerUrl != agg.url:
+                                self.logger.debug("%s: Swapping URL to v%d URL. Change from %s to %s", agg, agg.api_version, agg.url, maxVerUrl)
+                                if agg.alt_url is None:
+                                    agg.alt_url = agg.url
+                                agg.url = maxVerUrl
+                            elif agg.api_version == self.opts.api_version and reqVerUrl is not None and reqVerUrl != agg.url:
+                                self.logger.debug("%s: Swapping URL to v%d URL. Change from %s to %s", agg, agg.api_version, agg.url, reqVerUrl)
+                                if agg.alt_url is None:
+                                    agg.alt_url = agg.url
+                                agg.url = reqVerUrl
+
                     # Done handling geni_api_versions
 
                     if version[aggurl]['value'].has_key('GRAM_version'):
@@ -3165,7 +3215,10 @@ class StitchingHandler(object):
                     self.logger.debug("   Alternate URL: %s", agg.alt_url)
                 self.logger.debug("   Using AM API version %d", agg.api_version)
                 if agg.manifestDom:
-                    self.logger.debug("   Have a reservation here (%s)!", agg.url)
+                    if agg.api_version > 2:
+                        self.logger.debug("   Have a temporary reservation here (%s)! \n*** You must manually call `omni -a %s -V3 provision %s` and then `omni -a %s -V3 poa %s geni_start`", agg.url, agg.url, self.slicename, agg.url, self.slicename)
+                    else:
+                        self.logger.debug("   Have a reservation here (%s)!", agg.url)
                 if not agg.doesSchemaV1:
                     self.logger.debug("   Does NOT support Stitch Schema V1")
                 if agg.doesSchemaV2:

@@ -37,6 +37,20 @@ gcf 2.9:
   * If SCS gave same suggested VLAN tag to 2 paths (same hop), then retry
     at the SCS. (#802)
    * The SCS does not deconflict suggestions across paths, so this can happen.
+  * When a request fails due to VLAN unavailable someplace along a path where the VLAN
+    was a choice from 'any', no need to go back to the SCS; delete the intermediate reservations
+    and mark the failed tag unavailable, and let that first AM pick the tag again.
+    This should mean fewer un-necessary deletes and fewer calls to the SCS. (#648)
+   * Also fix this block to count this as a local VLAN retry.
+  * Better support for AM API version 3 (#261)
+   * When saving the slice credential renames the file (`.json` extension), save that.
+   * Set the API version for an AM to the command line request version, or the most recent
+     lower version number.
+   * When picking the requested expiration time for an AM, limit it to 3 hours when doing Allocate.
+   * Set the AM URL to the v3 URL if using v3
+   * Tune the pause before redoing a request to be shorter if only dealing with v3 AMs
+   * Warn when done if any reservations are only allocations.
+   * Always use APIv2 when calling `getversion`
 
  * Scripts
   * Initial commit of `examples/renewSliceAndSlivers.py`. (#798)

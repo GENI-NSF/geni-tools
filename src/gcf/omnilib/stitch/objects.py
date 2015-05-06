@@ -186,6 +186,7 @@ class Aggregate(object):
     SLIVERSTATUS_MAX_TRIES = 10
     SLIVERSTATUS_POLL_INTERVAL_SEC = 30 # Xi says 10secs is short if ION is busy; per ticket 1045, even 20 may be too short
     PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS = 30
+    PAUSE_FOR_V3_AM_TO_FREE_RESOURCES_SECS = 15 # When its a V3 AM and we just allocated, should be quicker to free the resources
     # See DCN_AM_RETRY_INTERVAL_SECS for the DCN AM equiv of PAUSE_FOR_AM_TO_FREE...
     PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS = DCN_AM_RETRY_INTERVAL_SECS # Xi and Chad say ION routers take a long time to reset
     MAX_AGG_NEW_VLAN_TRIES = 50 # Max times to locally pick a new VLAN
@@ -550,6 +551,8 @@ class Aggregate(object):
             sleepSecs = self.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS 
             if self.dcn:
                 sleepSecs = self.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS
+            elif self.api_version > 2:
+                sleepSecs = self.PAUSE_FOR_V3_AM_TO_FREE_RESOURCES_SECS 
 
             if datetime.datetime.utcnow() + datetime.timedelta(seconds=sleepSecs) >= self.timeoutTime:
                 # We'll time out. So quit now.
@@ -823,7 +826,7 @@ class Aggregate(object):
 #        if "nysernet" in self.urn:
 #            self.logger.error("Forcing %s to report an error, delete prior reservation...", self)
 #            self.deleteReservation(opts, slicename)
-#            self.handleVlanUnavailable("reservation", ("fake unavail"))
+#            self.handleVlanUnavailable("reservation", ("fake unavail"), None, False, opts, slicename)
 
         # Parse out the VLANs we got, saving them away on the HopLinks
         # Note and complain if we didn't get VLANs or the VLAN we got is not what we requested
@@ -849,7 +852,7 @@ class Aggregate(object):
             if not suggestedValue:
                 self.logger.error("Didn't find suggested value in rspec for hop %s", hop)
                 # Treat as error? Or as vlan unavailable? FIXME
-                self.handleVlanUnavailable("reservation", ("No suggested value element on hop %s" % hop), hop, True)
+                self.handleVlanUnavailable("reservation", ("No suggested value element on hop %s" % hop), hop, True, opts, slicename)
             elif suggestedValue in ('null', 'None', 'any'):
                 self.logger.error("Hop %s Suggested was invalid in manifest: %s", hop, suggestedValue)
                 # This could be due to the AM simply failing to properly construct the manifest
@@ -859,7 +862,7 @@ class Aggregate(object):
                 # 9/2014: This happens if you request 'any' with a PGv2 schema RSpec at PG AMs
 
                 # Treat as error? Or as vlan unavailable? FIXME
-                self.handleVlanUnavailable("reservation", ("Invalid suggested value %s on hop %s" % (suggestedValue, hop)), hop, True)
+                self.handleVlanUnavailable("reservation", ("Invalid suggested value %s on hop %s" % (suggestedValue, hop)), hop, True, opts, slicename)
             else:
                 suggestedObject = VLANRange.fromString(suggestedValue)
             # If these fail and others worked, this is malformed
@@ -908,6 +911,11 @@ class Aggregate(object):
 
         # DCN and PG AMs honor this. GRAM does not, and I doubt AL2S or EG does. But set it everywhere for now anyhow.
 
+        # This code mostly assumes that this is a createsliver (APIv2) call. For APIv3+, this is an Allocate call,
+        # and so the requested expiration should be much shorter - basically, the time to run stitcher.
+        # Using a longer time is OK (assuming AMs allow it). But a better time is probably, say, 6 hours from now. Or 3.
+        # So after doing the larger check, we look if this AM is v3+, and then shorten the requested reservation appropriately.
+
         # Note that this code includes an ugly HACK - it uses constants for expected initial sliver expiration at various AM types.
         # Adding new AM types or if policies change will cause this to work, well, differently.
         # The goal here is to ensure transit networks expire at or before endpoints, and the overall link has
@@ -918,6 +926,9 @@ class Aggregate(object):
         # If not reserving resources after, set expires to the minimum we expect from other AMs on the path
         # min(slice expiration, expiration of other AMs on paths for this AM, default sliver expirations by AM type for other AMs on these paths where no reservation yet)
         # (Note algorithm changes if we are doing renewals after)
+
+        # Number of hours to hold reservation when doing APIv3+
+        allocHours = 3
 
         now = datetime.datetime.utcnow()
 
@@ -1016,6 +1027,15 @@ class Aggregate(object):
                     self.logger.debug("After %s, minDays=%d, newExpires=%s", am, minDays, newExpires)
             # End loop over AMs on path
         # End loop over paths
+
+        # In APIv3+, this should be a temporary hold. So only request the resources for a few hours.
+        if self.api_version > 2:
+            shortExpires = now + datetime.timedelta(hours=allocHours)
+            newExpires2 = min(shortExpires, newExpires)
+            self.logger.debug("But this AM uses APIv%d. So aim for expiration at %s, but within the above limits.", self.api_version, shortExpires)
+            if newExpires != newExpires2:
+                self.logger.debug("Taking the earlier expiration therefore.")
+                newExpires = newExpires2
 
         self.logger.debug("Will request newExpires=%s", newExpires)
 
@@ -1811,8 +1831,8 @@ class Aggregate(object):
 #                ret["code"]["geni_code"] = 24
 #                ret["code"]["am_code"] = 2
 #                ret["code"]["am_type"] = "foam"
-#                ret["output"] = "requested VLAN not available on this endpoint"
-#                ret["output"] = "requested VLAN unavailable: sdn-sw.sunn.net.internet2.edu,e5/1 VLAN=1641/"
+#                # Tweak the name of the interface as needed, but be sure some VLAN # is listed.
+#                ret["output"] = "requested VLAN unavailable: sdn-sw.losa.net.internet2.edu,eth5/1 VLAN=1234."
 #                raise AMAPIError("test", ret)
 
             # FIXME: Try disabling all but WARN log messages? But I lose PG Log URL? 
@@ -1989,7 +2009,7 @@ class Aggregate(object):
 #                        self.logger.debug("*** %s unavail NOW %s", hop, hop.vlans_unavailable)
 #                        self.deleteReservation(opts, slicename)
 
-                    self.handleVlanUnavailable(opName, ae)
+                    self.handleVlanUnavailable(opName, ae, None, False, opts, slicename)
                 else:
                     # some other AMAPI error code
                     # FIXME: Try to parse the am_code or the output message to decide if this is 
@@ -2282,7 +2302,7 @@ class Aggregate(object):
                             self.logger.info("A requested VLAN was unavailable doing %s %s at %s", opName, slicename, self)
                             self.logger.debug(str(ae))
                             didInfo = True
-                        self.handleVlanUnavailable(opName, ae)
+                        self.handleVlanUnavailable(opName, ae, None, False, opts, slicename)
                     else:
                         if isFatal and self.userRequested:
                             # if it was not user requested, then going to the SCS to avoid that seems right
@@ -2785,7 +2805,7 @@ class Aggregate(object):
             elif self.localPickNewVlanTries >= self.MAX_DCN_AGG_NEW_VLAN_TRIES:
                 # Treat as VLAN was Unavailable - note it could have been a transient circuit failure or something else too
                 # If this imports and xlates then we can do the PCE style thing. Otherwise, this has to fail to the SCS I think
-                self.handleVlanUnavailable('createsliver', msg)
+                self.handleVlanUnavailable('createsliver', msg, None, False, opts, slicename)
             else:
                 self.localPickNewVlanTries = self.localPickNewVlanTries + 1
                 self.inProcess = False
@@ -3119,11 +3139,29 @@ class Aggregate(object):
             # No single failed hop - must treat them all as failed
             failedHops = self.hops
 
+        # Ticket #648: If have a failedHop that imports and root of chain is 'any' but this AM could not give the VLAN requested,
+        # then mark that VLAN unavail up the chain and delete at root of chain (or all up the chain?).
+        # The goal is to avoid falling through to saying we can't handle this locally, and therefore risking marking this hop excluded un-necessarily.
+
+        # Block below originally was only for the ION VLAN_PCE case and so required that the failed hop does translation.
+        # I think code below works, but change failedHop._hop_link.vlan_xlate to a check that no hop imports from failedHop (for simplicity),
+        # and change the comments.
+        # Now, here I require that the root is 'any'. Could I use this code block for a non-any case, having my code pick a new tag?
+        # - well, that would be the handle-it-locally case. And to make my code handle it locally, I'd have to have my canRedoLocally stuff accept the case where it is a chain
+        # that goes back farther but isn't otherwise too complicated (which would be what?), and have it
+        # mark the failed tag unavail up the chain, etc... That is, the code for picking a tag that might work is a little complex.
+        # For now, maybe handle the root is 'any' case only...
+
+        # This block is only if a single hop was IDed as failed.
+        # The block below bails if the failed hop imports vlans. This block handles the simple case where the hop imports.
+        #  ==> So far, this block handles only where there's just a single failed hop. A future todo would be to handle >1 filed hops.
+
         # If this is something like ION saying the VLAN you asked for isn't available (VLAN_PCE), and
         # we got here cause an AM was asked for 'any', then try re-asking that AM for a different 'any'
         # See ticket #622
-        if failedHop and failedHop._hop_link.vlan_xlate and slicename and failedHop.import_vlans:
-            self.logger.debug("Potential ION VLAN_PCE redo case")
+#        if failedHop and failedHop._hop_link.vlan_xlate and slicename and failedHop.import_vlans:
+        if failedHop and slicename and failedHop.import_vlans:
+            self.logger.debug("Potential easy local redo case (rooted in request for 'any')")
             toDelete = [] # AMs walking up the import tree whose reservation must be deleted
             toDelete.append(self)
             last = self # last AM
@@ -3139,19 +3177,38 @@ class Aggregate(object):
                 parent = parent.import_vlans_from
 
             if lastHop._hop_link.vlan_suggested_request == VLANRange.fromString('any'):
-                self.logger.debug("A simple VLAN PCE case we handle quickly: Root of chain was %s. Chain had %d AMs including the failure at %s", lastHop.aggregate, len(toDelete), self)
+                self.logger.debug("A simple VLAN unavail case we handle quickly: Root of chain was %s. Chain had %d AMs including the failure at %s", lastHop.aggregate, len(toDelete), self)
                 self.logger.debug("Marking failed tag %s unavail at %s and %s", failedTag, lastHop, failedHop)
                 lastHop.vlans_unavailable = lastHop.vlans_unavailable.union(failedTag)
                 lastHop._hop_link.vlan_range_request = lastHop._hop_link.vlan_range_request - lastHop.vlans_unavailable
+
+                failedHop.vlans_unavailable = failedHop.vlans_unavailable.union(failedTag)
+                # the failedHop range must be reset to the one from the SCS, cause edited one is just a single tag
+                failedHop._hop_link.vlan_range_request = failedHop._hop_link.scs_vlan_range_request - failedHop.vlans_unavailable
+
+                if (not self.dcn and self.localPickNewVlanTries > self.MAX_AGG_NEW_VLAN_TRIES) or (self.dcn and self.localPickNewVlanTries >= self.MAX_DCN_AGG_NEW_VLAN_TRIES):
+                    self.logger.debug("Tried too many times to find a new VLAN tag")
+                    errMsg = "Too many failures to find a VLAN tag (%s)" % errMsg
+
+                    if self.userRequested:
+                        self.logger.debug(errMsg)
+                        self.logger.debug("User requested AM had a failed hop that imports VLANs. Fail to SCS (with that tag excluded), in hopes of the upstream AM picking a new tag.")
+                    # Exit to SCS
+                    # If we've tried this AM a few times, set its hops to be excluded
+                    if self.allocateTries > self.MAX_TRIES:
+                        self.logger.debug("%s allocation failed %d times - try excluding the failed hop", self, self.allocateTries)
+                        failedHop.excludeFromSCS = True
+                    self.inProcess = False
+                    raise StitchingCircuitFailedError("Circuit reservation failed at %s. Try again from the SCS. (Error: %s)" % (self, errMsg))
+                else:
+                    self.localPickNewVlanTries = self.localPickNewVlanTries + 1
+
                 if len(lastHop._hop_link.vlan_range_request) == 0:
                     self.logger.debug("After excluding that tag from lastHop %s's range_request, no tags left!", lastHop)
                     if lastHop in self.hops:
                         self.inProcess = False
                         raise StitchingCircuitFailedError("VLAN was unavailable at %s and not enough available VLAN tags at %s to try again locally. Try again from the SCS" % (self, lastHop))
                 hopsDone.append(lastHop)
-                failedHop.vlans_unavailable = failedHop.vlans_unavailable.union(failedTag)
-                # the failedHop range must be reset to the one from the SCS, cause edited one is just a single tag
-                failedHop._hop_link.vlan_range_request = failedHop._hop_link.scs_vlan_range_request - failedHop.vlans_unavailable
                 self.logger.debug("New lastHop range: '%s'; New failedHop range: '%s'", lastHop._hop_link.vlan_range_request, failedHop._hop_link.vlan_range_request)
                 if len(failedHop._hop_link.vlan_range_request) == 0:
                     self.logger.debug("After excluding that tag from failedHop %s's range_request, no tags left!", failedHop)
@@ -3262,8 +3319,8 @@ class Aggregate(object):
                 raise StitchingRetryAggregateNewVlanImmediatelyError(msg)
             else:
                 # else cannot redo just this leg easily. Fall through.
-                self.logger.debug("... not a simple VLAN PCE case, because lastHop (chain root) %s suggested VLAN was not 'any'", lastHop)
-        # End of block to see if this is a simple ION failed and started with 'any' case
+                self.logger.debug("... not a simple local redo VLAN unavail case, because lastHop (chain root) %s suggested VLAN was not 'any'", lastHop)
+        # End of block to see if this is a simple reservation failed and chain started with 'any' case
 
         # For each failed hop (could be all), or hop on same path as failed hop that does not do translation, mark unavail the tag from before
         for hop in failedHops:
@@ -3705,7 +3762,7 @@ class Aggregate(object):
                     self.logger.debug("%s re-using already picked tag %s", hop, pick)
                 else:
                     # Pick a new tag if we can
-                    if (hop._hop_link.vlan_producer or not hop._import_vlans) and self.supportsAny():
+                    if (hop._hop_link.vlan_producer or not hop._import_vlans) and self.supportsAny() and (opts is None or opts.useSCSSugg == False):
                         # If this hop picks the VLAN tag, and this AM accepts 'any', then we leave pick as 'any'
                         self.logger.debug("%s is a vlan producer or doesn't import vlans and handles suggested of 'any', so after all that let it pick any tag.", hop)
                     elif len(nextRequestRangeByHop[hop]) == 0:
