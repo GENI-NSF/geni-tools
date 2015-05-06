@@ -51,6 +51,8 @@ gcf 2.9:
    * Tune the pause before redoing a request to be shorter if only dealing with v3 AMs
    * Warn when done if any reservations are only allocations.
    * Always use APIv2 when calling `getversion`
+  * Fix finding a hop when parsing EG manifests to consider the path ID, thus
+    supporting 2 links across the same interface. (#805)
 
  * Scripts
   * Initial commit of `examples/renewSliceAndSlivers.py`. (#798)
