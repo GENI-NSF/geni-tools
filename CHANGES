@@ -60,6 +60,7 @@ gcf 2.9:
    * Implement AM API Draft proposal "AD".
    * `CredentialVerify` now requires a valid credential over the given `target_urn`
      if supplied, but returns `True` if no credentials are supplied AND no `target_urn`.
+  * Print AM version when logging that GENI AM is listening  (#804)
 
 gcf 2.8.1:
  * Give `omni-configure` the ability to find PKCS#8 private keys,
