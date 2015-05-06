@@ -1,6 +1,66 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
- * Print AM version when logging that GENI AM is listening 
+gcf 2.9:
+ * Add Markdown style README, CONTRIBUTING and CONTRIBUTORS files. (#551)
+
+ * Omni
+  * If `sliverstatus` fails in a way that indicates there are no local resources,
+    and the caller specified `--raise-error-on-v2-amapi-error`, still delete any
+    sliver info records at the clearinghouse (as necessary). (#778)
+  * If `deletesliver` or `delete` fail indicating there are no local resources,
+    delete any sliver info records at the clearinghouse (as necessary). (#782)
+  * Add 11 aggregates to the nickname cache. (#783)
+  * Trim fractional seconds from user input datetimes before passing to servers. (#795)
+   * Avoids errors in ProtoGENI based code.
+  * Allow getting Ad RSpecs (calling `ListResources` not in slice context)
+    without a user credential. (#793)
+   * Implements AM API Change Proposal AD.
+  * If the return from `POA` is a `geni_credential`, or per sliver has a
+    `geni_credential`, then save that cred in a separate file. (#803)
+   * Also when saving output, JSON that has XML content shouldn't get
+     the header inserted within the XML content.
+
+ * Stitcher
+  * When merging manifests, handle a request for component_manager of the ExoSM,
+    where the manifest component_manager will be more specific. (#780)
+   * If there isn't an exact match and the specific component_manager doesn't belong 
+     to an aggregate we are using, then try to match without the sub-authority.
+  * When redoing a request from the SCS, be sure to copy any existing state
+    from an AM not in the SCS workflow. (#781)
+  * When checking if an EG URN belongs to this AM, compare them exactly,
+    not using `startswith`, so an EG rack doesn't claim a URN for the ExoSM. (#779)
+  * scs.py now honors `--timeout` to set the SSL connection timeout. (#785)
+  * For `--fixedEndpoint` calls, avoid adding the fake interface to links
+    with no stitching path, such as for a LAN within a single AM. (#790)
+  * In debug when printing raw return from SCS, print the name of the path for each hop. (#800)
+  * Clarify error message when request 'any' VLAN and get VLAN_UNAVAILABLE. (#801)
+  * If SCS gave same suggested VLAN tag to 2 paths (same hop), then retry
+    at the SCS. (#802)
+   * The SCS does not deconflict suggestions across paths, so this can happen.
+  * When a request fails due to VLAN unavailable someplace along a path where the VLAN
+    was a choice from 'any', no need to go back to the SCS; delete the intermediate reservations
+    and mark the failed tag unavailable, and let that first AM pick the tag again.
+    This should mean fewer un-necessary deletes and fewer calls to the SCS. (#648)
+   * Also fix this block to count this as a local VLAN retry.
+  * Better support for AM API version 3 (#261)
+   * When saving the slice credential renames the file (`.json` extension), save that.
+   * Set the API version for an AM to the command line request version, or the most recent
+     lower version number.
+   * When picking the requested expiration time for an AM, limit it to 3 hours when doing Allocate.
+   * Set the AM URL to the v3 URL if using v3
+   * Tune the pause before redoing a request to be shorter if only dealing with v3 AMs
+   * Warn when done if any reservations are only allocations.
+   * Always use APIv2 when calling `getversion`
+
+ * Scripts
+  * Initial commit of `examples/renewSliceAndSlivers.py`. (#798)
+
+ * gcf
+  * Make the user credential optional to `ListResources`. (#792)
+   * Implement AM API Draft proposal "AD".
+   * `CredentialVerify` now requires a valid credential over the given `target_urn`
+     if supplied, but returns `True` if no credentials are supplied AND no `target_urn`.
+  * Print AM version when logging that GENI AM is listening 
 
 gcf 2.8.1:
  * Give `omni-configure` the ability to find PKCS#8 private keys,

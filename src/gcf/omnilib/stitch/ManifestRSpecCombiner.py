@@ -303,9 +303,33 @@ class ManifestRSpecCombiner:
                     cmid = child.getAttribute(COMPONENT_MGR_ID)
                     key = cid + cmid
                     # self.logger.debug("Found possible node to add. client_id: %s; comp_mgr: %s; from AM: %s", cid, cmid, am)
-                    if key not in template_node_cids and cmid in am.urn_syns:
-                        # self.logger.debug(".... adding it")
-                        doc_root.appendChild(child.cloneNode(True))
+                    if key not in template_node_cids:
+                        if cmid in am.urn_syns:
+                            # self.logger.debug(".... adding it")
+                            self.logger.debug("Adding missing node client_id: %s; comp_mgr: %s; from AM: %s", cid, cmid, am)
+                            doc_root.appendChild(child.cloneNode(True))
+                        # For reservation from ExoSM the AM manifest lists a cmid for a specific rack, so different than request or any urn_syn on the ExoSM
+                        # Ticket #780
+                        elif ':' in cmid[len('urn:publicid:IDN+'):cmid.find('+authority')]:
+                            self.logger.debug("Node %s cmid %s shows it is from a sub-AM. See if the parent would be a match (so need to add the node) at %s", cid, cmid, am)
+                            # If the CM on this node had a sub-site, then count it as new from here
+                            # if no other AM claims that CM and there is no node with the trimmed (less specific) cmid in the template
+
+                            # if there is an am with cmid as a urn_syn but not this am: continue
+                            thatAM = objects.Aggregate.findDontMake(cmid)
+                            if thatAM is not None and thatAM != am:
+                                self.logger.debug("Node cmid belongs to someone else: %s, %s", cmid, thatAM)
+                                continue
+
+                            # Produce the cmid urn...exogeni.net+authority+am from urn...exogeni.net:site+authority+am
+                            cmidTrim = cmid[:cmid.find('+authority')]
+                            cmidTrim = cmidTrim[:cmidTrim.find(':', len('urn:publicid:IDN+'))]
+                            cmidTrim += cmid[cmid.find('+authority'):]
+
+                            key2 = cid + cmidTrim
+                            if key2 not in template_node_cids and (cmid in am.urn_syns or cmidTrim in am.urn_syns):
+                                self.logger.debug("Adding missing node from a sub-AM client_id: %s; comp_mgr: %s; from AM: %s", cid, cmid, am)
+                                doc_root.appendChild(child.cloneNode(True))
             # Now do the node replacing as necessary
             for urn in am.urn_syns:
                 if template_nodes_by_cmid.has_key(urn):
@@ -316,9 +340,28 @@ class ManifestRSpecCombiner:
                                     child.localName == defs.NODE_TAG:
                                 child_cmid = child.getAttribute(COMPONENT_MGR_ID)
                                 child_client_id = child.getAttribute(CLIENT_ID)
-                                if child_cmid == urn and child_client_id == template_client_id:
-                                    # self.logger.debug(("Replacing template for node %s (" % template_client_id) + str(template_node) + (") with that from %s" % am) + " (" + str(child) + "). Node comp_mgr ID: " + child_cmid)
-                                    doc_root.replaceChild(child.cloneNode(True), template_node)
+                                if child_client_id == template_client_id:
+                                    if child_cmid == urn:
+                                        self.logger.debug(("Replacing template for node %s (" % template_client_id) + str(template_node) + (") with that from %s" % am) + " (" + str(child) + "). Node comp_mgr ID: " + child_cmid)
+                                        doc_root.replaceChild(child.cloneNode(True), template_node)
+                                    elif ':' in child_cmid[len('urn:publicid:IDN+'):child_cmid.find('+authority')] and child_cmid not in am.urn_syns:
+                                        self.logger.debug("Node %s cmid %s shows it is from a sub-AM. See if the parent would be a match (so must replace the node) at %s", child_client_id, child_cmid, am)
+                                        # If the CM on this node had a sub-site, then try comparing the non-root cmid with that in the template.
+                                        # if no other AM claims that CM and there is no node with the trimmed (less specific) cmid in the template
+
+                                        # if there is an am with cmid as a urn_syn but not this am: continue
+                                        thatAM = objects.Aggregate.findDontMake(child_cmid)
+                                        if thatAM is not None and thatAM != am:
+                                            self.logger.debug("Node cmid belongs to someone else: %s, %s", child_cmid, thatAM)
+                                            continue
+
+                                        # Produce the cmid urn...exogeni.net+authority+am from urn...exogeni.net:site+authority+am
+                                        cmidTrim = child_cmid[:child_cmid.find('+authority')]
+                                        cmidTrim = cmidTrim[:cmidTrim.find(':', len('urn:publicid:IDN+'))]
+                                        cmidTrim += child_cmid[child_cmid.find('+authority'):]
+                                        if cmidTrim == urn:
+                                            self.logger.debug(("Replacing template for super AM (like EG-SM) node %s (" % template_client_id) + str(template_node) + (") with that from %s" % am) + " (" + str(child) + "). Node comp_mgr ID: " + child_cmid)
+                                            doc_root.replaceChild(child.cloneNode(True), template_node)
 
     def combineLinks(self, ams_list, dom_template):
         '''Replace each link in dom_template with matching link from (an) AM with same URN.

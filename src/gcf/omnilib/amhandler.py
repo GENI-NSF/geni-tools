@@ -1123,13 +1123,8 @@ class AMCallHandler(object):
             else:
                 (cred, message) = self.framework.get_user_cred()
             if cred is None:
-                # Dev mode allow doing the call anyhow
-                self.logger.error('Cannot list resources: Could not get user credential')
-                if not self.opts.devmode:
-                    return (None, "Could not get user credential: %s" % message)
-                else:
-                    self.logger.info('... but continuing')
-                    cred = ""
+                # Per AM API Change Proposal AD, allow no user cred to get an ad
+                self.logger.debug("No user credential, but this is now allowed for getting Ads....")
         else:
             (slicename, urn, cred, retVal, slice_exp) = self._args_to_slicecred(args, 1, "listresources")
             if cred is None or cred == "":
@@ -2631,16 +2626,47 @@ class AMCallHandler(object):
                     self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
 
                 # Save result
+                ftype = ".json"
                 if isinstance(realresult, dict):
                     prettyResult = json.dumps(realresult, ensure_ascii=True, indent=2)
+                    # Some POAs return a top level geni_credential
+                    # Save it off separately for convenience
+                    if realresult.has_key('geni_credential'):
+                        cred = realresult['geni_credential'].replace("\\n", "\n")
+                        fname = _maybe_save_slicecred(self, slicename + '-sharedlan', cred)
+                        if fname is not None:
+                            prstr = "Saved shared LAN credential to file '%s'" % fname
+                            retVal += prstr + "\n"
+                            self.logger.info(prstr)
                 else:
+                    ftype = ".txt"
                     prettyResult = pprint.pformat(realresult)
+                    # Some POAs return a credential per sliver
+                    # Save those as separate files for readability
+                    if isinstance(realresult, list):
+                        for sliver in realresult:
+                            sliverurn = ''
+                            cred = None
+                            if isinstance(sliver, dict):
+                                if sliver.has_key('geni_sliver_urn'):
+                                    sliverurn = sliver['geni_sliver_urn']
+                                if sliver.has_key('geni_credential'):
+                                    cred = sliver['geni_credential'].replace("\\n", "\n")
+                            if cred is not None:
+                                fname = _maybe_save_slicecred(self, slicename + '-' + sliverurn + '-sharedlan', cred)
+                                if fname is not None:
+                                    prstr = "Saved shared LAN %s credential to file '%s'" % (sliverurn, fname)
+                                    retVal += prstr + "\n"
+                                    self.logger.info(prstr)
+
                 header="PerformOperationalAction result for %s at AM %s:" % (descripMsg, client.str)
                 filename = None
                 if self.opts.output:
-                    filename = _construct_output_filename(self.opts, slicename, client.url, client.urn, "poa-" + action, ".json", numClients)
+                    filename = _construct_output_filename(self.opts, slicename, client.url, client.urn, "poa-" + action, ftype, numClients)
                     #self.logger.info("Writing result of poa %s at AM: %s to file %s", descripMsg, client.url, filename)
+
                 _printResults(self.opts, self.logger, header, prettyResult, filename)
+
                 retVal += "PerformOperationalAction %s was successful." % descripMsg
                 if len(missingSlivers) > 0:
                     retVal += " - with %d missing slivers?!" % len(missingSlivers)
@@ -2720,7 +2746,8 @@ class AMCallHandler(object):
             ds = args[1]
         else:
             ds = None
-        (time, time_with_tz, time_string) = self._datetimeFromString(ds, slice_exp, name)
+        # noSec=True so that fractional seconds are dropped
+        (time, time_with_tz, time_string) = self._datetimeFromString(ds, slice_exp, name, noSec=True)
 
         self.logger.info('Renewing Sliver %s until %s (UTC)' % (name, time_with_tz))
 
@@ -3018,7 +3045,8 @@ class AMCallHandler(object):
             ds = args[1]
         else:
             ds = None
-        (time, time_with_tz, time_string) = self._datetimeFromString(ds, slice_exp, name)
+        # noSec=True so that fractional seconds are dropped
+        (time, time_with_tz, time_string) = self._datetimeFromString(ds, slice_exp, name, noSec=True)
 
         self.logger.info('Renewing Slivers in slice %s until %s (UTC)' % (name, time_with_tz))
 
@@ -3254,7 +3282,7 @@ class AMCallHandler(object):
         # Call SliverStatus on each client
         for client in clientList:
             try:
-                ((status, message), client) = self._api_call(client,
+                ((rawstatus, message), client) = self._api_call(client,
                                                    msg + str(client.url),
                                                    op, args)
             except BadClientException, bce:
@@ -3266,9 +3294,20 @@ class AMCallHandler(object):
                     self._raise_omni_error("\nSliverStatus failed: " + retVal)
                 continue
 
-            rawResult = status
-            # Get the dict status out of the result (accounting for API version diffs, ABAC)
-            (status, message) = self._retrieve_value(status, message, self.framework)
+            rawResult = rawstatus
+            amapiError = None
+            status = None
+            try:
+                # Get the dict status out of the result (accounting for API version diffs, ABAC)
+                (status, message) = self._retrieve_value(rawstatus, message, self.framework)
+            except AMAPIError, amapiError:
+                # Would raise an AMAPIError.
+                # But that loses the side-effect of deleting any sliverinfo records.
+                # So if we're doing those, hold odd on raising the error
+                if self.opts.noExtraCHCalls:
+                    raise amapiError
+                else:
+                    self.logger.debug("Got AMAPIError retrieving value from sliverstatus. Hold it until we do any sliver info processing")
 
             if status:
                 if not isinstance(status, dict):
@@ -3468,7 +3507,14 @@ class AMCallHandler(object):
                         self.logger.info('Error ensuring slice has no slivers recorded in SA database at this AM')
                         self.logger.debug(e)
                 else:
-                    self.logger.debug("Per commandline option, not ensuring clearinghouse lists no slivers for this slice.")
+                    if self.opts.noExtraCHCalls:
+                        self.logger.debug("Per commandline option, not ensuring clearinghouse lists no slivers for this slice.")
+                    else:
+                        self.logger.debug("Based on return error code, (%d), not deleting any slivers here.", code)
+
+                if amapiError is not None:
+                    self.logger.debug("Having processed the sliverstatus return, now raise the AMAPI Error")
+                    raise amapiError
 
                 # FIXME: Put the message error in retVal?
                 # FIXME: getVersion uses None as the value in this case. Be consistent
@@ -3600,6 +3646,7 @@ class AMCallHandler(object):
             retItem[client.url] = status
             # Get the dict status out of the result (accounting for API version diffs, ABAC)
             (status, message) = self._retrieve_value(status, message, self.framework)
+
             if not status:
                 # #634:
                 # delete any sliver_infos for this am/slice
@@ -3784,7 +3831,7 @@ class AMCallHandler(object):
                                     self.logger.debug("entry in result list was not a dict")
                                     continue
                                 if not sliver.has_key('geni_sliver_urn') or str(sliver['geni_sliver_urn']).strip() == "":
-                                    self.logger.debug("entry in result had no 'geni_sliver'urn'")
+                                    self.logger.debug("entry in result had no 'geni_sliver_urn'")
                                 else:
                                     slivurn = sliver['geni_sliver_urn']
                                     status_structs[slivurn] = sliver
@@ -3984,7 +4031,7 @@ class AMCallHandler(object):
         ## where you still have resources.
         for client in clientList:
             try:
-                ((res, message), client) = self._api_call(client,
+                ((rawres, message), client) = self._api_call(client,
                                                    msg + str(client.url),
                                                    op, args)
             except BadClientException, bce:
@@ -3996,8 +4043,19 @@ class AMCallHandler(object):
                     self._raise_omni_error("\nDeleteSliver failed: " + retVal)
                 continue
 
-            # Get the boolean result out of the result (accounting for API version diffs, ABAC)
-            (res, message) = self._retrieve_value(res, message, self.framework)
+            amapiError = None
+            res = None
+            try:
+                # Get the boolean result out of the result (accounting for API version diffs, ABAC)
+                (res, message) = self._retrieve_value(rawres, message, self.framework)
+            except AMAPIError, amapiError:
+                # Would raise an AMAPIError.
+                # But that loses the side-effect of deleting any sliverinfo records.
+                # So if we're doing those, hold odd on raising the error
+                if self.opts.noExtraCHCalls:
+                    raise amapiError
+                else:
+                    self.logger.debug("Got AMAPIError retrieving value from deletesliver. Hold it until we do any sliver info processing")
 
             if res:
                 prStr = "Deleted sliver %s at %s" % (urn,
@@ -4031,6 +4089,41 @@ class AMCallHandler(object):
                 successCnt += 1
                 successList.append( client.url )
             else:
+                doDelete = False
+                code = -1
+                if rawres is not None and isinstance(rawres, dict) and rawres.has_key('code') and isinstance(rawres['code'], dict) and 'geni_code' in rawres['code']:
+                    code = rawres['code']['geni_code']
+                if code==12 or code==15:
+                    doDelete=True
+                if doDelete and not self.opts.noExtraCHCalls:
+                    self.logger.debug("DeleteSliver failed with an error that suggests no slice at this AM - delete all sliverinfo records: %s", message)
+                    # delete sliver info from SA database
+                    try:
+                        # Get the Agg URN for this client
+                        agg_urn = self._getURNForClient(client)
+                        if urn_util.is_valid_urn(agg_urn):
+                            # I'd like to be able to tell the SA to delete all slivers registered for
+                            # this slice/AM, but the API says sliver_urn is required
+                            sliver_urns = self.framework.list_sliverinfo_urns(urn, agg_urn)
+                            for sliver_urn in sliver_urns:
+                                self.framework.delete_sliver_info(sliver_urn)
+                        else:
+                            self.logger.debug("Not ensuring with CH that AM %s slice %s has no slivers - no valid AM URN known")
+                    except NotImplementedError, nie:
+                        self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
+                    except Exception, e:
+                        self.logger.info('Error ensuring slice has no slivers recorded in SA database at this AM')
+                        self.logger.debug(e)
+                else:
+                    if self.opts.noExtraCHCalls:
+                        self.logger.debug("Per commandline option, not ensuring clearinghouse lists no slivers for this slice.")
+                    else:
+                        self.logger.debug("Based on return error code, (%d), not deleting any sliver infos here.", code)
+
+                if amapiError is not None:
+                    self.logger.debug("Having processed the deletesliver return, now raise the AMAPI Error")
+                    raise amapiError
+
                 prStr = "Failed to delete sliver %s at %s (got result '%s')" % (urn, (client.str if client.nick else client.urn), res)
                 if message is None or message.strip() == "":
                     message = "(no reason given)"
@@ -4262,6 +4355,48 @@ class AMCallHandler(object):
                 if len(sliverFails.keys()) == 0:
                     successCnt += 1
             else:
+                doDelete = False
+                raw = retItem[client.url]
+                code = -1
+                if raw is not None and isinstance(raw, dict) and raw.has_key('code') and isinstance(raw['code'], dict) and 'geni_code' in raw['code']:
+                    code = raw['code']['geni_code']
+                # Technically if geni_best_effort and got this failure, then all slivers are bad
+                # But that's only true if the AM honors geni_best_effort, which it may not
+                # So only assume they're all bad if we didn't request any specific slivers.
+                if len(slivers) == 0:
+                    if code==12 or code==15:
+                        doDelete=True
+                if not self.opts.noExtraCHCalls:
+                    if doDelete:
+                        self.logger.debug("Delete failed with an error that suggests no slice at this AM or requested slivers not at this AM - delete all/requested sliverinfo records: %s", message)
+                        # delete sliver info from SA database
+                        try:
+                            if len(slivers) > 0:
+                                self.logger.debug("Delete failed - assuming all %d sliver URNs asked about are invalid and not at this AM - delete from CH", len(slivers))
+                                for sliver in slivers:
+                                    self.framework.delete_sliver_info(sliver)
+                            else:
+                                self.logger.debug("Delete failed: assuming this slice has 0 slivers at this AM. Ensure CH lists none.")
+                                # Get the Agg URN for this client
+                                agg_urn = self._getURNForClient(client)
+                                if urn_util.is_valid_urn(agg_urn):
+                                    # I'd like to be able to tell the SA to delete all slivers registered for
+                                    # this slice/AM, but the API says sliver_urn is required
+                                    sliver_urns = self.framework.list_sliverinfo_urns(urn, agg_urn)
+                                    for sliver_urn in sliver_urns:
+                                        self.framework.delete_sliver_info(sliver_urn)
+                                else:
+                                    self.logger.debug("Not ensuring with CH that AM %s slice %s has no slivers - no valid AM URN known")
+                        except NotImplementedError, nie:
+                            self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
+                        except Exception, e:
+                            self.logger.info('Error ensuring slice has no slivers recorded in SA database at this AM')
+                            self.logger.debug(e)
+                    else:
+                        self.logger.debug("Given AM return code (%d) and # requested slivers (%d), not telling CH to not list these slivers.", code, len(slivers))
+                else:
+                    self.logger.debug("Per commandline option, not ensuring clearinghouse lists no slivers for this slice.")
+
                 if message is None or message.strip() == "":
                     message = "(no reason given)"
                 prStr = "Failed to delete %s at %s: %s" % (descripMsg, (client.str if client.nick else client.urn), message)
@@ -6043,7 +6178,8 @@ class AMCallHandler(object):
                     self.logger.warn("Got geni_end_time for method %s but using anyhow", op)
                 time = datetime.datetime.max
                 try:
-                    (time, time_with_tz, time_string) = self._datetimeFromString(self.opts.geni_end_time, name=slicename)
+                    # noSec=True so that fractional seconds are dropped
+                    (time, time_with_tz, time_string) = self._datetimeFromString(self.opts.geni_end_time, name=slicename, noSec=True)
                     options["geni_end_time"] = time_string
                 except Exception, exc:
                     msg = 'Couldnt parse geni_end_time from %s: %r' % (self.opts.geni_end_time, exc)
@@ -6058,7 +6194,8 @@ class AMCallHandler(object):
                     self.logger.warn("Got geni_start_time for method %s but using anyhow", op)
                 time = datetime.datetime.min
                 try:
-                    (time, time_with_tz, time_string) = self._datetimeFromString(self.opts.geni_start_time, name=slicename)
+                    # noSec=True so that fractional seconds are dropped
+                    (time, time_with_tz, time_string) = self._datetimeFromString(self.opts.geni_start_time, name=slicename, noSec=True)
                     options['geni_start_time'] = time_string
                 except Exception, exc:
                     msg = 'Couldnt parse geni_start_time from %s: %r' % (self.opts.geni_start_time, exc)
@@ -6167,7 +6304,7 @@ class AMCallHandler(object):
                 self.logger.debug("entry in result list was not a dict")
                 continue
             if not sliver.has_key('geni_sliver_urn') or str(sliver['geni_sliver_urn']).strip() == "":
-                self.logger.debug("entry in result had no 'geni_sliver'urn'")
+                self.logger.debug("entry in result had no 'geni_sliver_urn'")
             else:
                 sliverUrn = sliver['geni_sliver_urn']
             if not sliver.has_key('geni_allocation_status') or str(sliver['geni_allocation_status']).strip() == "":
@@ -6208,7 +6345,7 @@ class AMCallHandler(object):
                 self.logger.debug("entry in result list was not a dict")
                 continue
             if not sliver.has_key('geni_sliver_urn') or str(sliver['geni_sliver_urn']).strip() == "":
-                self.logger.debug("entry in result had no 'geni_sliver'urn'")
+                self.logger.debug("entry in result had no 'geni_sliver_urn'")
                 continue
 #            sliver['geni_error'] = 'testing' # TESTING CODE
             if sliver.has_key('geni_error') and sliver['geni_error'] is not None and str(sliver['geni_error']).strip() != "":
@@ -6240,7 +6377,7 @@ class AMCallHandler(object):
                 self.logger.debug("entry in result list was not a dict")
                 continue
             if not sliver.has_key('geni_sliver_urn') or str(sliver['geni_sliver_urn']).strip() == "":
-                self.logger.debug("entry in result had no 'geni_sliver'urn'")
+                self.logger.debug("entry in result had no 'geni_sliver_urn'")
                 continue
             retSlivers.append(sliver['geni_sliver_urn'])
 
@@ -6304,7 +6441,7 @@ class AMCallHandler(object):
                 self.logger.debug("entry in result list was not a dict")
                 continue
             if not sliver.has_key('geni_sliver_urn') or str(sliver['geni_sliver_urn']).strip() == "":
-                self.logger.debug("entry in result had no 'geni_sliver'urn'")
+                self.logger.debug("entry in result had no 'geni_sliver_urn'")
                 continue
             if not sliver.has_key('geni_expires'):
                 self.logger.debug("Sliver %s missing 'geni_expires'", sliver['geni_sliver_urn'])
@@ -6347,7 +6484,7 @@ class AMCallHandler(object):
                 self.logger.debug("entry in result list was not a dict")
                 continue
             if not sliver.has_key('geni_sliver_urn') or str(sliver['geni_sliver_urn']).strip() == "":
-                self.logger.debug("entry in result had no 'geni_sliver'urn'")
+                self.logger.debug("entry in result had no 'geni_sliver_urn'")
                 continue
             if not sliver.has_key('geni_allocation_status'):
                 self.logger.debug("Sliver %s missing 'geni_allocation_status'", sliver['geni_sliver_urn'])
@@ -6360,7 +6497,8 @@ class AMCallHandler(object):
     # name arg: if present then we assume you are trying to
     # renew/create slivers with the given time - so raise an error if
     # the time is invalid
-    def _datetimeFromString(self, dateString, slice_exp = None, name=None):
+    # When noSec is true, fractional seconds are trimmed from the parsed time. Avoid problems at PG servers.
+    def _datetimeFromString(self, dateString, slice_exp = None, name=None, noSec=False):
         '''Get time, time_with_tz, time_string from the given string. Log/etc appropriately
         if given a slice expiration to limit by.
         If given a slice name or slice expiration, insist that the given time is a valid
@@ -6370,6 +6508,11 @@ class AMCallHandler(object):
         try:
             if dateString is not None or self.opts.devmode:
                 time = dateutil.parser.parse(dateString, tzinfos=tzd)
+                if noSec:
+                    time2 = time.replace(microsecond=0)
+                    if (time2 != time):
+                        self.logger.debug("Trimmed fractional seconds from %s to get %s", dateString, time2)
+                        time = time2
         except Exception, exc:
             msg = "Couldn't parse time from '%s': %s" % (dateString, exc)
             if self.opts.devmode:
@@ -6500,10 +6643,10 @@ def _maybe_add_abac_creds(framework, cred):
     as supplied, as normal.'''
     if is_ABAC_framework(framework):
         creds = get_abac_creds(framework.abac_dir)
-        # FIXME: wrap in JSON as needed?
-        creds.append(cred)
     else:
-        creds = [cred]
+        creds = []
+    if cred:
+        creds.append(cred)
     return creds
 
 # FIXME: Use this frequently in experimenter mode, for all API calls

@@ -91,6 +91,7 @@ class StitchingHandler(object):
         self.opts = opts # command line options as parsed
         self.slicecred = None # Cached slice credential to avoid re-fetching
         self.savedSliceCred = None # path to file with slice cred if any
+        self.parsedURNNewAggs = [] # Aggs added from parsed URNs
 
         # Get the framework
         if not self.opts.debug:
@@ -259,6 +260,10 @@ class StitchingHandler(object):
         # If any node is unbound: Check that there is exactly 1 -a AM that is not one of the AMs a node is bound to, and then 
         # edit the request to bind the nodes to that AM.
 
+        if self.isBound and not self.isMultiAM and self.opts.fixedEndpoint:
+            self.logger.debug("Got --fixedEndpoint, so pretend this is multi AM")
+            self.isMultiAM = True
+
         # If this is not a bound multi AM RSpec, just let Omni handle this.
         if not self.isBound or not self.isMultiAM:
             self.logger.info("Not a bound multi-aggregate request - let Omni handle this.")
@@ -344,6 +349,12 @@ class StitchingHandler(object):
 
             # Construct and save out a combined manifest
             combinedManifest, filename, retVal = self.getAndSaveCombinedManifest(lastAM)
+
+            # If some AMs used APIv3+, then we only did an allocation. Print something
+            msg = self.getProvisionMessage()
+            if msg:
+                self.logger.info(msg)
+                retVal += msg + "\n"
 
             # Print something about sliver expiration times
             msg = self.getExpirationMessage()
@@ -486,7 +497,7 @@ class StitchingHandler(object):
                 rspec = am.listResources(opts_copy, self.slicename)
             except StitchingError, se:
                 self.logger.debug("Failed to list current reservation: %s", se)
-            if self.opts.api_version == 2:
+            if am.api_version == 2:
                 retStruct[(am.urn,am.url)] = rspec
             else:
                 retStruct[am.url] = {'code':dict(),'value':rspec,'output':None}
@@ -1075,6 +1086,19 @@ class StitchingHandler(object):
         return msg
     # end getExpirationMessage
 
+    def getProvisionMessage(self):
+        # Get a message warning the experimenter to do provision and poa at AMs that are only allocated
+        msg = None
+        for agg in self.ams_to_process:
+            if agg.manifestDom and agg.api_version > 2:
+                if msg is None:
+                    msg = ""
+                aggnick = agg.nick
+                if aggnick is None:
+                    aggnick = agg.url
+                msg += "   Reservation at %s is temporary! \nYou must manually call `omni -a %s -V3 provision %s` and then `omni -a %s -V3 poa %s geni_start`.\n" % (aggnick, aggnick, self.slicename, aggnick, self.slicename)
+        return msg
+
     # Compare the list of AMs in the request with AMs known
     # to the SCS. Any that the SCS does not know means the request
     # cannot succeed if those are AMs in a stitched link
@@ -1210,14 +1234,17 @@ class StitchingHandler(object):
             # We are doing another call.
             # Let AMs recover. Is this long enough?
             # If one of the AMs is a DCN AM, use that sleep time instead - longer
-            sTime = Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS
+            sTime = Aggregate.PAUSE_FOR_V3_AM_TO_FREE_RESOURCES_SECS
             for agg in existingAggs:
                 if agg.dcn and agg.triedRes:
                     # Only need to sleep this much longer time
                     # if this is a DCN AM that we tried a reservation on (whether it worked or failed)
-                    if sTime == Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS:
+                    if sTime < Aggregate.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS:
                         self.logger.debug("Must sleep longer cause had a previous reservation attempt at a DCN AM: %s", agg)
                     sTime = Aggregate.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS
+                elif agg.api_version == 2 and agg.triedRes and sTime < Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS:
+                    self.logger.debug("Must sleep longer cause had a previous v2 reservation attempt at %s", agg)
+                    sTime = Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS
                 # Reset whether we've tried this AM this time through
                 agg.triedRes = False
 
@@ -1270,9 +1297,56 @@ class StitchingHandler(object):
 #            self.logger.debug("Did fake workflow parsing")
 
         # Save off existing Aggregate object state
+        parsedURNExistingAggs = [] # Existing aggs that came from a parsed URN, not in workflow
+        self.parsedURNNewAggs = [] # New aggs created not from workflow
         if existingAggs:
             # Copy existingAggs.hops.vlans_unavailable to workflow_parser.aggs.hops.vlans_unavailable? Other state?
             self.saveAggregateState(existingAggs, workflow_parser.aggs)
+
+            # An AM added only from parsed AM URNs will have state lost. Ticket #781
+            if self.parsedSCSRSpec:
+                # Look for existing aggs that came from parsed URN and aren't in workflow
+                for agg in existingAggs:
+                    self.logger.debug("Looking at existing AM %s", agg)
+                    isWorkflow = False
+                    for agg2 in workflow_parser.aggs:
+                        if agg.urn == agg2.urn or agg.urn in agg2.urn_syns:
+                            self.logger.debug("Is a workflow AM; found AM's URN %s in workflow's AMs", agg.urn)
+                            isWorkflow = True
+                            break
+                        else:
+                            for urn2 in agg.urn_syns:
+                                if urn2 == agg2.urn or urn2 in agg2.urn_syns:
+                                    self.logger.debug("Is a workflow AM based on urn_syn; found AM's urn_syn %s in workflow AM", urn2)
+                                    isWorkflow = True
+                                    break
+                        if isWorkflow:
+                            break
+                    if isWorkflow:
+                        continue
+
+                    isParsed = False
+                    if agg.urn in self.parsedSCSRSpec.amURNs:
+                        self.logger.debug("isParsed from main URN %s", agg.urn)
+                        isParsed = True
+                    else:
+                        for urn2 in agg.urn_syns:
+                            if urn2 in self.parsedSCSRSpec.amURNs:
+                                self.logger.debug("isParsed from urn syn %s", urn2)
+                                isParsed = True
+                                break
+                    if not isParsed:
+                        continue
+
+                    # Have an AM that came from parsed URN and is not in the workflow.
+                    # So this agg needs its data copied over.
+                    # this agg wont be in ams_to_process
+                    # need to do self.saveAggregateState(otherExistingAggs, newAggsFromURNs)
+                    self.logger.debug("%s was not in workflow and came from parsed URN", agg)
+                    parsedURNExistingAggs.append(agg)
+                # end loop over existing aggs
+            # End block to handle parsed URNs not in workflow
+
             existingAggs = None # Now done
 
         # FIXME: if notScript, print AM dependency tree?
@@ -1288,6 +1362,14 @@ class StitchingHandler(object):
 
         # Ensure all AM URNs we found in the RSpec are Aggregate objects in ams_to_process
         self.createObjectsFromParsedAMURNs()
+
+        # If we saved off some existing aggs that were from parsed URNs and not in the workflow earlier,
+        # and we also just created some new aggs, then see if those need to have existing data copied over
+        # Ticket #781
+        if len(parsedURNExistingAggs) > 0 and len(self.parsedURNNewAggs) > 0:
+            self.saveAggregateState(parsedURNExistingAggs, self.parsedURNNewAggs)
+        parsedURNExistingAggs = []
+        self.parsedURNNewAggs = []
 
         # Add extra info about the aggregates to the AM objects
         self.add_am_info(self.ams_to_process)
@@ -1622,6 +1704,7 @@ class StitchingHandler(object):
         else:
             self.logger.debug("Adding am to ams_to_process from URN %s, with url %s", amURN, am.url)
             self.ams_to_process.append(am)
+            self.parsedURNNewAggs.append(am) # Save off the new agg as something we just added
         return
     # End of createObjectFromOneURN
 
@@ -1922,7 +2005,8 @@ class StitchingHandler(object):
             if self.opts.slicecredfile.endswith("json"):
                 trim = -5
             # -4 is to cut off .xml. It would be -5 if the cred is json
-            handler_utils._save_cred(self, self.opts.slicecredfile[:trim], slicecred)
+            #self.logger.debug("Saving slice cred %s... to %s", str(slicecred)[:15], self.opts.slicecredfile[:trim])
+            self.opts.slicecredfile = handler_utils._save_cred(self, self.opts.slicecredfile[:trim], slicecred)
             self.savedSliceCred = True
 
         # Ensure slice not expired
@@ -2176,10 +2260,10 @@ class StitchingHandler(object):
                     if needSCS:
                         self.logger.debug("But we already decided we need the SCS.")
                     elif self.opts.noEGStitching and not needSCS:
-                        self.logger.info("But requested to use GENI stitching instead of ExoGENI stitching")
+                        self.logger.info("Requested to use GENI stitching instead of ExoGENI stitching")
                         needSCS = True
                     elif self.opts.noEGStitchingOnLink and link.id in self.opts.noEGStitchingOnLink and not needSCS:
-                        self.logger.info("But requested to use GENI stitching on link %s instead of ExoGENI stitching", link.id)
+                        self.logger.info("Requested to use GENI stitching on link %s instead of ExoGENI stitching", link.id)
                         needSCS = True
 
                 # FIXME: If the link includes the openflow rspec extension marking a desire to make the link
@@ -2512,13 +2596,23 @@ class StitchingHandler(object):
         # A debugging block: print out the VLAN tag the SCS picked for each hop, independent of objects
         if self.logger.isEnabledFor(logging.DEBUG):
             start = 0
+            path = None
             while True:
                 if not content.find("<link id=", start) >= start:
                     break
+
                 hopIdStart = content.find('<link id=', start) + len('<link id=') + 1
                 hopIdEnd = content.find(">", hopIdStart)-1
-                # Print the link ID
+                # Get the link ID
                 hop = content[hopIdStart:hopIdEnd]
+
+                # Look for the name of the path for this hop before the name of the hop
+                if content.find('<path id=', start, hopIdStart) > 0:
+                    pathIdStart = content.find('<path id=', start) + len('<path id=') + 1
+                    pathIdEnd = content.find(">", pathIdStart)-1
+                    self.logger.debug("Found path from %d to %d", pathIdStart, pathIdEnd)
+                    path = content[pathIdStart:pathIdEnd]
+
                 # find suggestedVLANRange
                 suggestedStart = content.find("suggestedVLANRange>", hopIdEnd) + len("suggestedVLANRange>")
                 suggestedEnd = content.find("</suggested", suggestedStart)
@@ -2527,8 +2621,8 @@ class StitchingHandler(object):
                 availStart = content.find("vlanRangeAvailability>", hopIdEnd) + len("vlanRangeAvailability>")
                 availEnd = content.find("</vlanRange", availStart)
                 avail = content[availStart:availEnd]
-                # print that
-                self.logger.debug("SCS gave hop %s suggested VLAN %s, avail: '%s'", hop, suggested, avail)
+                # print that all
+                self.logger.debug("SCS gave hop %s on path %s suggested VLAN %s, avail: '%s'", hop, path, suggested, avail)
                 start = suggestedEnd
 
        # parseRequest
@@ -2859,10 +2953,12 @@ class StitchingHandler(object):
 #                agg.url =  'http://alpha.dragon.maxgigapop.net:12346/'
 
             # Use GetVersion to determine AM type, AM API versions spoken, etc
+            # Hack: Here we hard-code using APIv2 always to call getversion, assuming that v2 is the AM default
+            # and so the URLs are v2 URLs.
             if options_copy.warn:
-                omniargs = ['--ForceUseGetVersionCache', '-a', agg.url, 'getversion']
+                omniargs = ['--ForceUseGetVersionCache', '-V2', '-a', agg.url, 'getversion']
             else:
-                omniargs = ['--ForceUseGetVersionCache', '-o', '--warn', '-a', agg.url, 'getversion']
+                omniargs = ['--ForceUseGetVersionCache', '-o', '--warn', '-V2', '-a', agg.url, 'getversion']
 
             try:
                 self.logger.debug("Getting extra AM info from Omni for AM %s", agg)
@@ -2906,6 +3002,8 @@ class StitchingHandler(object):
                         maxVer = 1
                         hasV2 = False
                         v2url = None
+                        maxVerUrl = None
+                        reqVerUrl = None
                         for key in version[aggurl]['value']['geni_api_versions'].keys():
                             if int(key) == 2:
                                 hasV2 = True
@@ -2926,6 +3024,9 @@ class StitchingHandler(object):
 #                                    agg.url = version[aggurl]['value']['geni_api_versions'][key]
                             if int(key) > maxVer:
                                 maxVer = int(key)
+                                maxVerUrl = version[aggurl]['value']['geni_api_versions'][key]
+                            if int(key) == self.opts.api_version:
+                                reqVerUrl = version[aggurl]['value']['geni_api_versions'][key]
                         # Done loop over api versions
 
                         # This code is just to avoid ugly WARNs from Omni about changing URL to get the right API version.
@@ -2952,6 +3053,11 @@ class StitchingHandler(object):
                             msg = "%s does not speak AM API v2 (max is V%d). APIv2 required!" % (agg, maxVer)
                             #self.logger.error(msg)
                             raise StitchingError(msg)
+                        agg.api_version = self.opts.api_version
+                        if self.opts.api_version > maxVer:
+                            self.logger.debug("Asked for APIv%d but %s only supports v%d", self.opts.api_version, agg, maxVer)
+                            agg.api_version = maxVer
+
 #                        if maxVer != 2:
 #                            self.logger.debug("%s speaks AM API v%d, but sticking with v2", agg, maxVer)
 
@@ -2959,6 +3065,21 @@ class StitchingHandler(object):
 #                            self.logger.warn("Testing v3 support")
 #                            agg.api_version = 3
 #                        agg.api_version = maxVer
+
+                        # Change the URL for the AM so that later calls to this AM don't get complaints from Omni
+                        # Here we hard-code knowledge that APIv2 is the default in Omni, the agg_nick_cache, and at AMs
+                        if agg.api_version != 2:
+                            if agg.api_version == maxVer and maxVerUrl is not None and maxVerUrl != agg.url:
+                                self.logger.debug("%s: Swapping URL to v%d URL. Change from %s to %s", agg, agg.api_version, agg.url, maxVerUrl)
+                                if agg.alt_url is None:
+                                    agg.alt_url = agg.url
+                                agg.url = maxVerUrl
+                            elif agg.api_version == self.opts.api_version and reqVerUrl is not None and reqVerUrl != agg.url:
+                                self.logger.debug("%s: Swapping URL to v%d URL. Change from %s to %s", agg, agg.api_version, agg.url, reqVerUrl)
+                                if agg.alt_url is None:
+                                    agg.alt_url = agg.url
+                                agg.url = reqVerUrl
+
                     # Done handling geni_api_versions
 
                     if version[aggurl]['value'].has_key('GRAM_version'):
@@ -3021,7 +3142,7 @@ class StitchingHandler(object):
             # Save off the aggregate nickname if possible
             agg.nick = handler_utils._lookupAggNick(self, agg.url)
 
-            if not agg.isEG and not agg.isGRAM and not agg.dcn and "protogeni/xmlrpc" in agg.url:
+            if not agg.isEG and not agg.isGRAM and not agg.dcn and not agg.isOESS and "protogeni/xmlrpc" in agg.url:
                 agg.isPG = True
 
  #           self.logger.debug("Remembering done getting extra info for %s", agg)
@@ -3094,7 +3215,10 @@ class StitchingHandler(object):
                     self.logger.debug("   Alternate URL: %s", agg.alt_url)
                 self.logger.debug("   Using AM API version %d", agg.api_version)
                 if agg.manifestDom:
-                    self.logger.debug("   Have a reservation here (%s)!", agg.url)
+                    if agg.api_version > 2:
+                        self.logger.debug("   Have a temporary reservation here (%s)! \n*** You must manually call `omni -a %s -V3 provision %s` and then `omni -a %s -V3 poa %s geni_start`", agg.url, agg.url, self.slicename, agg.url, self.slicename)
+                    else:
+                        self.logger.debug("   Have a reservation here (%s)!", agg.url)
                 if not agg.doesSchemaV1:
                     self.logger.debug("   Does NOT support Stitch Schema V1")
                 if agg.doesSchemaV2:
@@ -3499,13 +3623,20 @@ class StitchingHandler(object):
         rspec = rspecs[0]
 
         # Add a node to the dom
+        # FIXME: Check that there is no node with the fake component_manager_id already?
         self.logger.info("Adding fake Node endpoint")
         rspec.appendChild(fakeNode)
 
-        # Also find all links and add an interface_ref to any with only 1 interface_ref
+        # Also find all links for which there is a stitching path and add an interface_ref to any with only 1 interface_ref
         for child in rspec.childNodes:
             if child.localName == defs.LINK_TAG:
                 linkName = child.getAttribute(Node.CLIENT_ID_TAG)
+                stitchPath = self.parsedSCSRSpec.find_path(linkName)
+                if not stitchPath:
+                    # The link has no matching stitching path
+                    # This could be a link all within 1 AM, or a link on a shared VLAN, or an ExoGENI stitched link
+                    self.logger.debug("For fakeEndpoint, skipping main body link %s with no stitching path", linkName)
+                    continue
                 ifcCount = 0
                 ifcAMCount = 0 # Num AMs the interfaces are at
                 propCount = 0
@@ -3544,7 +3675,7 @@ class StitchingHandler(object):
                         child.appendChild(sP)
                         child.appendChild(dP)
                     else:
-                        self.logger.debug("Link %s had only interfaces at 1 am (%d of them), so added the fake interface - but it has %d properties already?", linkName, ifcCount, propCount)
+                        self.logger.debug("Link %s had only interfaces at 1 am (%d interfaces total), so added the fake interface - but it has %d properties already?", linkName, ifcCount, propCount)
                 else:
                     self.logger.debug("Not adding fake endpoint to link %s with %d interfaces at %d AMs", linkName, ifcCount, ifcAMCount)
             # Got a link

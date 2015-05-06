@@ -1,6 +1,6 @@
 ### DO NOT MODIFY THIS FILE BY HAND ###
 # This file lives at: http://trac.gpolab.bbn.com/gcf/raw-attachment/wiki/Omni/agg_nick_cache
-# Last updated on April 27, 2015
+# Last updated on May 1, 2015
 
 [omni_defaults]
 # This section is for updating Omni defaults without updating Omni.
@@ -26,7 +26,7 @@ scs_url=https://geni-scs.net.internet2.edu:8443/geni/xmlrpc
 # Specify the latest version of Omni released, and a message
 # Expected format is "#,Message" EG: "2.8,Omni 2.8 was release 2/1/2015". No commas in the message.
 # If a newer version is available, Omni will log a message at INFO level.
-latest_omni_version=2.8,Omni 2.8 was released 2/9/2015. See http://trac.gpolab.bbn.com/gcf
+latest_omni_version=2.8.1,Omni 2.8.1 was released 5/1/2015. See http://trac.gpolab.bbn.com/gcf
 
 #------AM nicknames
 # Format :
@@ -591,3 +591,72 @@ wvn-eg2=urn:publicid:IDN+exogeni.net:wvnvmsite+authority+am,https://wvn-hn.exoge
 wvn-eg-of=urn:publicid:IDN+openflow:foam:wvn-hn.exogeni.net+authority+am,https://wvn-hn.exogeni.net:3626/foam/gapi/2
 wvn-eg-of1=urn:publicid:IDN+openflow:foam:wvn-hn.exogeni.net+authority+am,https://wvn-hn.exogeni.net:3626/foam/gapi/1
 wvn-eg-of2=urn:publicid:IDN+openflow:foam:wvn-hn.exogeni.net+authority+am,https://wvn-hn.exogeni.net:3626/foam/gapi/2
+
+# New Aggregates February, 2015
+
+# =====
+# University of Colorado Boulder InstaGENI
+# =====
+colorado-ig=urn:publicid:IDN+instageni.colorado.edu+authority+cm,https://instageni.colorado.edu:12369/protogeni/xmlrpc/am/2.0
+colorado-ig1=urn:publicid:IDN+instageni.colorado.edu+authority+cm,https://instageni.colorado.edu:12369/protogeni/xmlrpc/am/1.0
+colorado-ig2=urn:publicid:IDN+instageni.colorado.edu+authority+cm,https://instageni.colorado.edu:12369/protogeni/xmlrpc/am/2.0
+colorado-ig3=urn:publicid:IDN+instageni.colorado.edu+authority+cm,https://instageni.colorado.edu:12369/protogeni/xmlrpc/am/3.0
+colorado-ig-of=urn:publicid:IDN+openflow:foam:foam.instageni.colorado.edu+authority+am,https://foam.instageni.colorado.edu:3626/foam/gapi/2
+colorado-ig-of1=urn:publicid:IDN+openflow:foam:foam.instageni.colorado.edu+authority+am,https://foam.instageni.colorado.edu:3626/foam/gapi/1
+colorado-ig-of2=urn:publicid:IDN+openflow:foam:foam.instageni.colorado.edu+authority+am,https://foam.instageni.colorado.edu:3626/foam/gapi/2
+
+# =====
+# Case Western Reserve University InstaGENI
+# =====
+cwru-ig=urn:publicid:IDN+geni.case.edu+authority+cm,https://geni.case.edu:12369/protogeni/xmlrpc/am/2.0
+cwru-ig1=urn:publicid:IDN+geni.case.edu+authority+cm,https://geni.case.edu:12369/protogeni/xmlrpc/am/1.0
+cwru-ig2=urn:publicid:IDN+geni.case.edu+authority+cm,https://geni.case.edu:12369/protogeni/xmlrpc/am/2.0
+cwru-ig3=urn:publicid:IDN+geni.case.edu+authority+cm,https://geni.case.edu:12369/protogeni/xmlrpc/am/3.0
+
+# =====
+# University of Missouri-Kansas City InstaGENI
+# =====
+umkc-ig=urn:publicid:IDN+instageni.umkc.edu+authority+cm,https://instageni.umkc.edu:12369/protogeni/xmlrpc/am/2.0
+umkc-ig1=urn:publicid:IDN+instageni.umkc.edu+authority+cm,https://instageni.umkc.edu:12369/protogeni/xmlrpc/am/1.0
+umkc-ig2=urn:publicid:IDN+instageni.umkc.edu+authority+cm,https://instageni.umkc.edu:12369/protogeni/xmlrpc/am/2.0
+umkc-ig3=urn:publicid:IDN+instageni.umkc.edu+authority+cm,https://instageni.umkc.edu:12369/protogeni/xmlrpc/am/3.0
+umkc-ig-of=urn:publicid:IDN+openflow:foam:foam.instageni.umkc.edu+authority+am,https://foam.instageni.umkc.edu:3626/foam/gapi/2
+umkc-ig-of1=urn:publicid:IDN+openflow:foam:foam.instageni.umkc.edu+authority+am,https://foam.instageni.umkc.edu:3626/foam/gapi/1
+umkc-ig-of2=urn:publicid:IDN+openflow:foam:foam.instageni.umkc.edu+authority+am,https://foam.instageni.umkc.edu:3626/foam/gapi/2
+
+# =====
+# University of Tennessee at Chattanooga InstaGENI
+# =====
+utc-ig=urn:publicid:IDN+instageni.utc.edu+authority+cm,https://instageni.utc.edu:12369/protogeni/xmlrpc/am/2.0
+utc-ig1=urn:publicid:IDN+instageni.utc.edu+authority+cm,https://instageni.utc.edu:12369/protogeni/xmlrpc/am/1.0
+utc-ig2=urn:publicid:IDN+instageni.utc.edu+authority+cm,https://instageni.utc.edu:12369/protogeni/xmlrpc/am/2.0
+utc-ig3=urn:publicid:IDN+instageni.utc.edu+authority+cm,https://instageni.utc.edu:12369/protogeni/xmlrpc/am/3.0
+utc-ig-of=urn:publicid:IDN+openflow:foam:foam.instageni.utc.edu+authority+am,https://foam.instageni.utc.edu:3626/foam/gapi/2
+utc-ig-of1=urn:publicid:IDN+openflow:foam:foam.instageni.utc.edu+authority+am,https://foam.instageni.utc.edu:3626/foam/gapi/1
+utc-ig-of2=urn:publicid:IDN+openflow:foam:foam.instageni.utc.edu+authority+am,https://foam.instageni.utc.edu:3626/foam/gapi/2
+
+# =====
+# University of Washington InstaGENI
+# =====
+uwashington-ig=urn:publicid:IDN+instageni.washington.edu+authority+cm,https://instageni.washington.edu:12369/protogeni/xmlrpc/am/2.0
+uwashington-ig1=urn:publicid:IDN+instageni.washington.edu+authority+cm,https://instageni.washington.edu:12369/protogeni/xmlrpc/am/1.0
+uwashington-ig2=urn:publicid:IDN+instageni.washington.edu+authority+cm,https://instageni.washington.edu:12369/protogeni/xmlrpc/am/2.0
+uwashington-ig3=urn:publicid:IDN+instageni.washington.edu+authority+cm,https://instageni.washington.edu:12369/protogeni/xmlrpc/am/3.0
+uwashington-ig-of=urn:publicid:IDN+openflow:foam:foam.instageni.washington.edu+authority+am,https://foam.instageni.washington.edu:3626/foam/gapi/2
+uwashington-ig-of1=urn:publicid:IDN+openflow:foam:foam.instageni.washington.edu+authority+am,https://foam.instageni.washington.edu:3626/foam/gapi/1
+uwashington-ig-of2=urn:publicid:IDN+openflow:foam:foam.instageni.washington.edu+authority+am,https://foam.instageni.washington.edu:3626/foam/gapi/2
+
+# =====
+# University of Chicago InstaGENI
+# =====
+uchicago-ig=urn:publicid:IDN+geni.uchicago.edu+authority+cm,https://geni.uchicago.edu:12369/protogeni/xmlrpc/am/2.0
+uchicago-ig1=urn:publicid:IDN+geni.uchicago.edu+authority+cm,https://geni.uchicago.edu:12369/protogeni/xmlrpc/am/1.0
+uchicago-ig2=urn:publicid:IDN+geni.uchicago.edu+authority+cm,https://geni.uchicago.edu:12369/protogeni/xmlrpc/am/2.0
+uchicago-ig3=urn:publicid:IDN+geni.uchicago.edu+authority+cm,https://geni.uchicago.edu:12369/protogeni/xmlrpc/am/3.0
+
+# =====
+# Midwest OpenFlow Crossroads Initiative (MOXI) CIC OpenFlow
+# =====
+moxi-of=urn:publicid:IDN+openflow:foam:moxifoam.ictc.indiana.gigapop.net+authority+am,https://moxifoam.600wchicag.omnipop.cic.net:3626/foam/gapi/2
+moxi-of1=urn:publicid:IDN+openflow:foam:moxifoam.ictc.indiana.gigapop.net+authority+am,https://moxifoam.600wchicag.omnipop.cic.net:3626/foam/gapi/1
+moxi-of2=urn:publicid:IDN+openflow:foam:moxifoam.ictc.indiana.gigapop.net+authority+am,https://moxifoam.600wchicag.omnipop.cic.net:3626/foam/gapi/2
