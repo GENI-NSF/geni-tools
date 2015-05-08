@@ -968,6 +968,12 @@ class StitchingHandler(object):
             if lastAM.isEG or lastAM.dcn or lastAM.isGRAM:
                 self.logger.debug("Still had an EG or DCN or GRAM template AM - use the raw SCS request")
                 lastAM = None
+        # I have a slight preference for a PG AM. See if we have one
+        if lastAM is not None and not lastAM.isPG and len(self.ams_to_process) > 1:
+            for am in self.ams_to_process:
+                if am != lastAM and am.isPG:
+                    lastAM = am
+                    break
         combinedManifest = self.combineManifests(self.ams_to_process, lastAM)
 
         # FIXME: Handle errors. Maybe make return use code/value/output struct
@@ -3280,6 +3286,9 @@ class StitchingHandler(object):
 #            self.logger.debug(stripBlankLines(lastDom.toprettyxml(encoding="utf-8")))
         else:
             lastDom = lastAM.manifestDom
+
+        if lastAM:
+            self.logger.debug("Template for combining will be from %s", lastAM)
 
         combinedManifestDom = combineManifestRSpecs(ams, lastDom)
 
