@@ -31,7 +31,7 @@ from __future__ import absolute_import
 import json
 import logging
 import sys
-from xml.dom.minidom import getDOMImplementation, Node
+from xml.dom.minidom import getDOMImplementation, Node, Text, Comment
 
 from . import objects
 from . import defs
@@ -238,7 +238,7 @@ class ManifestRSpecCombiner:
                         for val in toAdd:
                             oldVals.append(val)
                         newSL = " ".join(oldVals)
-                        self.logger.debug("'%s' was '%s'. AM had '%s'. Setting SL to '%s'", matchingRAName, rspec_node.getAttribute(matchingRAName), attr.value, newSL)
+                        #self.logger.debug("'%s' was '%s'. AM had '%s'. Setting SL to '%s'", matchingRAName, rspec_node.getAttribute(matchingRAName), attr.value, newSL)
                         rspec_node.setAttribute(matchingRAName, newSL)
                     continue
                 self.logger.debug("Adding to Template attr '%s' (val '%s') from %s", attr.name, attr.value, am)
@@ -292,6 +292,9 @@ class ManifestRSpecCombiner:
                 continue
 
             am_doc_root = am_manifest_dom.documentElement
+            if doc_root == am_doc_root:
+                self.logger.debug("combineNodes Skipping manifest from template AM %s", am)
+                continue
 
             # For each node in this AMs manifest for which this AM
             # is the component manager, if that client_id
@@ -371,6 +374,7 @@ class ManifestRSpecCombiner:
 
         # For each link in template by component_manager_id
         doc_root = dom_template.documentElement
+        docAM = None
         children = doc_root.childNodes
         # Collect the link client_ids in the template
         template_link_cids=[]
@@ -396,6 +400,10 @@ class ManifestRSpecCombiner:
                 self.logger.debug("%s had no manifest DOM", agg)
                 continue
             man_root = man.documentElement
+            if man_root == doc_root:
+                self.logger.debug("combineLinks Skipping manifest from %s - same as template", agg)
+                docAM = agg
+                continue
             man_kids = man_root.childNodes
             for link2 in man_kids:
                 if link2.nodeType != Node.ELEMENT_NODE or \
@@ -422,6 +430,7 @@ class ManifestRSpecCombiner:
 #                    self.logger.debug("Adding link %s (%s)", cid, link2.toxml(encoding="utf-8"))
                     doc_root.appendChild(link2.cloneNode(True))
                     template_link_cids.append(cid)
+        # Done adding links from AMs not in template
 
         # Now go through the links in the template, swapping in info from the appropriate manifest RSpecs
         children = doc_root.childNodes
@@ -433,7 +442,7 @@ class ManifestRSpecCombiner:
 #                print "LINK = " + str(link) + " " + cmid
                 client_id = str(link.getAttribute(CLIENT_ID))
                 needSwap = False
-                if not link.hasAttribute(SLIVER_ID) and not link.hasAttribute(VLANTAG):
+                if not link.hasAttribute(SLIVER_ID) and not link.hasAttribute(VLANTAG) and not self.useReqs:
                     needSwap = True
 #                    self.logger.debug("Link %s in template must be swapped", client_id)
                 else:
@@ -447,7 +456,7 @@ class ManifestRSpecCombiner:
                     if cme.nodeType != Node.ELEMENT_NODE or cme.localName != COMP_MGR:
                         continue
                     cms.append(str(cme.getAttribute(COMP_MGR_NAME)))
-#                self.logger.debug("Ams in Link %s: %s", client_id, cms)
+                self.logger.debug("AMs in Link '%s' in template: %s", client_id, cms)
 
                 # Get interface_ref elements that need to be swapped
                 intfs = {} # Hash by interface_ref client_id of iref elements to swap
@@ -456,7 +465,7 @@ class ManifestRSpecCombiner:
                         continue
                     if not intf.hasAttribute(SLIVER_ID) and not intf.hasAttribute(COMP_ID):
                         intfs[str(intf.getAttribute(CLIENT_ID))] = intf
-#                        self.logger.debug("intfc_ref %s has no sliver_id or component_id", intf.getAttribute(CLIENT_ID))
+                        #self.logger.debug("Template intfc_ref %s has no sliver_id or component_id", intf.getAttribute(CLIENT_ID))
 #                    else:
 #                        sid = None
 #                        cid = None
@@ -473,6 +482,8 @@ class ManifestRSpecCombiner:
                 # FIXME: This means we do not add the link sliver_id
                 # & VLAN tag from other AMs on this link.
                 if len(intfs) == 0 and not needSwap:
+                    self.logger.debug("All ifcs on link %s had vlan or comp_id - no more edits of this link", client_id)
+                     # FIXME: Take this block out?
                     continue
 
                 for agg in ams_list:
@@ -481,6 +492,8 @@ class ManifestRSpecCombiner:
                     # FIXME: This means we do not add the link sliver_id
                     # & VLAN tag from other AMs on this link.
                     if len(intfs) == 0 and not needSwap:
+                        self.logger.debug("All ifcs on link %s had vlan or comp_id - no more edits of this link", client_id)
+                        # FIXME: Take this block out?
                         break
 
                     notIn = True # Is the AM involved in this link?
@@ -490,8 +503,8 @@ class ManifestRSpecCombiner:
                             break
                     if notIn:
                         # Not a relevant aggregate
-#                        self.logger.debug("Skipping AM %s not involved in link %s", agg.urn, client_id)
-                        continue
+                        self.logger.debug("NOT Skipping AM %s not involved in link %s", agg.urn, client_id)
+                        #continue
 #                    else:
 #                        self.logger.debug("Looking at AM %s for link %s", agg.urn, client_id)
 
@@ -504,6 +517,10 @@ class ManifestRSpecCombiner:
                     if man is None:
                         self.logger.debug("%s had no manifest DOM", agg)
                         continue
+                    if man.documentElement == doc_root:
+                        self.logger.debug("combineLinks Skipping manifest from %s - same as template", agg)
+                        continue
+                    self.logger.debug("combineLinks Considering manifest from %s", agg)
                     for link2 in man.documentElement.childNodes:
                         if link2.nodeType != Node.ELEMENT_NODE or \
                                 link2.localName != defs.LINK_TAG:
@@ -513,34 +530,131 @@ class ManifestRSpecCombiner:
                         # FIXME: This means we do not add the link sliver_id
                         # & VLAN tag from other AMs on this link.
                         if len(intfs) == 0 and not needSwap:
+                            self.logger.debug("All ifcs on link %s had vlan or comp_id", client_id)
+                            # FIXME: Take this block out?
                             break
                         # Get the link with a sliverid and the right client_id
                         if str(link2.getAttribute(CLIENT_ID)) == client_id and \
                                 link2.hasAttribute(VLANTAG):
-#                            self.logger.debug("Found AM %s link %s that has vlantag %s", agg.urn, client_id, link2.getAttribute('vlantag'))
+                            self.logger.debug("Found AM %s link '%s' that has vlantag '%s'", agg.urn, client_id, link2.getAttribute('vlantag'))
                             if needSwap:
-#                                self.logger.debug("Swapping link in template with this element")
-                                doc_root.replaceChild(link2.cloneNode(True), link)
-                                needSwap = False
+                                self.logger.debug("Will swap link in template with this element")
+                                link2Clone = link2.cloneNode(True)
+
                                 # Need to pull out the irefs with a sliver id or component_id from link
                                 # Before completing this swap
                                 for intf in link.childNodes:
                                     if intf.nodeType == Node.ELEMENT_NODE and \
                                             intf.localName == INTFC_REF and \
                                             (intf.hasAttribute(SLIVER_ID) or intf.hasAttribute(COMP_ID)):
-                                        for intf2 in link2.childNodes:
+                                        for intf2 in link2Clone.childNodes:
                                             if intf2.nodeType == Node.ELEMENT_NODE and \
                                                     intf2.localName == INTFC_REF and \
                                                     str(intf2.getAttribute(CLIENT_ID)) == str(intf.getAttribute(CLIENT_ID)) and \
                                                     (not intf2.hasAttribute(SLIVER_ID) and not intf2.hasAttribute(COMP_ID)):
 #                                                self.logger.debug("from old template saving iref %s", intf2.getAttribute(CLIENT_ID))
-                                                link2.replaceChild(intf.cloneNode(True), intf2)
+                                                link2Clone.replaceChild(intf.cloneNode(True), intf2)
                                                 break
+
+                                # Bug 803. For each intfc in link, if it is not in link2Clone, add it to link2Clone
+                                # Similarly, for each cm in link, if it is not in link2Clone, add it
+                                for l1intid in intfs.keys():
+                                    self.logger.debug("Checking if new AM link has ifc %s from template", l1intid)
+                                    found = False
+                                    for intf in link2Clone.childNodes:
+                                        if intf.nodeType != Node.ELEMENT_NODE or intf.localName != INTFC_REF:
+                                            continue
+                                        if str(intf.getAttribute(CLIENT_ID)) == l1intid:
+                                            found = True
+                                            break
+                                    if not found:
+                                        link2Clone.appendChild(intfs.get(l1intid).cloneNode(True))
+                                        self.logger.debug("Adding missing iref %s from template manifest to rspec for this AM we are swapping in", l1intid)
+                                # Done adding missing intfs
+
+                                # Now add missing cms
+                                for cm in cms:
+                                    self.logger.debug("Checking if new AM link has cm %s from template", cm)
+                                    found = False
+                                    for cmL in link2Clone.childNodes:
+                                        if cmL.nodeType != Node.ELEMENT_NODE or cmL.localName != COMP_MGR:
+                                            continue
+                                        if str(cmL.getAttribute(COMP_MGR_NAME)) == cm:
+                                            found = True
+                                            break
+                                    if not found:
+                                        newCM = man.createElement(COMP_MGR)
+                                        newCM.setAttribute(COMP_MGR_NAME, cm)
+                                        link2Clone.appendChild(newCM)
+                                        self.logger.debug("Adding missing comp_mgr %s from template manifest to rspec for this AM we are swapping in", cm)
+                                # Done adding missing cms
+
+                                # Handle property tags
+                                #Link.PROPERTY_TAG
+                                #attributes: LinkProperty.SOURCE_TAG, DEST_TAG, CAPACITY_TAG
+                                for prop in link.childNodes:
+                                    if prop.nodeType != Node.ELEMENT_NODE or prop.localName != objects.Link.PROPERTY_TAG:
+                                        continue
+                                    pSrc = prop.getAttribute(objects.LinkProperty.SOURCE_TAG)
+                                    pDst = None
+                                    if prop.hasAttribute(objects.LinkProperty.DEST_TAG):
+                                        pDst = prop.getAttribute(objects.LinkProperty.DEST_TAG)
+                                    self.logger.debug("Checking on property src=%s, dst=%s", pSrc, pDst)
+                                    found = False
+                                    for prop2 in link2Clone.childNodes:
+                                        if prop2.nodeType != Node.ELEMENT_NODE or prop2.localName != objects.Link.PROPERTY_TAG:
+                                            continue
+                                        p2Src = prop2.getAttribute(objects.LinkProperty.SOURCE_TAG)
+                                        p2Dst = None
+                                        if prop2.hasAttribute(objects.LinkProperty.DEST_TAG):
+                                            p2Dst = prop2.getAttribute(objects.LinkProperty.DEST_TAG)
+                                        self.logger.debug("Checking on property on link2Clone src=%s, dst=%s", p2Src, p2Dst)
+                                        if p2Src == pSrc and (pDst is None or pDst == p2Dst):
+                                            found = True
+                                            break
+                                    if not found:
+                                        self.logger.debug(" ... link2Clone was missing property - adding it")
+                                        link2Clone.appendChild(prop.cloneNode(True))
+
+                                # What about things that aren't either the CM or the ifc_ref?
+                                for child in link.childNodes:
+                                    if child.nodeType == Node.ELEMENT_NODE and (child.localName == COMP_MGR or child.localName == INTFC_REF or child.localName == objects.Link.PROPERTY_TAG):
+                                        continue
+                                    if isinstance(child, Text) or isinstance(child, Comment):
+                                        if str(child.data).strip() == "":
+                                            continue
+                                        self.logger.debug("Looking at template element under link: %s", child.data)
+                                    else:
+                                        self.logger.debug("Looking at template element under link type %s name %s value %s, attCnt %d, childCnt %d", child.nodeType, child.localName, child.nodeValue, (child.hasAttributes() and child.attributes.length) or 0, len(child.childNodes))
+                                        if child.localName is None and str(child.nodeValue).strip() == "" and not child.hasAttributes() and len(child.childNodes) == 0:
+                                            self.logger.debug("Child appears empty. Skip it: %s", child.toxml(encoding="utf-8"))
+                                            continue
+                                    found = False
+                                    for child2 in link2Clone.childNodes:
+                                        if child2.nodeType == Node.ELEMENT_NODE and (child2.localName == COMP_MGR or child2.localName == INTFC_REF or child.localName == objects.Link.PROPERTY_TAG):
+                                            continue
+                                        if isinstance(child2, Text) or isinstance(child2, Comment):
+                                            if str(child2.data).strip() == "":
+                                                continue
+                                            self.logger.debug("Looking at link2Clone element under link: %s", child2.data)
+                                            if child.data == child2.data:
+                                                found = True
+                                                break
+                                        else:
+                                            self.logger.debug("Looking at element under link2Clone type %s name %s value %s, attCnt %d, childCnt %d", child2.nodeType, child2.localName, child2.nodeValue, (child2.hasAttributes() and child2.attributes.length) or 0, len(child2.childNodes))
+                                            if child.nodeType == child2.nodeType and child.localName == child2.localName and child.nodeValue == child2.nodeValue and ((child.hasAttributes() and child2.hasAttributes() and child.attributes.length == child2.attributes.length) or (not child.hasAttributes() and not child2.hasAttributes())) and len(child.childNodes) == len(child2.childNodes):
+                                                found = True
+                                                self.logger.debug("Those are same - no need to copy")
+                                                break
+                                    if not found:
+                                        self.logger.debug("Copying that elem from template to new link: %s", child.toxml(encoding="utf-8"))
+                                        link2Clone.appendChild(child.cloneNode(True))
+                                # Done copying 'other' elements
 
                                 # Need to recreate intfs dict
                                 # Get interface_ref elements that need to be swapped
                                 intfs = {}
-                                for intf in link2.childNodes:
+                                for intf in link2Clone.childNodes:
                                     if intf.nodeType != Node.ELEMENT_NODE or intf.localName != INTFC_REF:
                                         continue
                                     if not intf.hasAttribute(SLIVER_ID) and not intf.hasAttribute(COMP_ID):
@@ -556,22 +670,33 @@ class ManifestRSpecCombiner:
 #                                        self.logger.debug("intfc_ref %s has sliver_id %s, component_id %s", intf.getAttribute(CLIENT_ID), sid, cid)
 #                                self.logger.debug("Interfaces we need to swap: %s", intfs)
 
-                                # Add a comment on link2 with link's sliver_id and vlan_tag
-                                lsid = None
-                                if link.hasAttribute(SLIVER_ID):
-                                    lsid = link.getAttribute(SLIVER_ID)
-                                lvt = link.getAttribute(VLANTAG)
-                                comment_text = "AM %s: sliver_id=%s vlantag=%s" % (agg.urn, lsid, lvt)
-                                comment_element = dom_template.createComment(comment_text)
-                                link2.insertBefore(comment_element, link2.firstChild)
+                                # Add a comment on link2Clone with link's sliver_id and vlan_tag
+                                # But only if I deduced which AM the template is for above...
+                                if docAM:
+                                    lsid = None
+                                    if link.hasAttribute(SLIVER_ID):
+                                        lsid = link.getAttribute(SLIVER_ID)
+                                    lvt = link.getAttribute(VLANTAG)
+                                    # Skip the comment if it would be empty
+                                    if lsid is not None or str(lvt).strip() != "":
+                                        comment_text = "AM %s: sliver_id=%s vlantag=%s" % (docAM.urn, lsid, lvt)
+                                        self.logger.debug("Created comment to put in link2Clone to add to template: %s", comment_text)
+                                        comment_element = dom_template.createComment(comment_text)
+                                        link2Clone.insertBefore(comment_element, link2Clone.firstChild)
 
-                                link = link2
+                                doc_root.replaceChild(link2Clone, link)
+                                needSwap = False
+
+                                link = link2Clone
+                                self.logger.debug("Done swapping link %s from %s into template", client_id, agg)
                                 break # out of loop over link2's in this inner AM looking for the right link
                             # End of block to do swap of link
 
+                            # So the template link didn't need to be swapped. But it still might need the proper irefs or comments or whatnot
+
                             # Look at this version of the link's interface_refs. If any have
                             # a sliver_id or component_id, then this is the version with manifest info
-                            # put it on the linke
+                            # put it on the link
                             for intf in link2.childNodes:
                                 if intf.nodeType == Node.ELEMENT_NODE and \
                                         intf.localName == INTFC_REF and \
@@ -588,6 +713,9 @@ class ManifestRSpecCombiner:
                                         link.replaceChild(intf.cloneNode(True), intfs[cid])
 #                                        self.logger.debug("Copied iref %s from AM %s", cid, agg.urn)
                                         del intfs[cid]
+                                    else:
+                                        self.logger.debug("Template for link %s missing iref %s listed by %s - add it", client_id, cid, agg)
+                                        link.appendChild(intf.cloneNode(True))
                                 # End of loop over this Aggs link's children, looking for i_refs
 
                             # Add a comment on link with link2's sliver_id and vlan_tag
@@ -597,9 +725,90 @@ class ManifestRSpecCombiner:
                             if link2.hasAttribute(SLIVER_ID):
                                 lsid = link2.getAttribute(SLIVER_ID)
                             lvt = link2.getAttribute(VLANTAG)
-                            comment_text = "AM %s: sliver_id=%s vlantag=%s" % (agg.urn, lsid, lvt)
-                            comment_element = dom_template.createComment(comment_text)
-                            link.insertBefore(comment_element, link.firstChild)
+                            # Skip the comment if it would be empty
+                            if lsid is not None or str(lvt).strip() != "":
+                                comment_text = "AM %s: sliver_id=%s vlantag=%s" % (agg.urn, lsid, lvt)
+                                self.logger.debug("Created comment to add to template: %s", comment_text)
+                                comment_element = dom_template.createComment(comment_text)
+                                link.insertBefore(comment_element, link.firstChild)
+
+                            # Now add missing cms
+                            for cm in link2.childNodes:
+                                if cm.nodeType != Node.ELEMENT_NODE or cm.localName != COMP_MGR:
+                                    continue
+                                found = False
+                                thisCM = str(cm.getAttribute(COMP_MGR_NAME))
+                                self.logger.debug("Checking if new AM link's CM %s is on template", thisCM)
+                                for cmT in cms: # these are cms from the template
+                                    if thisCM == cmT:
+                                        found = True
+                                        break
+                                if not found:
+                                    link.appendChild(cm.cloneNode(True))
+                                    self.logger.debug("Adding missing comp_mgr %s from %s manifest to template", thisCM, agg)
+                            # Done adding missing cms
+
+                            # Handle property tags
+                            #Link.PROPERTY_TAG
+                            #attributes: LinkProperty.SOURCE_TAG, DEST_TAG, CAPACITY_TAG
+                            for prop in link2.childNodes:
+                                if prop.nodeType != Node.ELEMENT_NODE or prop.localName != objects.Link.PROPERTY_TAG:
+                                    continue
+                                pSrc = prop.getAttribute(objects.LinkProperty.SOURCE_TAG)
+                                pDst = None
+                                if prop.hasAttribute(objects.LinkProperty.DEST_TAG):
+                                    pDst = prop.getAttribute(objects.LinkProperty.DEST_TAG)
+                                self.logger.debug("Checking if template has property found in AMs link src=%s, dst=%s", pSrc, pDst)
+                                found = False
+                                for prop2 in link.childNodes:
+                                    if prop2.nodeType != Node.ELEMENT_NODE or prop2.localName != objects.Link.PROPERTY_TAG:
+                                        continue
+                                    p2Src = prop2.getAttribute(objects.LinkProperty.SOURCE_TAG)
+                                    p2Dst = None
+                                    if prop2.hasAttribute(objects.LinkProperty.DEST_TAG):
+                                        p2Dst = prop2.getAttribute(objects.LinkProperty.DEST_TAG)
+                                    self.logger.debug("Comparing to property on template link src=%s, dst=%s", p2Src, p2Dst)
+                                    if p2Src == pSrc and (pDst is None or pDst == p2Dst):
+                                        found = True
+                                        break
+                                if not found:
+                                    self.logger.debug(" ... template link was missing property - adding it")
+                                    link.appendChild(prop.cloneNode(True))
+
+                            # What about things that aren't either the CM or the ifc_ref?
+                            for child2 in link2.childNodes:
+                                if child2.nodeType == Node.ELEMENT_NODE and (child2.localName == COMP_MGR or child2.localName == INTFC_REF or child2.localName == objects.Link.PROPERTY_TAG):
+                                    continue
+                                if isinstance(child2, Text) or isinstance(child2, Comment):
+                                    if str(child2.data).strip() == "":
+                                        continue
+                                    self.logger.debug("Checking that template has this element found under other AMs link: %s", child2.data)
+                                else:
+                                    if child2.localName is None and str(child2.nodeValue).strip() == "" and not child2.hasAttributes() and len(child2.childNodes) == 0:
+                                        self.logger.debug("Child appears empty. Skip it: %s", child2.toxml(encoding="utf-8"))
+                                        continue
+                                    self.logger.debug("Checking that template has this AMs element found under link: type %s name %s value %s, attCnt %d, childCnt %d", child2.nodeType, child2.localName, child2.nodeValue, (child2.hasAttributes() and child2.attributes.length) or 0, len(child2.childNodes))
+                                found = False
+                                for child in link.childNodes:
+                                    if child.nodeType == Node.ELEMENT_NODE and (child.localName == COMP_MGR or child.localName == INTFC_REF or child.localName == objects.Link.PROPERTY_TAG):
+                                        continue
+                                    if isinstance(child, Text) or isinstance(child, Comment):
+                                        if str(child.data).strip() == "":
+                                            continue
+                                        self.logger.debug("Comparing with template element under link: %s", child.data)
+                                        if child.data == child2.data:
+                                            found = True
+                                            break
+                                    else:
+                                        self.logger.debug("Comparing with template element under link type %s name %s value %s, attCnt %d, childCnt %d", child.nodeType, child.localName, child.nodeValue, (child.hasAttributes() and child.attributes.length) or 0, len(child.childNodes))
+                                        if child.nodeType == child2.nodeType and child.localName == child2.localName and child.nodeValue == child2.nodeValue and ((child.hasAttributes() and child2.hasAttributes() and child.attributes.length == child2.attributes.length) or (not child.hasAttributes() and not child2.hasAttributes())) and len(child.childNodes) == len(child2.childNodes):
+                                            found = True
+                                            self.logger.debug("Those are same - no need to copy")
+                                            break
+                                if not found:
+                                    self.logger.debug("Copying that elem from this AM to template: %s", child2.toxml(encoding="utf-8"))
+                                    link.appendChild(child2.cloneNode(True))
+                            # Done copying 'other' elements
 
                             break # out of loop over Aggs' elements
 #                        else:
@@ -662,6 +871,7 @@ class ManifestRSpecCombiner:
                 template_stitching = self.getStitchingElement(dom_template)
             else:
                 return
+        # End of block to handle have no stitching template
 
         for am in ams_list:
             if am.dcn:
@@ -713,7 +923,7 @@ class ManifestRSpecCombiner:
                 #self.logger.debug("Found path %s in template manifest: %s", path_id, template_path.toxml(encoding="utf-8"))
                 #                print "AGG " + str(am) + " HID " + str(hop_id)
                 if not am.isEG:
-                    self.replaceHopElement(template_path, self.getStitchingElement(am_manifest_dom), hop_id, path_id)
+                    res = self.replaceHopOrAddElement(template_path, self.getStitchingElement(am_manifest_dom), hop_id, path_id)
 #                    for child in template_path.childNodes:
 #                        if child.nodeType == Node.ELEMENT_NODE and \
 #                                child.localName == HOP and \
@@ -782,7 +992,7 @@ class ManifestRSpecCombiner:
 
     # Replace the hop element in the template DOM with the hop element 
     # from the aggregate DOM that has the given HOP ID
-    def replaceHopElement(self, template_path, am_stitching, hop_id, path_id):
+    def replaceHopOrAddElement(self, template_path, am_stitching, hop_id, path_id):
         template_hop = None
 
         for child in template_path.childNodes:
@@ -792,8 +1002,9 @@ class ManifestRSpecCombiner:
                 template_hop = child
                 break
         if template_hop is None:
-            self.logger.error("Cannot find hop %s in template manifest path %s", hop_id, path_id)
-            return
+            # This used to be an error and return, cause it means we can't replace
+            # So now instead we will do an add
+            self.logger.info("Cannot find hop %s in template manifest path %s - will add it", hop_id, path_id)
 
         # Find the path for the given path_id (there may be more than one)
         am_path = self.findPathByID(am_stitching, path_id)
@@ -809,14 +1020,19 @@ class ManifestRSpecCombiner:
         else:
             self.logger.error("Cannot find path %s in AM's stitching extension when looking to use AM's version of hop %s", path_id, hop_id)
             # self.logger.debug("%s" % am_stitching)
-            return
+            return False
 
         if am_hop is not None and template_hop is not None:
 #            self.logger.debug("Replacing " + template_hop.toxml(encoding="utf-8") + " with " + am_hop.toxml(encoding="utf-8"))
             template_path.replaceChild(am_hop.cloneNode(True), template_hop)
+        elif am_hop is not None:
+            self.logger.debug("Instead of replacing hop, will add")
+            template_path.appendChild(am_hop.cloneNode(True))
         else:
             self.logger.error ("Can't replace hop %s from path %s in template: AM HOP %s TEMPLATE HOP %s" % (hop_id, path_id, am_hop, template_hop))
-            return
+            return False
+
+        return True
 
     # Replace the hop link element in the template DOM with the hop link element 
     # from the aggregate DOM that has the given HOP LINK ID
