@@ -19,6 +19,7 @@ gcf 2.9:
     `geni_credential`, then save that cred in a separate file. (#803)
    * Also when saving output, JSON that has XML content shouldn't get
      the header inserted within the XML content.
+  * Fix `delete` when called on multiple AMs. (#808)
 
  * Stitcher
   * When merging manifests, handle a request for component_manager of the ExoSM,

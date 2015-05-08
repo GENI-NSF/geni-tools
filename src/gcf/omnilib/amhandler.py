@@ -3715,11 +3715,12 @@ class AMCallHandler(object):
                 self.logger.debug("%s", missingSlivers)
 
             # Summarize result
-            if len(slivers) > 0:
-                retct = str(len(slivers) - len(missingSlivers))
+            retcnt = len(slivers) # Num slivers reporting results
+            if retcnt > 0:
+                retcnt = retcnt - len(missingSlivers)
             else:
-                retct = str(len(self._getSliverResultList(status)))
-            retVal += "Retrieved Status on %s slivers in slice %s at %s:\n" % (retct, urn, client.str)
+                retcnt = len(self._getSliverResultList(status))
+            retVal += "Retrieved Status on %d slivers in slice %s at %s:\n" % (retcnt, urn, client.str)
 
             sliverFails = self._didSliversFail(status)
             for sliver in sliverFails.keys():
@@ -3750,13 +3751,13 @@ class AMCallHandler(object):
             # If alloc state includes geni_unallocated, say so
             statusMsg = '  '
             if len(alloc_statuses) == 1:
-                if len(slivers) == 1:
+                if retcnt == 1:
                     statusMsg += "Sliver is "
                 else:
                     statusMsg += "All slivers are "
                 statusMsg += "in allocation state %s.\n" % alloc_statuses.keys()[0]
             else:
-                statusMsg += "  %d slivers have %d different allocation statuses" % (len(slivers), len(alloc_statuses.keys()))
+                statusMsg += "  %d slivers have %d different allocation statuses" % (retcnt, len(alloc_statuses.keys()))
                 if 'geni_unallocated' in alloc_statuses:
                     statusMsg += "; some are geni_unallocated.\n"
                 else:
@@ -3764,13 +3765,13 @@ class AMCallHandler(object):
                         statusMsg += '.'
                     statusMsg += "\n"
             if len(op_statuses) == 1:
-                if len(slivers) == 1:
+                if retcnt == 1:
                     statusMsg += "  Sliver is "
                 else:
                     statusMsg += "  All slivers are "
                 statusMsg += "in operational state %s.\n" % op_statuses.keys()[0]
             else:
-                statusMsg = "  %d slivers have %d different operational statuses" % (len(slivers), len(op_statuses.keys()))
+                statusMsg = "  %d slivers have %d different operational statuses" % (retcnt, len(op_statuses.keys()))
                 if 'geni_failed' in op_statuses:
                     statusMsg += "; some are geni_failed"
                 if 'geni_pending_allocation' in op_statuses:
@@ -4285,8 +4286,8 @@ class AMCallHandler(object):
                 if not self.opts.noExtraCHCalls:
                     # record results in SA database
                     try:
-                        slivers = self._getSliverResultList(realres)
-                        for sliver in slivers:
+                        sliversDict = self._getSliverResultList(realres)
+                        for sliver in sliversDict:
                             if isinstance(sliver, dict) and \
                                     sliver.has_key('geni_sliver_urn'):
                                 # Note that the sliver may not be in the DB if you delete after allocate
@@ -6382,9 +6383,6 @@ class AMCallHandler(object):
             retSlivers.append(sliver['geni_sliver_urn'])
 
         for request in requestedSlivers:
-            # FIXME: Luisa somehow got a dict here. But how?
-            if not isinstance(request, str):
-                self.logger.debug("requested sliver (from buildURNs) was not a string?!: %r", request)
             if not request or str(request).strip() == "":
                 continue
             # if request not in resultValue, then add it to the return
