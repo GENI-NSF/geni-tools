@@ -53,6 +53,13 @@ gcf 2.9:
    * Always use APIv2 when calling `getversion`
   * Fix finding a hop when parsing EG manifests to consider the path ID, thus
     supporting 2 links across the same interface. (#805)
+  * Fixes for merging manifests, particularly those including ExoGENI AMs on links. (#806)
+   * Fill in missing properties and interface_refs on links when the template was a real manifest.
+   * Slightly prefer PG AMs as the template AM.
+   * Ensure we have all component_managers, interfaces, and comments on links.
+   * Skip adding a comment for an AM with no information to add.
+   * Support starting with an EG AM and adding in missing hops in the stitching extension, albeit
+     out of order and without the proper nextHop values.
 
  * Scripts
   * Initial commit of `examples/renewSliceAndSlivers.py`. (#798)
