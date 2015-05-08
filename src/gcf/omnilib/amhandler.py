@@ -6382,7 +6382,10 @@ class AMCallHandler(object):
             retSlivers.append(sliver['geni_sliver_urn'])
 
         for request in requestedSlivers:
-            if not request or request.strip() == "":
+            # FIXME: Luisa somehow got a dict here. But how?
+            if not isinstance(request, str):
+                self.logger.debug("requested sliver (from buildURNs) was not a string?!: %r", request)
+            if not request or str(request).strip() == "":
                 continue
             # if request not in resultValue, then add it to the return
             if request not in retSlivers:
