@@ -11,6 +11,7 @@ Have a suggestion, feature request, or issue to report? Read about how to [contr
 Contributors recognized by GitHub are listed [on GitHub](https://github.com/GENI-NSF/geni-tools/graphs/contributors).
 
 Past contributors have included:
+ - David Margery, Inria
  - Ezra Kissel, Indiana University
  - Nick Bastin, Barnstormer Softworks
  - Hussam Nasir, University of Kentucky
