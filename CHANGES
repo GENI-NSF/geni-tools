@@ -64,6 +64,12 @@ gcf 2.9:
 
  * Scripts
   * Initial commit of `examples/renewSliceAndSlivers.py`. (#798)
+  * readyToLogin --ansible-inventory will now specify the ansible
+    username in the inventory file if the GENI username and the
+    username on the local system are different.  Alternatively, you
+    can use --ansible-username to specify the username or you can use
+    --no-ansible-username to ensure no username is specified in the
+    inventory file. (#794)
 
  * gcf
   * Make the user credential optional to `ListResources`. (#792)
