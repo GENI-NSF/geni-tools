@@ -1980,13 +1980,17 @@ class Aggregate(object):
                 if self.api_version > 2:
                     opName2 = 'delete'
                 if opts.warn:
-                    omniargs = ['--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName2, slicename]
+                    # Do not use --raise-error here so that the failed delete is logged more quietly,
+                    omniargs = ['-V%d' % self.api_version, '-a', self.url, opName2, slicename]
+#                    omniargs = ['--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName2, slicename]
                 else:
-                    omniargs = ['--raise-error-on-v2-amapi-error', '-o', '-V%d' % self.api_version, '-a', self.url, opName2, slicename]
+                    omniargs = ['-o', '-V%d' % self.api_version, '-a', self.url, opName2, slicename]
+#                    omniargs = ['--raise-error-on-v2-amapi-error', '-o', '-V%d' % self.api_version, '-a', self.url, opName2, slicename]
                 try:
                     if not opts.debug:
                         # Suppress most log messages on the console for deleting any EG reservation - including WARNING messages
                         # For many errors there is no reservation there from before so it looks like an error but isn't.
+                        # FIXME: I'm still getting a WARNING from amhandler line 4134 on the console and debug log. Why?
                         lvl = logging.INFO
                         handlers = self.logger.handlers
                         if len(handlers) == 0:
