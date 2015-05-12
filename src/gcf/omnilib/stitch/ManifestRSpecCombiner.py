@@ -112,7 +112,7 @@ class ManifestRSpecCombiner:
 #            self.logger.debug("Template had element: '%s'...", cstr[:min(len(cstr), 60)])
 
         for am in ams_list:
-            if self.useReqs:
+            if self.useReqs and not am.manifestDom:
                 if not am.requestDom:
                     am.requestDom = am.getEditedRSpecDom(dom_template)
                 am_manifest_dom = am.requestDom
@@ -152,7 +152,24 @@ class ManifestRSpecCombiner:
                     continue
                 self.logger.debug("%s manifest had new top level element: '%s'...", am, cstr[:min(len(cstr), 60)])
                 if cstr not in template_kids:
-                    rspec_node.appendChild(child.cloneNode(True))
+                    if "Copied from " in cstr and "<Aggregate" in cstr:
+                        self.logger.debug(" ... but this has a comment suggesting it is already due to merging in")
+                        continue
+                    childdup = child.cloneNode(True)
+                    # Append a comment to this child saying what AM it came from
+                    comment_element = dom_template.createComment("Copied from %s" % str(am))
+                    childdup.insertBefore(comment_element, childdup.firstChild)
+                    try:
+                        cdupstr = childdup.toxml(encoding="utf-8")
+                        if cdupstr:
+                            cdupstr = cdupstr.strip()
+                        if cdupstr in template_kids:
+                            self.logger.debug(" -- actually it is not new once we add the comment")
+                            continue
+                    except Exception, xe:
+                        self.logger.debug("Failed to XMLify created new top level child from %s: %s", cstr, xe)
+                        continue
+                    rspec_node.appendChild(childdup)
                     self.logger.debug("... appended it")
 
     def combineNSes(self, ams_list, dom_template):
@@ -176,7 +193,7 @@ class ManifestRSpecCombiner:
             self.logger.debug("Couldn't find rspec in template!")
             return
         for am in ams_list:
-            if self.useReqs:
+            if self.useReqs and not am.manifestDom:
                 if not am.requestDom:
                     am.requestDom = am.getEditedRSpecDom(dom_template)
                 am_manifest_dom = am.requestDom
@@ -280,7 +297,7 @@ class ManifestRSpecCombiner:
         # Match the manifest from a given AMs manifest if that AM's urn is the 
         # component_manager_id attribute on that node and the client_ids match
         for am in ams_list:
-            if self.useReqs:
+            if self.useReqs and not am.manifestDom:
                 if not am.requestDom:
                     am.requestDom = am.getEditedRSpecDom(dom_template)
                 am_manifest_dom = am.requestDom
@@ -390,7 +407,7 @@ class ManifestRSpecCombiner:
         # loop over AMs. If an AM has a link client_id not in template_link_ids
         # and the link has that AM as a component_manager, then append this link to the template
         for agg in ams_list:
-            if self.useReqs:
+            if self.useReqs and not agg.manifestDom:
                 if not agg.requestDom:
                     agg.requestDom = agg.getEditedRSpecDom(dom_template)
                 man = agg.requestDom
@@ -508,7 +525,7 @@ class ManifestRSpecCombiner:
 #                    else:
 #                        self.logger.debug("Looking at AM %s for link %s", agg.urn, client_id)
 
-                    if self.useReqs:
+                    if self.useReqs and not agg.manifestDom:
                         if not agg.requestDom:
                             agg.requestDom = agg.getEditedRSpecDom(dom_template)
                         man = agg.requestDom
@@ -842,7 +859,7 @@ class ManifestRSpecCombiner:
             for am in ams_list:
                 if len(am.hops) > 0:
                     self.logger.debug("Template DOM had no stitching node. Using stitching node from %s", am)
-                    if self.useReqs:
+                    if self.useReqs and not am.manifestDom:
                         if not am.requestDom:
                             am.requestDom = am.getEditedRSpecDom(dom_template)
                         am_manifest_dom = am.requestDom
@@ -877,7 +894,7 @@ class ManifestRSpecCombiner:
             if am.dcn:
                 self.logger.debug("Pulling hops from a DCN AM: %s", am)
 
-            if self.useReqs:
+            if self.useReqs and not am.manifestDom:
                 if not am.requestDom:
                     am.requestDom = am.getEditedRSpecDom(dom_template)
                 am_manifest_dom = am.requestDom
@@ -974,8 +991,12 @@ class ManifestRSpecCombiner:
         user_requested = am.userRequested
         hops_info = []
         for hop in am._hops:
-            if self.useReqs:
-                tEntry = {'urn':hop._hop_link.urn, 'vlan_tag':str(hop._hop_link.vlan_suggested_request), 'vlan_range':str(hop._hop_link.vlan_range_request), 'path_id':hop.path.id, 'id':hop._id}
+            if not hop._hop_link.vlan_suggested_manifest:
+                if self.useReqs:
+                    tEntry = {'urn':hop._hop_link.urn, 'vlan_tag':str(hop._hop_link.vlan_suggested_request), 'vlan_range':str(hop._hop_link.vlan_range_request), 'path_id':hop.path.id, 'id':hop._id}
+                else:
+                    # Maybe we killed it before it actually did the reservation
+                    tEntry = {'urn':hop._hop_link.urn, 'vlan_tag':"From request: %s" % str(hop._hop_link.vlan_suggested_request), 'vlan_range':str(hop._hop_link.vlan_range_request), 'path_id':hop.path.id, 'id':hop._id}
             else:
                 tEntry = {'urn':hop._hop_link.urn, 'vlan_tag':str(hop._hop_link.vlan_suggested_manifest), 'path_id':hop.path.id, 'id':hop._id}
             if hop.globalId:
@@ -984,10 +1005,41 @@ class ManifestRSpecCombiner:
                 tEntry['ofAMUrl'] = hop._hop_link.ofAMUrl
             if hop._hop_link.controllerUrl:
                 tEntry['controllerUrl'] = hop._hop_link.controllerUrl
+            if hop.import_vlans_from:
+                tEntry['get_vlantag_from'] = hop.import_vlans_from._hop_link.urn
+            if hop.vlans_unavailable and len(hop.vlans_unavailable) > 0:
+                tEntry['VLANs unavailable'] = str(hop.vlans_unavailable)
             hops_info.append(tEntry)
         ret = {'urn':urn, 'url': url, 'api_version':api_version, 'user_requested':user_requested, 'hops_info':hops_info}
+
+        amdep = "<none>"
+        if am.dependsOn and len(am.dependsOn) > 0:
+            # Collect the AMs that hops at this AM immediately import from (excluding self)
+            nextDep = []
+            for hop in am.hops:
+                if hop.import_vlans_from.aggregate == am:
+                    continue
+                if hop.import_vlans_from.aggregate in nextDep:
+                    continue
+                nextDep.append(hop.import_vlans_from.aggregate)
+            # Turn those AM objects into a CSV string
+            for dep in nextDep:
+                depstr = ""
+                if dep.nick:
+                    depstr = dep.nick
+                else:
+                    depstr = dep.urn
+                if amdep == "<none>":
+                    amdep = depstr
+                else:
+                    amdep += ", " + depstr
+
+        ret["AM Depends on"] = amdep
         if am.pgLogUrl:
             ret["PG Log URL"] = am.pgLogUrl
+        ret["Have Reservation?"] = (am.manifestDom is not None)
+        if am.lastError:
+            ret["Last Error"] = am.lastError
         return ret
 
     # Replace the hop element in the template DOM with the hop element 

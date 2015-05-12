@@ -364,11 +364,11 @@ class StitchingHandler(object):
                 retVal += msg + "\n"
 
             if filename:
-                msg = "Saved combined reservation RSpec at %d AMs to file '%s'" % (len(self.ams_to_process), os.path.abspath(filename))
+                msg = "Saved combined reservation RSpec at %d AM(s) to file '%s'" % (len(self.ams_to_process), os.path.abspath(filename))
                 self.logger.info(msg)
                 retVal += msg
 
-        except KeyboardInterrupt:
+        except KeyboardInterrupt, kbi:
             if lvl:
                 self.logger.setLevel(lvl)
             msg = 'Stitching interrupted!'
@@ -378,7 +378,15 @@ class StitchingHandler(object):
             import traceback
             self.logger.debug("%s", traceback.format_exc())
 
-            if self.ams_to_process is not None:
+            if self.opts.noDeleteAtEnd:
+                # User requested to not delete on interrupt
+                self.logger.warn("Per command-line option, not deleting existing reservations.")
+                msg = self.endPartiallyReserved(kbi, aggs=self.ams_to_process)
+                # Here this method need not exit or raise. But should log something.
+                # sys.exit is called later.
+                self.logger.warn(msg)
+
+            elif self.ams_to_process is not None:
                 class DumbLauncher():
                     def __init__(self, agglist):
                         self.aggs = agglist
@@ -656,7 +664,7 @@ class StitchingHandler(object):
             retVal += msg + "\n"
 
         if filename:
-            msg = "Saved combined reservation RSpec at %d AMs to file '%s'" % (len(self.ams_to_process), os.path.abspath(filename))
+            msg = "Saved combined reservation RSpec at %d AM(s) to file '%s'" % (len(self.ams_to_process), os.path.abspath(filename))
             self.logger.info(msg)
             retVal += msg
 
@@ -957,21 +965,21 @@ class StitchingHandler(object):
         # GRAM AMs seems to also miss nodes. Avoid if possible.
         if lastAM is None and len(self.ams_to_process) > 0:
             lastAM = self.ams_to_process[-1]
-        if lastAM is not None and (lastAM.isEG or lastAM.dcn or lastAM.isGRAM):
+        if lastAM is not None and (lastAM.isEG or lastAM.dcn or lastAM.isGRAM or lastAM.manifestDom is None):
             self.logger.debug("Last AM was an EG or DCN or GRAM AM. Find another for the template.")
             i = 1
-            while (lastAM.isEG or lastAM.dcn or lastAM.isGRAM) and i <= len(self.ams_to_process):
+            while (lastAM.isEG or lastAM.dcn or lastAM.isGRAM or lastAM.manifestDom is None) and i <= len(self.ams_to_process):
                 # This has lost some hops and messed up hop IDs. Don't use it as the template
                 # I'd like to find another AM we did recently
                 lastAM = self.ams_to_process[-i]
                 i = i + 1
-            if lastAM.isEG or lastAM.dcn or lastAM.isGRAM:
+            if lastAM.isEG or lastAM.dcn or lastAM.isGRAM or lastAM.manifestDom is None:
                 self.logger.debug("Still had an EG or DCN or GRAM template AM - use the raw SCS request")
                 lastAM = None
         # I have a slight preference for a PG AM. See if we have one
         if lastAM is not None and not lastAM.isPG and len(self.ams_to_process) > 1:
             for am in self.ams_to_process:
-                if am != lastAM and am.isPG:
+                if am != lastAM and am.isPG and am.manifestDom is not None:
                     lastAM = am
                     break
         combinedManifest = self.combineManifests(self.ams_to_process, lastAM)
@@ -1199,22 +1207,31 @@ class StitchingHandler(object):
         # Time out stitcher call if needed
         if datetime.datetime.utcnow() >= self.config['timeoutTime']:
             msg = "Reservation attempt timed out after %d minutes." % self.opts.timeout
-            self.logger.warn("%s Deleting any reservations...")
-            class DumbLauncher():
-                def __init__(self, agglist):
-                    self.aggs = agglist
-            try:
-                result = self.deleteAllReservations(DumbLauncher(existingAggs))
-                if not result:
+
+            if self.opts.noDeleteAtEnd:
+                # User requested to not delete on interrupt
+                # Update the message to indicate not deleting....
+                self.logger.warn("%s Per command-line option, not deleting existing reservations.", msg)
+                msg2 = self.endPartiallyReserved(aggs=existingAggs, timeout=True)
+                msg = "%s %s" % (msg, msg2)
+                # Allow later code to raise this as an error
+            else:
+                self.logger.warn("%s Deleting any reservations...", msg)
+                class DumbLauncher():
+                    def __init__(self, agglist):
+                        self.aggs = agglist
+                try:
+                    result = self.deleteAllReservations(DumbLauncher(existingAggs))
+                    if not result:
+                        for am in existingAggs:
+                            if am.manifestDom:
+                                self.logger.warn("You have a reservation at %s", am)
+                except KeyboardInterrupt:
+                    self.logger.error('... deleting interrupted!')
                     for am in existingAggs:
                         if am.manifestDom:
                             self.logger.warn("You have a reservation at %s", am)
-            except KeyboardInterrupt:
-                self.logger.error('... deleting interrupted!')
-                for am in existingAggs:
-                    if am.manifestDom:
-                        self.logger.warn("You have a reservation at %s", am)
-            raise SticherError(msg)
+            raise StitchingError(msg)
 
         # Call SCS if needed
         self.scsCalls = self.scsCalls + 1
@@ -1258,22 +1275,31 @@ class StitchingHandler(object):
                 # We'll time out. So quit now.
                 self.logger.debug("After planned sleep for %d seconds we will time out", sTime)
                 msg = "Reservation attempt timing out after %d minutes." % self.opts.timeout
-                self.logger.warn("%s Deleting any reservations...")
-                class DumbLauncher():
-                    def __init__(self, agglist):
-                        self.aggs = agglist
-                try:
-                    result = self.deleteAllReservations(DumbLauncher(existingAggs))
-                    if not result:
+
+                if self.opts.noDeleteAtEnd:
+                    # User requested to not delete on interrupt
+                    # Update the message to indicate not deleting....
+                    self.logger.warn("%s Per command-line option, not deleting existing reservations.", msg)
+                    msg2 = self.endPartiallyReserved(aggs=existingAggs, timeout=True)
+                    msg = "%s %s" % (msg, msg2)
+                    # Allow later code to raise this as an error
+                else:
+                    self.logger.warn("%s Deleting any reservations...", msg)
+                    class DumbLauncher():
+                        def __init__(self, agglist):
+                            self.aggs = agglist
+                    try:
+                        result = self.deleteAllReservations(DumbLauncher(existingAggs))
+                        if not result:
+                            for am in existingAggs:
+                                if am.manifestDom:
+                                    self.logger.warn("You have a reservation at %s", am)
+                    except KeyboardInterrupt:
+                        self.logger.error('... deleting interrupted!')
                         for am in existingAggs:
                             if am.manifestDom:
                                 self.logger.warn("You have a reservation at %s", am)
-                except KeyboardInterrupt:
-                    self.logger.error('... deleting interrupted!')
-                    for am in existingAggs:
-                        if am.manifestDom:
-                            self.logger.warn("You have a reservation at %s", am)
-                raise SticherError(msg)
+                raise StitchingError(msg)
 
             self.logger.info("Pausing for %d seconds for Aggregates to free up resources...\n\n", sTime)
             time.sleep(sTime)
@@ -1453,31 +1479,39 @@ class StitchingHandler(object):
             # Do not recurse if we've hit the maxSCSCalls or if there's an error deleting
             # previous reservations.
             self.lastException = se
-            if self.scsCalls == self.maxSCSCalls:
-                self.logger.error("Stitching max circuit failures reached - will delete and exit.")
-                try:
-                    result = self.deleteAllReservations(launcher)
-                    if not result:
+            if self.opts.noDeleteAtEnd:
+                # User requested to not delete on interrupt
+                # Update the message to indicate not deleting....
+                self.logger.warn("Stitching failed. Would retry but commandline option specified not to. Last error: %s", se)
+                msg = self.endPartiallyReserved(se, aggs=self.ams_to_process)
+                # Exit by raising an error
+                raise StitchingError("Stitching failed due to %s. %s" % (se, msg))
+            else:
+                if self.scsCalls == self.maxSCSCalls:
+                    self.logger.error("Stitching max circuit failures reached - will delete and exit.")
+                    try:
+                        result = self.deleteAllReservations(launcher)
+                        if not result:
+                            for am in launcher.aggs:
+                                if am.manifestDom:
+                                    self.logger.warn("You have a reservation at %s", am)
+                    except KeyboardInterrupt:
+                        self.logger.error('... deleting interrupted!')
                         for am in launcher.aggs:
                             if am.manifestDom:
                                 self.logger.warn("You have a reservation at %s", am)
+                    raise StitchingError("Stitching reservation failed %d times. Last error: %s" % (self.scsCalls, se))
+                self.logger.warn("Stitching failed but will retry: %s", se)
+                success = False
+                try:
+                    success = self.deleteAllReservations(launcher)
                 except KeyboardInterrupt:
                     self.logger.error('... deleting interrupted!')
                     for am in launcher.aggs:
                         if am.manifestDom:
                             self.logger.warn("You have a reservation at %s", am)
-                raise StitchingError("Stitching reservation failed %d times. Last error: %s" % (self.scsCalls, se))
-            self.logger.warn("Stitching failed but will retry: %s", se)
-            success = False
-            try:
-                success = self.deleteAllReservations(launcher)
-            except KeyboardInterrupt:
-                self.logger.error('... deleting interrupted!')
-                for am in launcher.aggs:
-                    if am.manifestDom:
-                        self.logger.warn("You have a reservation at %s", am)
-            if not success:
-                raise StitchingError("Stitching failed. Would retry but delete had errors. Last Stitching error: %s" % se)
+                if not success:
+                    raise StitchingError("Stitching failed. Would retry but delete had errors. Last Stitching error: %s" % se)
 
             # Flush the cache of aggregates. Loses all state. Avoids
             # double adding hops to aggregates, etc. But we lose the vlans_unavailable. And ?
@@ -1499,82 +1533,96 @@ class StitchingHandler(object):
                 self.logger.error("Root cause error: %s", self.lastException)
                 newError = StitchingError("%s which caused %s" % (str(self.lastException), str(se)))
                 se = newError
-            try:
-                result = self.deleteAllReservations(launcher)
-                if not result:
+            if self.opts.noDeleteAtEnd:
+                # User requested to not delete on interrupt
+                # Update the message to indicate not deleting....
+                self.logger.warn("Per commandline option, not deleting existing reservations.")
+                msg = self.endPartiallyReserved(se, aggs=self.ams_to_process)
+                # Create a new error with a new return msg and raise that
+                raise StitchingError("Stitching failed due to %s. %s" % (se, msg))
+            else:
+                try:
+                    result = self.deleteAllReservations(launcher)
+                    if not result:
+                        for am in launcher.aggs:
+                            if am.manifestDom:
+                                self.logger.warn("You have a reservation at %s", am)
+                except KeyboardInterrupt:
+                    self.logger.error('... deleting interrupted!')
                     for am in launcher.aggs:
                         if am.manifestDom:
                             self.logger.warn("You have a reservation at %s", am)
-            except KeyboardInterrupt:
-                self.logger.error('... deleting interrupted!')
-                for am in launcher.aggs:
-                    if am.manifestDom:
-                        self.logger.warn("You have a reservation at %s", am)
-                #raise
-            raise se
+                    #raise
+                raise se
         return lastAM
+
+    def writeExpandedRequest(self, ams, requestDom):
+        # Write the fully expanded/updated request RSpec to a file
+
+        self.logger.debug("Generating updated combined request RSpec")
+        combinedRequestDom = combineManifestRSpecs(ams, requestDom, useReqs=True)
+
+        try:
+            reqString = combinedRequestDom.toprettyxml(encoding="utf-8")
+        except Exception, xe:
+            self.logger.debug("Failed to XMLify combined Request RSpec: %s", xe)
+            self._raise_omni_error("Malformed combined request RSpec: %s" % xe)
+        reqString = stripBlankLines(reqString)
+
+        # set rspec to be UTF-8
+        if isinstance(reqString, unicode):
+            reqString = reqString.encode('utf-8')
+            self.logger.debug("Combined request RSpec was unicode")
+
+        # FIXME: Handle errors. Maybe make return use code/value/output struct
+        # If error and have an expanded request from SCS, include that in output.
+        #   Or if particular AM had errors, ID the AMs and errors
+
+        # FIXME: This prepends a header on an RSpec that might already have a header
+        # -- maybe replace any existing header
+
+        # FIXME: We force -o here and keep it from logging the
+        # RSpec. Do we need an option to not write the RSpec to a file?
+
+        ot = self.opts.output
+        if not self.opts.tostdout:
+            self.opts.output = True
+
+        if not self.opts.debug:
+            # Suppress all but WARN on console here
+            lvl = self.logger.getEffectiveLevel()
+            handlers = self.logger.handlers
+            if len(handlers) == 0:
+                handlers = logging.getLogger().handlers
+            for handler in handlers:
+                if isinstance(handler, logging.StreamHandler):
+                    lvl = handler.level
+                    handler.setLevel(logging.WARN)
+                    break
+
+        retVal, filename = handler_utils._writeRSpec(self.opts, self.logger, reqString, None, '%s-expanded-request'%self.slicename, '', None)
+        if not self.opts.debug:
+            handlers = self.logger.handlers
+            if len(handlers) == 0:
+                handlers = logging.getLogger().handlers
+            for handler in handlers:
+                if isinstance(handler, logging.StreamHandler):
+                    handler.setLevel(lvl)
+                    break
+        self.opts.output = ot
+
+        if filename:
+            msg = "Saved expanded request RSpec at %d AM(s) to file '%s'" % (len(ams), os.path.abspath(filename))
+        else:
+            msg = "Generated expanded request RSpec"
+        return msg
 
     def handleGenRequest(self):
         # Exit if user specified --genRequest, saving more fully expanded request RSpec
         # Used in mainStitchingLoop
         if self.opts.genRequest:
-            # Write the fully expanded/updated request RSpec to a file
-
-            self.logger.debug("Generating updated combined request RSpec")
-            combinedRequestDom = combineManifestRSpecs(self.ams_to_process, self.parsedSCSRSpec.dom, useReqs=True)
-
-            try:
-                reqString = combinedRequestDom.toprettyxml(encoding="utf-8")
-            except Exception, xe:
-                self.logger.debug("Failed to XMLify combined Request RSpec: %s", xe)
-                self._raise_omni_error("Malformed combined request RSpec: %s" % xe)
-            reqString = stripBlankLines(reqString)
-
-            # set rspec to be UTF-8
-            if isinstance(reqString, unicode):
-                reqString = reqString.encode('utf-8')
-                self.logger.debug("Combined request RSpec was unicode")
-
-            # FIXME: Handle errors. Maybe make return use code/value/output struct
-            # If error and have an expanded request from SCS, include that in output.
-            #   Or if particular AM had errors, ID the AMs and errors
-
-            # FIXME: This prepends a header on an RSpec that might already have a header
-            # -- maybe replace any existing header
-
-            # FIXME: We force -o here and keep it from logging the
-            # RSpec. Do we need an option to not write the RSpec to a file?
-
-            ot = self.opts.output
-            if not self.opts.tostdout:
-                self.opts.output = True
-
-            if not self.opts.debug:
-                # Suppress all but WARN on console here
-                lvl = self.logger.getEffectiveLevel()
-                handlers = self.logger.handlers
-                if len(handlers) == 0:
-                    handlers = logging.getLogger().handlers
-                for handler in handlers:
-                    if isinstance(handler, logging.StreamHandler):
-                        lvl = handler.level
-                        handler.setLevel(logging.WARN)
-                        break
-
-            retVal, filename = handler_utils._writeRSpec(self.opts, self.logger, reqString, None, '%s-expanded-request'%self.slicename, '', None)
-            if not self.opts.debug:
-                handlers = self.logger.handlers
-                if len(handlers) == 0:
-                    handlers = logging.getLogger().handlers
-                for handler in handlers:
-                    if isinstance(handler, logging.StreamHandler):
-                        handler.setLevel(lvl)
-                        break
-            self.opts.output = ot
-
-            if filename:
-                msg = "Saved expanded request RSpec at %d AMs to file '%s'" % (len(self.ams_to_process), os.path.abspath(filename))
-                self.logger.info(msg)
+            msg = self.writeExpandedRequest(self.ams_to_process, self.parsedSCSRSpec.dom)
+            self.logger.info(msg)
             raise StitchingError("Requested to only generate and save the expanded request")
         # End of block to save the expanded request and exit
 
@@ -3565,6 +3613,9 @@ class StitchingHandler(object):
                 agg.doesSchemaV2 = oldAgg.doesSchemaV2
                 agg.slicecred = oldAgg.slicecred
 
+                # Since we're restarting, clear out any old error, so don't do this copy
+                # agg.lastError = oldAgg.lastError
+
                 # FIXME: correct?
                 agg.url = oldAgg.url
                 agg.urn_syns = copy.deepcopy(oldAgg.urn_syns)
@@ -3691,3 +3742,90 @@ class StitchingHandler(object):
         # End of loop over top level elements in the RSpec XML to find links and add the fake interface_ref
 #        self.logger.debug("\n" + self.parsedSCSRSpec.dom.toxml())
     # End of addFakeNode
+
+    def endPartiallyReserved(self, exception=None, aggs=[], timeout=False):
+        # End the run with things only partially reserved
+        # This could be due to --noDeleteAtEnd and a fatal failure or Ctrl-C, or it could be due to --noTransitAMs and only transit AMs remain
+        # exception would be an indication of why we are quitting to include in xml comments
+
+        # 1) Print where you have reservations and where you do not. Also print where there were failures if possible.
+
+        # 2) Output a combined manifest for what you do have
+        # - ideally with comments indicating what this is a manifest for and what AMs need reservations
+        # - Include the VLANs unavailable for failed AMs and any other available error information
+        # - Ideally comments also indicate which AMs / hops depend on which others, so experimenter can manually do what stitcher does
+        # 3) Output a combined request for what you do not have
+        # - ideally with comments indicating where this must be submitted and what AMs that are part of this topology have reservations
+        # - Include the VLANs unavailable for failed AMs and any other available error information
+        # - Ideally comments also indicate which AMs / hops depend on which others, so experimenter can manually do what stitcher does
+
+        # This method does not exit. It constructs a message suitable for logging at the end and returns it
+        retMsg = ""
+
+        # Note that caller has already noted we are not deleting existing reservations, and caller will log the stuff in 'msg'
+
+        aggsRes = []
+        aggsNoRes = []
+        aggsFailed = []
+        for agg in aggs:
+            if agg.manifestDom:
+                # FIXME: If the Ctrl-C happened during allocate, then we fake set the manifestDom so it looks like we have a reservation there,
+                # because the AM may think we do. In fact, we may not. Perhaps detect this case and log something here? Perhaps with agg.completed?
+                aggsRes.append(agg)
+                if agg.api_version > 2:
+                    self.logger.debug("   Have a temporary reservation here (%s)! \n*** You must manually call `omni -a %s -V3 provision %s` and then `omni -a %s -V3 poa %s geni_start`", agg.url, agg.url, self.slicename, agg.url, self.slicename)
+                else:
+                    self.logger.debug("   Have a reservation here (%s)!", agg.url)
+            else:
+                aggsNoRes.append(agg)
+                self.logger.debug("%s has no reservation", agg)
+                # Can we tell where we tried & failed?
+                if agg.inProcess or agg.allocateTries > 0 or agg.triedRes or agg.lastError:
+                    aggsFailed.append(agg)
+                    self.logger.debug("%s was a failed attempt. inProcess=%s, allocateTries=%d, triedRes=%s, lastError=%s", agg.inProcess, agg.allocateTries, agg.triedRes, agg.lastError)
+
+        if len(aggsRes) + len(aggsNoRes) != len(aggs):
+            self.logger.debug("Ack! aggsRes=%d, aggsNoRes=%d, but total aggs is %d", len(aggsRes), len(aggsNoRes), len(aggs))
+
+        retMsg = "Stitcher interrupted"
+        if len(aggsRes) > 0:
+            retMsg += " with reservations at %d aggregate(s)" % len(aggsRes)
+        retMsg += ". "
+        if len(aggsNoRes) > 0:
+            retMsg += "Reservation must be completed at %d aggregate(s). " % len(aggsNoRes)
+        if len(aggsFailed) > 0:
+            retMsg += "Reservation failed at: %s." % aggsFailed
+
+        retMsg += "\n"
+
+        if len(aggsRes) > 0:
+            lastSuccAM = aggsRes[0]
+            # Note this will include the AMs where we have no reservation
+            combinedManifest, filename, retVal = self.getAndSaveCombinedManifest(lastSuccAM)
+
+            # Print something about sliver expiration times
+            msg = self.getExpirationMessage()
+
+            if msg:
+                retMsg += msg + '\n'
+
+            if filename:
+                msg = "Saved combined reservation RSpec at %d AM(s) to file '%s'\n" % (len(aggsRes), os.path.abspath(filename))
+                retMsg += msg
+
+        if len(aggsNoRes) > 0:
+            # For the DOM to start from, start with one I've edited if it exists
+            dom = self.parsedSCSRSpec.dom
+            for am in aggsNoRes:
+                if am.requestDom:
+                    dom = am.requestDom
+                    break
+            # Generate / save the expanded request using the full list of AMs. Note this means
+            # we'll include things that are technically for manifests only.
+            # To avoid that, call with aggsNoRes instead.
+            msg = self.writeExpandedRequest(aggs, dom)
+            retMsg += msg
+
+        self.logger.debug(retMsg)
+        return retMsg
+    # End of endPartiallyReserved
