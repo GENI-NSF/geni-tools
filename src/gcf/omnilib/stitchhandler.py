@@ -3782,7 +3782,7 @@ class StitchingHandler(object):
                 # Can we tell where we tried & failed?
                 if agg.inProcess or agg.allocateTries > 0 or agg.triedRes or agg.lastError:
                     aggsFailed.append(agg)
-                    self.logger.debug("%s was a failed attempt. inProcess=%s, allocateTries=%d, triedRes=%s, lastError=%s", agg.inProcess, agg.allocateTries, agg.triedRes, agg.lastError)
+                    self.logger.debug("%s was a failed attempt. inProcess=%s, allocateTries=%d, triedRes=%s, lastError=%s", agg, agg.inProcess, agg.allocateTries, agg.triedRes, agg.lastError)
 
         if len(aggsRes) + len(aggsNoRes) != len(aggs):
             self.logger.debug("Ack! aggsRes=%d, aggsNoRes=%d, but total aggs is %d", len(aggsRes), len(aggsNoRes), len(aggs))
