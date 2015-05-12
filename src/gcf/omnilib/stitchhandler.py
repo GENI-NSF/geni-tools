@@ -3277,6 +3277,8 @@ class StitchingHandler(object):
                     self.logger.debug("   Does NOT support Stitch Schema V1")
                 if agg.doesSchemaV2:
                     self.logger.debug("   Supports Stitch Schema V2")
+                if agg.lastError:
+                    self.logger.debug("   Last Error: %s", agg.lastError)
                 if agg.pgLogUrl:
                     self.logger.debug("   PG Log URL %s", agg.pgLogUrl)
                 if agg.sliverExpirations is not None:
