@@ -56,6 +56,22 @@ class Launcher(object):
                         self.logger.debug("%s is not complete but also not ready. inProcess=%s, depsComplete=%s", agg, agg.inProcess, agg.dependencies_complete)
                 raise StitchingError("Internal stitcher error: No aggregates are ready to allocate but not all are complete?")
 
+            if self.opts.noTransitAMs:
+                allTransit = True
+                for agg in ready_aggs:
+                    if agg.userRequested:
+                        allTransit = False
+                        break
+                if allTransit:
+                    self.logger.debug("Only transit AMs are now ready to allocate - will stop")
+                    incompleteAMs = 0
+                    for agg in self.aggs:
+                        if not agg.completed:
+                            incompleteAMs += 1
+                        if agg.userRequested and agg.manifestDom is None:
+                            self.logger.debug("WARN: Some non transit AMs not done, like %s", agg)
+                    raise StitchingError("Per commandline option, stopping reservation before doing transit AMs. %d AM(s) not reserved." % incompleteAMs)
+
             self.logger.debug("\nThere are %d ready aggregates: %s",
                               len(ready_aggs), ready_aggs)
             for agg in ready_aggs:

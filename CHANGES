@@ -22,27 +22,6 @@ gcf 2.9:
   * Fix `delete` when called on multiple AMs. (#808)
 
  * Stitcher
-  * When merging manifests, handle a request for component_manager of the ExoSM,
-    where the manifest component_manager will be more specific. (#780)
-   * If there isn't an exact match and the specific component_manager doesn't belong 
-     to an aggregate we are using, then try to match without the sub-authority.
-  * When redoing a request from the SCS, be sure to copy any existing state
-    from an AM not in the SCS workflow. (#781)
-  * When checking if an EG URN belongs to this AM, compare them exactly,
-    not using `startswith`, so an EG rack doesn't claim a URN for the ExoSM. (#779)
-  * scs.py now honors `--timeout` to set the SSL connection timeout. (#785)
-  * For `--fixedEndpoint` calls, avoid adding the fake interface to links
-    with no stitching path, such as for a LAN within a single AM. (#790)
-  * In debug when printing raw return from SCS, print the name of the path for each hop. (#800)
-  * Clarify error message when request 'any' VLAN and get VLAN_UNAVAILABLE. (#801)
-  * If SCS gave same suggested VLAN tag to 2 paths (same hop), then retry
-    at the SCS. (#802)
-   * The SCS does not deconflict suggestions across paths, so this can happen.
-  * When a request fails due to VLAN unavailable someplace along a path where the VLAN
-    was a choice from 'any', no need to go back to the SCS; delete the intermediate reservations
-    and mark the failed tag unavailable, and let that first AM pick the tag again.
-    This should mean fewer un-necessary deletes and fewer calls to the SCS. (#648)
-   * Also fix this block to count this as a local VLAN retry.
   * Better support for AM API version 3 (#261)
    * When saving the slice credential renames the file (`.json` extension), save that.
    * Set the API version for an AM to the command line request version, or the most recent
@@ -52,6 +31,39 @@ gcf 2.9:
    * Tune the pause before redoing a request to be shorter if only dealing with v3 AMs
    * Warn when done if any reservations are only allocations.
    * Always use APIv2 when calling `getversion`
+  * Support partial requests with two new options:
+   * `--noDeleteAtEnd`: When specified, do not delete any successful reservations when the overall
+     request has failed, or when the user has interrupted stitcher with Ctrl-C.
+   * `--noTransitAMs`: When specified, stop when the only aggregates ready to reserve are those
+     added by the SCS (which we assume are transit or intermediate aggregates).
+   * In both these cases, finish by printing out how many reservations you have, and saving a
+     combined manifest RSpec for your reservations, and a combined request RSpec for the reservations
+     that you still need to make. The experimenter must manually edit this request to fill in the proper
+     `suggestedVLANRange` and `vlanRangeAvailability` in the proper hops in the request's stitching extension.
+     See the comments at the top of the RSpec: `get_vlantag_from` indicates what other `hop` the given `hop`
+     should take its VLAN tag from. `Have Reservation?` indicates if you have a reservation here. And
+     `AM Depends on` indicates which other AMs must be reserved first before you make a reservation here.
+  * scs.py now honors `--timeout` to set the SSL connection timeout. (#785)
+  * For `--fixedEndpoint` calls, avoid adding the fake interface to links
+    with no stitching path, such as for a LAN within a single AM. (#790)
+  * If SCS gave same suggested VLAN tag to 2 paths (same hop), then retry
+    at the SCS. (#802)
+   * The SCS does not deconflict suggestions across paths, so this can happen.
+  * When a request fails due to VLAN unavailable someplace along a path where the VLAN
+    was a choice from 'any', no need to go back to the SCS; delete the intermediate reservations
+    and mark the failed tag unavailable, and let that first AM pick the tag again.
+    This should mean fewer un-necessary deletes and fewer calls to the SCS. (#648)
+   * Also fix this block to count this as a local VLAN retry.
+  * When merging manifests, handle a request for component_manager of the ExoSM,
+    where the manifest component_manager will be more specific. (#780)
+   * If there isn't an exact match and the specific component_manager doesn't belong 
+     to an aggregate we are using, then try to match without the sub-authority.
+  * When redoing a request from the SCS, be sure to copy any existing state
+    from an AM not in the SCS workflow. (#781)
+  * When checking if an EG URN belongs to this AM, compare them exactly,
+    not using `startswith`, so an EG rack doesn't claim a URN for the ExoSM. (#779)
+  * In debug when printing raw return from SCS, print the name of the path for each hop. (#800)
+  * Clarify error message when request 'any' VLAN and get VLAN_UNAVAILABLE. (#801)
   * Fix finding a hop when parsing EG manifests to consider the path ID, thus
     supporting 2 links across the same interface. (#805)
   * Fixes for merging manifests, particularly those including ExoGENI AMs on links. (#806)
@@ -64,11 +76,11 @@ gcf 2.9:
 
  * Scripts
   * Initial commit of `examples/renewSliceAndSlivers.py`. (#798)
-  * readyToLogin --ansible-inventory will now specify the ansible
+  * `readyToLogin --ansible-inventory` will now specify the ansible
     username in the inventory file if the GENI username and the
     username on the local system are different.  Alternatively, you
-    can use --ansible-username to specify the username or you can use
-    --no-ansible-username to ensure no username is specified in the
+    can use `--ansible-username` to specify the username or you can use
+    `--no-ansible-username` to ensure no username is specified in the
     inventory file. (#794)
 
  * gcf

@@ -140,6 +140,10 @@ def call(argv, options=None):
                       help="Disable checking current VLAN availability where possible.")
     parser.add_option("--genRequest", default=False, action="store_true",
                       help="Generate and save an expanded request RSpec, but do no reservation.")
+    parser.add_option("--noDeleteAtEnd", default=False, action="store_true",
+                      help="On failure or Ctrl-C do not delete any reservations completed at some aggregates (default %default).")
+    parser.add_option("--noTransitAMs", default=False, action="store_true",
+                      help="Do not reserve resources at intermediate / transit aggregates; allow experimenter to manually complete the circuit (default %default).")
     parser.add_option("--fakeModeDir",
                       help="Developers only: If supplied, use canned server responses from this directory",
                       default=None)
@@ -425,6 +429,11 @@ def call(argv, options=None):
             # Note that the converse is not true: You can require noEGStitching and still use
             # the ExoSM, assuming we edit the request to the ExoSM carefully.
 
+    if options.noTransitAMs:
+        logger.info("Per options not completing reservations at transit / SCS added aggregates")
+        if not options.noDeleteAtEnd:
+            logger.debug(" ... therefore setting noDeleteAtEnd")
+            options.noDeleteAtEnd = True
     handler = StitchingHandler(options, config, logger)
     return handler.doStitching(args)
 

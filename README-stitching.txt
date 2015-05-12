@@ -310,7 +310,17 @@ Other options you should not need to use:
  - `--useSCSugg`: Always use the VLAN tag suggested by the
  SCS. Usually stitcher asks the aggregate to pick, despite what the
  SCS suggested.
-
+ - `--noDeleteAtEnd`: When specified, do not delete any successful reservations when the overall
+   request has failed, or when the user has interrupted stitcher with Ctrl-C.
+ - `--noTransitAMs`: When specified, stop when the only aggregates ready to reserve are those
+    added by the SCS (which we assume are transit or intermediate aggregates).
+  - In both these cases, finish by printing out how many reservations you have, and saving a
+    combined manifest RSpec for your reservations, and a combined request RSpec for the reservations
+    that you still need to make. The experimenter must manually edit this request to fill in the proper
+    `suggestedVLANRange` and `vlanRangeAvailability` in the proper hops in the request's stitching extension.
+    See the comments at the top of the RSpec: `get_vlantag_from` indicates what other `hop` the given `hop`
+    should take its VLAN tag from. `Have Reservation?` indicates if you have a reservation here. And
+    `AM Depends on` indicates which other AMs must be reserved first before you make a reservation here.
 
 == Tips and Details ==
 
@@ -366,6 +376,11 @@ python src/gcf/omnilib/stitch/scs.py --listaggregates --key <path-to-key> --cert
   - A fixed endpoint is any switch/port that happens to connect to
   other things but not an explicit node. Use the `--fixedEndpoint`
   option to be sure aggregates can handle this.
+  - Typically when using this option, you supply a partial stitching
+    extension in your request RSpec, indicating as hop1 a GENI
+    aggregate with compute resources, and the other end your switch or
+    other fixed endpoint. This should correspond to a main body link
+    which has an interface at the GENI aggregate but no 2nd interface.
  - Stitching to ExoGENI aggregates
   - ExoGENI reservations can come from the specific rack, or from the
   ExoSM's allocation of resources at that rack. You can control in
@@ -408,7 +423,7 @@ Known issues with this service can be found on the
 
 === ION Aggregate ===
 
-Many connections will cross Internet2's ION network. To support this,
+Some connections may cross Internet2's old ION network. To support this,
 Internet2 currently operates a ''prototype'' GENI aggregate over
 ION. This aggregate accepts calls using the GENI Aggregate Manager
 API, and translates those into calls to OSCARS (ION).
@@ -426,7 +441,7 @@ Known issues with this aggregate can be found on the
 
 === AL2S Aggregate ===
 
-Increasingly, connections will cross Internet2's AL2S network. To
+Many connections will cross Internet2's AL2S network. To
 support this, Internet2 has developed an AL2S / OESS aggregate. This
 aggregate accepts calls using the GENI Aggregate Manager API, and
 translates those into calls to the Internet2 OESS system.
