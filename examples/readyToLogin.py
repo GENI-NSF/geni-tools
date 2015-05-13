@@ -733,7 +733,7 @@ Host %(client_id)s
 
 def get_geni_username( handler, framework):
     from gcf.omnilib.util.handler_utils import _get_user_urn
-    from sfa.util.xrn import get_leaf
+    from gcf.sfa.util.xrn import get_leaf
     username = get_leaf(_get_user_urn(handler.logger, framework.config))
     if not username:
         print "readyToLogin failed to find your GENI username.  Please supply it with the --ansible-username option."
