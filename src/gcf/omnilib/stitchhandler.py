@@ -159,7 +159,7 @@ class StitchingHandler(object):
         if len(args) > 1:
             self.slicename = args[1]
 
-        if command and command.strip().lower() in ('describe', 'listresources') and self.slicename:
+        if command and command.strip().lower() in ('describe', 'listresources', 'delete', 'deletesliver') and self.slicename:
             if (not self.opts.aggregate or len(self.opts.aggregate) == 0) and not self.opts.useSliceAggregates:
                 self.addAggregateOptions(args)
             if not self.opts.aggregate or len(self.opts.aggregate) == 0:
@@ -187,8 +187,14 @@ class StitchingHandler(object):
                 return self.passToOmni(args)
 
             self.opts.useSliceAggregates = False
-            # This is a case of multiple AMs whose manifests should be combined
-            return self.rebuildManifest()
+
+            if command.strip().lower() in ('describe', 'listresources'):
+                # This is a case of multiple AMs whose manifests should be combined
+                return self.rebuildManifest()
+#            elif command.strip().lower() in ('delete', 'deletesliver'):
+            else:
+                # Lets someone use stitcher to delete at multiple AMs when the API version is mixed
+                return self.doDelete()
 
         if not command or command.strip().lower() not in ('createsliver', 'allocate'):
             # Stitcher only handles createsliver or allocate. Hand off to Omni.
@@ -391,7 +397,7 @@ class StitchingHandler(object):
                     def __init__(self, agglist):
                         self.aggs = agglist
 
-                result = self.deleteAllReservations(DumbLauncher(self.ams_to_process))
+                (delretText, delretStruct) = self.deleteAllReservations(DumbLauncher(self.ams_to_process))
 
                 for am in self.ams_to_process:
                     if am.manifestDom:
@@ -444,16 +450,9 @@ class StitchingHandler(object):
         return (retMsg, combinedManifest)
     # End of doStitching()
 
-    def rebuildManifest(self):
-        # Process a listresources or describe call on a slice
-        # by fetching all the manifests and combining those into a new combined manifest
-
-        # Save off the various RSpecs to files.
-        # Return is consistent with Omni: (string, object)
-        # Describe return should be by URL with the full return triple
-        # Put the combined manifest under 'combined'
-        # ListResources return should be dict by URN,URL of RSpecs
-        # Put the combined manifest under ('combined','combined')
+    def prepObjectsForNonCreate(self):
+        # Initialize variables and datastructures when they wont be created by doing createsliver
+        # EG to do a describe/listresources/delete/deletesliver. See rebuildManifests()
 
         # Get username for slicecred filename
         self.username = get_leaf(handler_utils._get_user_urn(self.logger, self.framework.config))
@@ -469,6 +468,10 @@ class StitchingHandler(object):
 
         # Ensure all AM URNs in the commandline are Aggregate objects in ams_to_process
         self.createObjectsFromOptArgs()
+
+        # Remove any -a arguments from the opts so that when we later call omni
+        # the right thing happens
+        self.opts.aggregate = []
 
         # Add extra info about the aggregates to the AM objects
         self.add_am_info(self.ams_to_process)
@@ -488,11 +491,57 @@ class StitchingHandler(object):
             am.timeoutTime = self.config['timeoutTime']
 
             am.userRequested = True
+        self.rspecParser = RSpecParser(self.logger)
+
+    def doDelete(self):
+        # Do delete at APIv3 AMs and deletesliver at v2 only AMs and combine the results
+        self.prepObjectsForNonCreate()
+        #self.logger.debug("Done with prep for delete. AMs: %s", self.ams_to_process)
+
+        # Fake mark that each AM had a reservation so we try the delete
+        for am in self.ams_to_process:
+            am.manifestDom = True
+
+        # Let deleteAllReservations call delete on each aggregate instance individually, and combine the results
+        # Could have instead produced 2 omni calls of course....
+
+        # Note that results are combined in a kind of odd way:
+        # All results are keyed by am.url. For v2 AMs, we try to make it True or False
+        # v2 return used to be (successURLs, failedURLs)
+        # But that's hard to preserve
+        # So instead, the v2 return is True if the AM was found in the success list, False if found in Failed list,
+        # and otherwise the return under the am.url is whatever the AM originally returned.
+        # Note that failing to find the AM url may mean it's a variant of the URL
+        class DumbLauncher():
+            def __init__(self, agglist):
+                self.aggs = agglist
+
+        (text, struct) = self.deleteAllReservations(DumbLauncher(self.ams_to_process))
+
+        self.logger.debug("Result from deleteAll: %s", text)
+
+        # deletesliver is (successList of AM URLs, failList)
+        # delete is a dictionary by AM URL of the raw APIv3 return
+        # This is text, dictionary by AM URL of [APIv3 return or 
+        return (text, struct)
+    # End of doDelete()
+
+    def rebuildManifest(self):
+        # Process a listresources or describe call on a slice
+        # by fetching all the manifests and combining those into a new combined manifest
+
+        # Save off the various RSpecs to files.
+        # Return is consistent with Omni: (string, object)
+        # Describe return should be by URL with the full return triple
+        # Put the combined manifest under 'combined'
+        # ListResources return should be dict by URN,URL of RSpecs
+        # Put the combined manifest under ('combined','combined')
+
+        self.prepObjectsForNonCreate()
 
         # Init some data structures
         lastAM = None
         workflow_parser = WorkflowParser(self.logger)
-        self.rspecParser = RSpecParser(self.logger)
         retStruct = dict()
 
         # Now actually get the manifest for each AM
@@ -681,7 +730,7 @@ class StitchingHandler(object):
         # ListResources return should be dict by URN,URL of RSpecs
         # Put the combined manifest under ('combined','combined')
         return (retMsg, retStruct)
-    # End of rebuidManifest()
+    # End of rebuildManifest()
 
     def fixHopRefs(self, parsedManifest, thisAM=None):
         # Use a parsed RSpec to fix up the Hop and Aggregate objects that would otherwise
@@ -1221,11 +1270,10 @@ class StitchingHandler(object):
                     def __init__(self, agglist):
                         self.aggs = agglist
                 try:
-                    result = self.deleteAllReservations(DumbLauncher(existingAggs))
-                    if not result:
-                        for am in existingAggs:
-                            if am.manifestDom:
-                                self.logger.warn("You have a reservation at %s", am)
+                    (delretText, delretStruct) = self.deleteAllReservations(DumbLauncher(existingAggs))
+                    for am in existingAggs:
+                        if am.manifestDom:
+                            self.logger.warn("You have a reservation at %s", am)
                 except KeyboardInterrupt:
                     self.logger.error('... deleting interrupted!')
                     for am in existingAggs:
@@ -1289,11 +1337,10 @@ class StitchingHandler(object):
                         def __init__(self, agglist):
                             self.aggs = agglist
                     try:
-                        result = self.deleteAllReservations(DumbLauncher(existingAggs))
-                        if not result:
-                            for am in existingAggs:
-                                if am.manifestDom:
-                                    self.logger.warn("You have a reservation at %s", am)
+                        (delretText, delretStruct) = self.deleteAllReservations(DumbLauncher(existingAggs))
+                        for am in existingAggs:
+                            if am.manifestDom:
+                                self.logger.warn("You have a reservation at %s", am)
                     except KeyboardInterrupt:
                         self.logger.error('... deleting interrupted!')
                         for am in existingAggs:
@@ -1490,11 +1537,10 @@ class StitchingHandler(object):
                 if self.scsCalls == self.maxSCSCalls:
                     self.logger.error("Stitching max circuit failures reached - will delete and exit.")
                     try:
-                        result = self.deleteAllReservations(launcher)
-                        if not result:
-                            for am in launcher.aggs:
-                                if am.manifestDom:
-                                    self.logger.warn("You have a reservation at %s", am)
+                        (delretText, delretStruct) = self.deleteAllReservations(launcher)
+                        for am in launcher.aggs:
+                            if am.manifestDom:
+                                self.logger.warn("You have a reservation at %s", am)
                     except KeyboardInterrupt:
                         self.logger.error('... deleting interrupted!')
                         for am in launcher.aggs:
@@ -1504,7 +1550,30 @@ class StitchingHandler(object):
                 self.logger.warn("Stitching failed but will retry: %s", se)
                 success = False
                 try:
-                    success = self.deleteAllReservations(launcher)
+                    (delRetText, delRetStruct) = self.deleteAllReservations(launcher)
+                    hadFail = False
+                    for url in delRetStruct.keys():
+                        if not delRetStruct[url]:
+                            hadFail = True
+                            break
+                        if isinstance(delRetStruct[url], dict) and delRetStruct[url].has_key('code') and isinstance(delRetStruct[url]['code'], dict) and delRetStruct[url]['code'].has_key('geni_code') and delRetStruct[url]['code']['geni_code'] not in (0, 12, 15):
+                            hadFail = True
+                            break
+                        if isinstance(delRetStruct[url], dict) and delRetStruct[url].has_key('code') and isinstance(delRetStruct[url]['code'], dict) and delRetStruct[url]['code'].has_key('geni_code') and delRetStruct[url]['code']['geni_code'] == 0 and delRetStruct[url].has_key('value') and isinstance(delRetStruct[url]['value'], list) and len(delRetStruct[url]['value']) > 0:
+                            try:
+                                for sliver in delRetStruct[url]["value"]:
+                                    status = sliver["geni_allocation_status"]
+                                    if status != 'geni_unallocated':
+                                        hadFail = True
+                                        break
+                                if hadFail:
+                                    break
+                            except:
+                                # Malformed return I think
+                                hadFail = True
+                        # FIXME: Handle other cases...
+                    if not hadFail:
+                        success = True
                 except KeyboardInterrupt:
                     self.logger.error('... deleting interrupted!')
                     for am in launcher.aggs:
@@ -1542,11 +1611,10 @@ class StitchingHandler(object):
                 raise StitchingError("Stitching failed due to %s. %s" % (se, msg))
             else:
                 try:
-                    result = self.deleteAllReservations(launcher)
-                    if not result:
-                        for am in launcher.aggs:
-                            if am.manifestDom:
-                                self.logger.warn("You have a reservation at %s", am)
+                    (delRetText, delRetStruct) = self.deleteAllReservations(launcher)
+                    for am in launcher.aggs:
+                        if am.manifestDom:
+                            self.logger.warn("You have a reservation at %s", am)
                 except KeyboardInterrupt:
                     self.logger.error('... deleting interrupted!')
                     for am in launcher.aggs:
@@ -1950,8 +2018,20 @@ class StitchingHandler(object):
 
     def deleteAllReservations(self, launcher):
         '''On error exit, ensure all outstanding reservations are deleted.'''
-        ret = True
+        # Try to combine v2 and v3 results together
+        # Text is just appended
+        # all results in struct are keyed by am.url
+        # For v3, this is therefore same as before
+        # v2 return used to be (successURLs, failedURLs)
+        # But that's hard to preserve
+        # So instead, the v2 return is True if the AM was found in the success list, False if found in Failed list,
+        # and otherwise the return under the am.url is whatever the AM originally returned.
+        # Note that failing to find the AM url may mean it's a variant of the URL
         loggedDeleting = False
+        retText = ""
+        retStruct = {}
+        if len(launcher.aggs) == 0:
+            self.logger.debug("0 aggregates from which to delete")
         for am in launcher.aggs:
             if am.manifestDom:
                 if not loggedDeleting:
@@ -1959,12 +2039,42 @@ class StitchingHandler(object):
                     self.logger.info("Deleting existing reservations...")
                 self.logger.debug("Had reservation at %s", am)
                 try:
-                    am.deleteReservation(self.opts, self.slicename)
+                    (text, result) = am.deleteReservation(self.opts, self.slicename)
                     self.logger.info("Deleted reservation at %s.", am)
+                    if retText != "":
+                        retText += "\n %s" % text
+                    else:
+                        retText = text
+                    if am.api_version < 3 or not isinstance(result, dict):
+                        if not (isinstance(result, tuple) and isinstance(result[0], list)):
+                            # Some kind of error
+                            self.logger.debug("Struct result from delete or deletesliver unknown from %s: %s", am, result)
+                            retStruct[am.url] = result
+                        else:
+                            (succ, fail) = result
+                            # FIXME: Do the handler_utils tricks for comparing URLs?
+                            if am.url in succ or am.alt_url in succ:
+                                retStruct[am.url] = True
+                            elif am.url in fail or am.alt_url in fail:
+                                retStruct[am.url] = False
+                            else:
+                                self.logger.debug("Failed to find AM URL in v2 deletesliver return struct. AM %s, return %s", am, result)
+                                retStruct[am.url] = result
+                    else:
+                        retCopy = retStruct.copy()
+                        retCopy.update(result)
+                        retStruct = retCopy
                 except StitchingError, se2:
-                    self.logger.warn("Failed to delete reservation at %s: %s", am, se2)
-                    ret = False
-        return ret
+                    msg = "Failed to delete reservation at %s: %s" % (am, se2)
+                    self.logger.warn(msg)
+                    retStruct[am.url] = False
+                    if retText != "":
+                        retText += "\n %s" % msg
+                    else:
+                        retText = msg
+        if retText == "":
+            retText = "No aggregates with reservations from which to delete"
+        return (retText, retStruct)
 
     def confirmGoodRSpec(self, requestString, rspecType=rspec_schema.REQUEST, doRSpecLint=True):
         '''Ensure an rspec is valid'''

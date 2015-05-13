@@ -3977,6 +3977,10 @@ class Aggregate(object):
         else:
             omniargs = ['-V%d' % self.api_version,'--raise-error-on-v2-amapi-error', '-o', '-a', self.url, opName, slicename]
 
+        # Raw omni call results, for returning
+        text = None
+        result = None
+
         self.logger.info("Doing %s at %s...", opName, self)
         if not opts.fakeModeDir:
             try:
@@ -4011,7 +4015,7 @@ class Aggregate(object):
                             self.logger.debug("%s %s gave error indicating there was nothing to delete (success): %s", opName, self, result[self.url])
                         else:
                             raise StitchingError("Failed to delete prior reservation at %s: %s" % (self, text))
-                    if result[self.url].has_key('value') and result[self.url]['value'] is not None and len(result[self.url]['value']) > 0:
+                    if result[self.url].has_key('value') and result[self.url]['value'] is not None and isinstance(result[self.url]['value'], list) and len(result[self.url]['value']) > 0:
                         # need to check status of slivers to ensure they are all deleted
                         try:
                             for sliver in result[self.url]["value"]:
@@ -4072,8 +4076,7 @@ class Aggregate(object):
 
         # Clear old expirations so our end-run printout doesn't include this
         self.sliverExpirations = []
-
-        return
+        return text, result
 
     def doAvail(self, opts):
         # If the AM type support real avail (PG and GRAM only currently) and we are not requesting 'any' from some
