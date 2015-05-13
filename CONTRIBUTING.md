@@ -8,7 +8,7 @@ GENI developers discuss general GENI development on dev@geni.net. Subscribe here
 
 GCF / geni-tools developers can subscribe to gcf-dev@geni.net here: http://lists.geni.net/mailman/listinfo/gcf-dev
 
-Omni users may raise issues or get announcements on omni-users@geni.net (subscribe here: http://lists.geni.net/mailman/listinfo/omni-users), or on the general [GENI Users mailing list](https://groups.google.com/forum/#!forum/geni-users).
+Omni users may raise issues or get announcements on the general [GENI Users mailing list](https://groups.google.com/forum/#!forum/geni-users).
 
 ## Tracking Issues
 GCF / geni-tools has numerous existing tickets on our old Trac system: http://trac.gpolab.bbn.com/gcf. Look there first to see if the issue is known, or if there are comments on a suggested solution.
