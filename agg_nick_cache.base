@@ -302,9 +302,9 @@ wisconsin-ig-of1=urn:publicid:IDN+openflow:foam:foam.instageni.wisc.edu+authorit
 wisconsin-ig-of2=urn:publicid:IDN+openflow:foam:foam.instageni.wisc.edu+authority+am,https://foam.instageni.wisc.edu:3626/foam/gapi/2
 
 # ============================================
-# Internet2 ION Aggregate for stitching
+# Internet2 ION Aggregate for stitching - obsolete and decomissioned as of May, 2015
 # ============================================
-ion=urn:publicid:IDN+ion.internet2.edu+authority+am,https://geni-am.net.internet2.edu:12346
+#ion=urn:publicid:IDN+ion.internet2.edu+authority+am,https://geni-am.net.internet2.edu:12346
 
 # ============================================
 # Cornell InstaGENI Rack
