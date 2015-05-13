@@ -279,10 +279,10 @@ Other options you should not need to use:
  - `--logFileCount` to change the number of backup stitcher log files
  to keep (default is 5).
  - `--ionRetryIntervalSecs <# seconds>`: # of seconds to sleep between
- reservation attempts at ION or another DCN based aggregate. Default
+ reservation attempts at a DCN based aggregate (e.g. MAX). Default
  is 600 (10 minutes), to allow routers to reset.
  - `--ionStatusIntervalSecs <# seconds>`: # of seconds to sleep between
- sliverstatus calls at ION or another DCN based aggregate. Default
+ sliverstatus calls at a DCN based aggregate (e.g. MAX). Default
  is 30 (seconds).
  - `--scsURL <url>`: URL at which the Stitching Computation Service
  runs. Use the default.
@@ -344,7 +344,7 @@ In running stitcher, follow these various tips:
  stitcher will delete any existing reservations and exit.
  - When the script completes, you will have reservations at each of the
  aggregates where you requested nodes in your request RSpec, plus any
- intermediate aggregates required to complete your circuit (e.g. ION)
+ intermediate aggregates required to complete your circuit (e.g. AL2S)
   - or none, if your request failed.
  - Stitcher makes reservations at ''all'' aggregates involved in your
  stitching circuits. Note however that stitcher only knows how to
@@ -400,7 +400,7 @@ ports to use to connect each aggregate, specifying a full path between
 the aggregates. However, experimenters do not
 need to do this themselves. Instead, there is a Stitching Computation
 Service (SCS) which will fill in these details, including any transit
-networks at which you need a reservation (like ION). For details on
+networks at which you need a reservation (like AL2S). For details on
 this service, see the
 [https://wiki.maxgigapop.net/twiki/bin/view/GENI/NetworkStitchingAPI MAX SCS wiki page].
 
@@ -421,24 +421,6 @@ instance is operated by Internet2.
 Known issues with this service can be found on the
 [http://groups.geni.net/geni/query?status=new&status=assigned&status=reopened&component=MAXSCS GENI Trac]
 
-=== ION Aggregate ===
-
-Some connections may cross Internet2's old ION network. To support this,
-Internet2 currently operates a ''prototype'' GENI aggregate over
-ION. This aggregate accepts calls using the GENI Aggregate Manager
-API, and translates those into calls to OSCARS (ION).
-
-This aggregate has no compute resources - it exists only to provision
-circuits between other aggregates. When you request a stitched link
-between 2 aggregates, often stitcher and the SCS will automatically
-add ION to your request to provide connectivity.
-
-This same software runs other aggregates for OSCARS networks,
-specifically the MAX aggregate.
-
-Known issues with this aggregate can be found on the
-[http://groups.geni.net/geni/query?status=new&status=assigned&status=reopened&component=I2AM GENI Trac]
-
 === AL2S Aggregate ===
 
 Many connections will cross Internet2's AL2S network. To
@@ -454,10 +436,18 @@ add AL2S to your request to provide connectivity.
 Known issues with this aggregate can be found on the
 [http://groups.geni.net/geni/query?status=new&status=assigned&status=reopened&component=STITCHING GENI Trac]
 
+=== ION Aggregate ===
+
+Previously Internet2 ran an aggregate for their ION network. This
+aggregate, as with the ION service, has been decommissioned. The ION AM
+translated GENI calls into OSCARS calls, and allocated dynamic
+circuits to complete stitched links. This service and aggregate have
+been replaced by AL2S.
+
 == Troubleshooting ==
 
-Stitching is relatively new to GENI, and uses several prototype services (this
-client, the Stitching Computation Service, the ION and AL2S aggregates, as well
+Stitching uses several complex services (this
+client, the Stitching Computation Service, the AL2S aggregate, as well
 as stitching implementations at aggregates). Therefore, bugs and rough
 edges are expected. Please note failure conditions, expect occasional
 failures, and report any apparent bugs to [mailto:omni-help@geni.net omni-help@geni.net].
