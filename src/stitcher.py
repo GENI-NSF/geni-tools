@@ -124,10 +124,10 @@ def call(argv, options=None):
     parser.add_option("--logFileCount", default=5, type="int",
                       help="Number of backup log files to keep, Default %default")
     parser.add_option("--ionRetryIntervalSecs", type="int", 
-                      help="Seconds to sleep before retrying at ION (default: %default)",
+                      help="Seconds to sleep before retrying at DCN aggregates (default: %default)",
                       default=gcf.omnilib.stitch.objects.DCN_AM_RETRY_INTERVAL_SECS)
     parser.add_option("--ionStatusIntervalSecs", type="int", 
-                      help="Seconds to sleep between sliverstatus calls at ION (default %default)",
+                      help="Seconds to sleep between sliverstatus calls at DCN aggregates (default %default)",
                       default=30)
     parser.add_option("--noReservation", default=False, action="store_true",
                       help="Do no reservations: just generate the expanded request RSpec (default %default)")

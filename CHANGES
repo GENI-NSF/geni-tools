@@ -80,6 +80,7 @@ gcf 2.9:
    * Support starting with an EG AM and adding in missing hops in the stitching extension, albeit
      out of order and without the proper nextHop values.
   * Quiet down errors deleting a failed reservation from EG AMs (harmless). (#811)
+  * Remove reference to ION as a real aggregate in the README. ION has been decommissioned. (#797)
 
  * Scripts
   * Initial commit of `examples/renewSliceAndSlivers.py`. (#798)
