@@ -16,8 +16,8 @@ network topology, and this client expands that request using the
 "Stitching Computation Service", and then attempts to reserve the
 necessary resources at each aggregate involved in the topology.
 
-'''Note''': This is new functionality, relying on several prototype services;
-expect problems. If issues arise, email [mailto:omni-help@geni.net omni-help@geni.net]. 
+'''Note''': This is complex functionality, relying on multiple services;
+expect problems. If issues arise, report them on the [GENI Users mailing list](https://groups.google.com/forum/#!forum/geni-users). 
 See below for known limitations.
 
 Currently, GENI stitching creates point to point (not multipoint or
@@ -450,7 +450,7 @@ Stitching uses several complex services (this
 client, the Stitching Computation Service, the AL2S aggregate, as well
 as stitching implementations at aggregates). Therefore, bugs and rough
 edges are expected. Please note failure conditions, expect occasional
-failures, and report any apparent bugs to [mailto:omni-help@geni.net omni-help@geni.net].
+failures, and report any apparent bugs on the [GENI Users mailing list](https://groups.google.com/forum/#!forum/geni-users).
 
 As with Omni errors, when reporting problems please include as much
 detail as possible:

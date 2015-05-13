@@ -2,6 +2,8 @@
 
 gcf 2.9:
  * Add Markdown style README, CONTRIBUTING and CONTRIBUTORS files. (#551)
+ * Remove references to the omni-users mailing list. (#813)
+  * Use the [GENI Users mailing list](https://groups.google.com/forum/#!forum/geni-users).
 
  * Omni
   * If `sliverstatus` fails in a way that indicates there are no local resources,
