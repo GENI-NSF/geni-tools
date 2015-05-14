@@ -14,7 +14,6 @@ dist_doc_DATA = \
 	INSTALL.txt \
 	INSTALL.ubuntu \
 	LICENSE.txt \
-	Makefile.am \
 	README-authorization.txt \
 	README-clearpassphrases.txt \
 	README-gcf.txt \
@@ -26,3 +25,18 @@ dist_doc_DATA = \
 	README.md \
 	README.txt \
 	TROUBLESHOOTING.txt
+
+EXTRA_DIST =  \
+	agg_nick_cache.base \
+	gcf_config.sample \
+	omni_config.sample \
+	mac_install/INSTALL.txt \
+	mac_install/OmniGraphic.png \
+	mac_install/addAliases.command \
+	mac_install/background.png \
+	mac_install/makeMacdmg.sh \
+	windows_install/LICENSE.TXT \
+	windows_install/infoAfterFile.rtf \
+	windows_install/install.vbs \
+	windows_install/package_builder.iss \
+	windows_install/setup.py

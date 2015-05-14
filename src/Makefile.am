@@ -137,3 +137,19 @@ nobase_python_PYTHON = \
 	gcf/sfa/util/sfatime.py \
 	gcf/sfa/util/xrn.py \
 	gcf/stitcher_logging_deft.py
+
+EXTRA_DIST += \
+	delegateSliceCred.py \
+	gcf-am-gib.py \
+	gcf-am.py \
+	gcf-ch.py \
+	gcf-gch-gib.py \
+	gcf-gch.py \
+	gcf-pgch.py \
+	gcf-proxy-test.py \
+	gcf-proxy.py \
+	gcf-test.py \
+	gen-certs.py \
+	gib-startup.sh \
+	omni_log_conf_sample.conf \
+	omni_unittest.py
