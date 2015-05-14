@@ -124,10 +124,9 @@ AM API v3 is supported where possible. If you invoke stitcher
 with `-V3`, the stitcher uses APIv3 at aggregates that support
 APIv3. Stitcher will in this case only `allocate` the resources at
 those aggregates. Therefore, you will need to use omni later to call
-`omni -a <AM> -V3 provision <slice>` and `omni -a <AM> -V3 poa <slice>
-geni_start` to complete your reservation. You will then also want to
-use stitcher to renew your resources, as in `stitcher renewsliver
-<slice> <new time>`
+`omni -a <AM> -V3 provision <slice>` and `omni -a <AM> -V3 poa <slice> geni_start`
+to complete your reservation. You will then also want to
+use stitcher to renew your resources, as in `stitcher renewsliver <slice> <new time>`
 
 Your input request RSpec does ''not'' need a stitching extension, but
 should be a single RSpec for all resources that you want in your slice.
@@ -314,7 +313,7 @@ Other options you should not need to use:
  - `--noDeleteAtEnd`: When specified, do not delete any successful reservations when the overall
    request has failed, or when the user has interrupted stitcher with Ctrl-C.
  - `--noTransitAMs`: When specified, stop when the only aggregates ready to reserve are those
-    added by the SCS (which we assume are transit or intermediate aggregates).
+   added by the SCS (which we assume are transit or intermediate aggregates).
   - In both these cases, finish by printing out how many reservations you have, and saving a
     combined manifest RSpec for your reservations, and a combined request RSpec for the reservations
     that you still need to make. The experimenter must manually edit this request to fill in the proper
