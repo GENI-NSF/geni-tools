@@ -47,6 +47,7 @@ gcf 2.9:
      See the comments at the top of the RSpec: `get_vlantag_from` indicates what other `hop` the given `hop`
      should take its VLAN tag from. `Have Reservation?` indicates if you have a reservation here. And
      `AM Depends on` indicates which other AMs must be reserved first before you make a reservation here.
+   * Clean up the log messages in these cases to not look so scary. (#812)
   * Support `delete` and `deletesliver` locally, calling APIv2 or v3 as appropriate. (#807)
    * Defer to Omni if there is only a single aggregate.
    * Each AM is a separate Omni call.
