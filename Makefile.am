@@ -1,5 +1,9 @@
 ## Process this file with automake to produce Makefile.in
 
+SUBDIRS = src
+
+.PHONY: $(SUBDIRS)
+
 dist_doc_DATA = \
 	CHANGES \
 	CONTRIBUTING.md \
