@@ -58,4 +58,6 @@ cp ${SRCDIR}/README-clearpassphrases.txt $DESTDIR
 cp ${SRCDIR}/README-omni.txt $DESTDIR
 cp ${SRCDIR}/README-omniconfigure.txt $DESTDIR
 cp ${SRCDIR}/README-stitching.txt $DESTDIR
+cp ${SRCDIR}/CONTRIBUTING.md $DESTDIR
+cp ${SRCDIR}/CONTRIBUTORS.md $DESTDIR
 
