@@ -49,7 +49,7 @@ from .stitch.objects import Aggregate, Link, Node, LinkProperty
 from .stitch.RSpecParser import RSpecParser
 from .stitch import scs
 from .stitch.workflow import WorkflowParser
-from .stitch.utils import StitchingError, StitchingCircuitFailedError, stripBlankLines, isRSpecStitchingSchemaV2, prependFilePrefix
+from .stitch.utils import StitchingError, StitchingCircuitFailedError, stripBlankLines, isRSpecStitchingSchemaV2, prependFilePrefix, StitchingStoppedError
 from .stitch.VLANRange import *
 
 from ..geni.util import rspec_schema
@@ -415,7 +415,7 @@ class StitchingHandler(object):
                 self.logger.error(msg)
                 newError = StitchingError(msg)
                 se = newError
-            if "Requested no reservation" in str(se):
+            if "Requested no reservation" in str(se) or isinstance(se, StitchingStoppedError):
                 print str(se)
                 self.logger.debug(se)
                 sys.exit(0)
@@ -1532,7 +1532,7 @@ class StitchingHandler(object):
                 self.logger.warn("Stitching failed. Would retry but commandline option specified not to. Last error: %s", se)
                 msg = self.endPartiallyReserved(se, aggs=self.ams_to_process)
                 # Exit by raising an error
-                raise StitchingError("Stitching failed due to %s. %s" % (se, msg))
+                raise StitchingError("Stitching failed due to: %s. %s" % (se, msg))
             else:
                 if self.scsCalls == self.maxSCSCalls:
                     self.logger.error("Stitching max circuit failures reached - will delete and exit.")
@@ -1597,7 +1597,8 @@ class StitchingHandler(object):
         except StitchingError, se:
             # A StitchingError is a permanent failure.
             # On any error, delete any partial reservations.
-            self.logger.error("Stitching failed with an error: %s", se)
+            if not isinstance(se, StitchingStoppedError):
+                self.logger.error("Stitching failed with an error: %s", se)
             if self.lastException:
                 self.logger.error("Root cause error: %s", self.lastException)
                 newError = StitchingError("%s which caused %s" % (str(self.lastException), str(se)))
@@ -1608,7 +1609,7 @@ class StitchingHandler(object):
                 self.logger.warn("Per commandline option, not deleting existing reservations.")
                 msg = self.endPartiallyReserved(se, aggs=self.ams_to_process)
                 # Create a new error with a new return msg and raise that
-                raise StitchingError("Stitching failed due to %s. %s" % (se, msg))
+                raise StitchingStoppedError("Stitching stopped. %s. %s" % (se, msg))
             else:
                 try:
                     (delRetText, delRetStruct) = self.deleteAllReservations(launcher)

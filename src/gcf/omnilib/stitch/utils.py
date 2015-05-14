@@ -73,6 +73,10 @@ class StitchingServiceFailedError(StitchingError):
         return message
     pass
 
+class StitchingStoppedError(StitchingError):
+    '''Not really an error: user asked us to stop here'''
+    pass
+
 def stripBlankLines(strWithBlanks):
     '''Remove any blank lines from the given string'''
     if not strWithBlanks:
