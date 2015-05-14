@@ -4,20 +4,23 @@ omni: $(srcdir)/omni.py
 stitcher: $(srcdir)/stitcher.py
 	cp stitcher.py stitcher
 
-geni-sign-tool-csr: $(srcdir)/geni-sign-tool-csr.in
-geni-expiring-certs: $(srcdir)/geni-expiring-certs.in
+omni-configure: $(srcdir)/omni-configure.py
+	cp omni-configure.py omni-configure
 
 # Distribute but do not install
 EXTRA_DIST =  \
 	omni.py \
+	omni-configure.py \
 	stitcher.py
 
 CLEANFILES =  \
 	omni \
+	omni-configure \
 	stitcher
 
 bin_SCRIPTS = \
 	omni \
+	omni-configure \
 	stitcher
 
 nobase_python_PYTHON = \
