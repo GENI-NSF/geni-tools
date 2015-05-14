@@ -27,14 +27,29 @@ dist_doc_DATA = \
 	TROUBLESHOOTING.txt
 
 EXTRA_DIST =  \
+	acceptance_tests/AM_API/am_api_accept_delegate.py \
+	acceptance_tests/AM_API/am_api_accept_nagios.py \
+	acceptance_tests/AM_API/am_api_accept.py \
+	acceptance_tests/AM_API/am_api_accept_scaling.py \
+	acceptance_tests/AM_API/am_api_accept_shutdown.py \
+	acceptance_tests/AM_API/bad.xml.sample \
+	acceptance_tests/AM_API/logging.conf \
+	acceptance_tests/AM_API/omni_config.sample \
+	acceptance_tests/AM_API/README-accept-AMAPI.txt \
+	acceptance_tests/AM_API/request1.xml.sample \
+	acceptance_tests/AM_API/request2.xml.sample \
+	acceptance_tests/AM_API/request3.xml.sample \
+	acceptance_tests/AM_API/request_pgv2.xml \
+	acceptance_tests/AM_API/request.xml.sample \
+	acceptance_tests/AM_API/untrusted-usercred.xml \
 	agg_nick_cache.base \
 	gcf_config.sample \
-	omni_config.sample \
 	mac_install/INSTALL.txt \
 	mac_install/OmniGraphic.png \
 	mac_install/addAliases.command \
 	mac_install/background.png \
 	mac_install/makeMacdmg.sh \
+	omni_config.sample \
 	windows_install/LICENSE.TXT \
 	windows_install/infoAfterFile.rtf \
 	windows_install/install.vbs \

@@ -37,13 +37,6 @@ nobase_python_PYTHON = \
 	gcf/geni/am/am3.py \
 	gcf/geni/am/am_method_context.py \
 	gcf/geni/am/fakevm.py \
-	gcf/geni/am/gibaggregate/am_gib.py \
-	gcf/geni/am/gibaggregate/config.py \
-	gcf/geni/am/gibaggregate/gib_manager.py \
-	gcf/geni/am/gibaggregate/graphUtils.py \
-	gcf/geni/am/gibaggregate/__init__.py \
-	gcf/geni/am/gibaggregate/resources.py \
-	gcf/geni/am/gibaggregate/rspec_handler.py \
 	gcf/geni/am/__init__.py \
 	gcf/geni/am/proxyam.py \
 	gcf/geni/am/resource.py \
@@ -84,7 +77,6 @@ nobase_python_PYTHON = \
 	gcf/omnilib/frameworks/framework_chapi.py \
 	gcf/omnilib/frameworks/framework_gcf.py \
 	gcf/omnilib/frameworks/framework_gch.py \
-	gcf/omnilib/frameworks/framework_gib.py \
 	gcf/omnilib/frameworks/framework_of.py \
 	gcf/omnilib/frameworks/framework_pgch.py \
 	gcf/omnilib/frameworks/framework_pg.py \
@@ -140,16 +132,16 @@ nobase_python_PYTHON = \
 
 EXTRA_DIST += \
 	delegateSliceCred.py \
-	gcf-am-gib.py \
+	gcf/geni/am/amapi2-request.xml \
+	gcf/sfa/README.txt \
+	gcf/stitcher_logging.conf \
 	gcf-am.py \
 	gcf-ch.py \
-	gcf-gch-gib.py \
 	gcf-gch.py \
 	gcf-pgch.py \
 	gcf-proxy-test.py \
 	gcf-proxy.py \
 	gcf-test.py \
 	gen-certs.py \
-	gib-startup.sh \
 	omni_log_conf_sample.conf \
 	omni_unittest.py
