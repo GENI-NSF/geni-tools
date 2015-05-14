@@ -29,7 +29,7 @@ bin_SCRIPTS = \
 	stitcher \
 	clear-passphrases
 
-nobase_python_PYTHON = \
+nobase_dist_python_DATA = \
 	gcf/gcf_version.py \
 	gcf/geni/am1.py \
 	gcf/geni/am/aggregate.py \

@@ -43,6 +43,14 @@ EXTRA_DIST =  \
 	acceptance_tests/AM_API/request.xml.sample \
 	acceptance_tests/AM_API/untrusted-usercred.xml \
 	agg_nick_cache.base \
+	debian/changelog \
+	debian/compat \
+	debian/control \
+	debian/copyright \
+	debian/docs \
+	debian/README.Debian \
+	debian/README.source \
+	debian/rules \
 	gcf_config.sample \
 	mac_install/INSTALL.txt \
 	mac_install/OmniGraphic.png \
