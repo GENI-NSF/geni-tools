@@ -1,15 +1,16 @@
 Source: geni-tools
-Section: unknown
+Section: contrib/misc
 Priority: optional
-Maintainer: unknown <tmitchel@unknown>
-Build-Depends: debhelper (>= 8.0.0), autotools-dev
+Maintainer: Tom Mitchell <tmitchell@bbn.com>
+Build-Depends: debhelper (>= 8.0.0), autotools-dev, dh-python, python
 Standards-Version: 3.9.4
-Homepage: <insert the upstream URL, if relevant>
-#Vcs-Git: git://git.debian.org/collab-maint/geni-tools.git
-#Vcs-Browser: http://git.debian.org/?p=collab-maint/geni-tools.git;a=summary
+Homepage: https://www.geni.net
+Vcs-Git: https://github.com/GENI-NSF/geni-tools.git
+Vcs-Browser: https://github.com/GENI-NSF/geni-tools
 
 Package: geni-tools
 Architecture: all
-Depends: ${misc:Depends}
-Description: <insert up to 60 chars description>
- <insert long description, indented with spaces>
+Depends: ${misc:Depends}, ${python:Depends}
+Description: Command lines tools for using GENI
+ omni, stitcher, sample aggregate manager, and other GENI
+ tools. Formerly "gcf".
