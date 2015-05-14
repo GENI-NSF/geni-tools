@@ -77,6 +77,7 @@ nobase_python_PYTHON = \
 	gcf/omnilib/frameworks/framework_chapi.py \
 	gcf/omnilib/frameworks/framework_gcf.py \
 	gcf/omnilib/frameworks/framework_gch.py \
+	gcf/omnilib/frameworks/framework_gib.py \
 	gcf/omnilib/frameworks/framework_of.py \
 	gcf/omnilib/frameworks/framework_pgch.py \
 	gcf/omnilib/frameworks/framework_pg.py \
