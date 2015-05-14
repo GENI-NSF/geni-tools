@@ -30,7 +30,7 @@ multi-aggregate topologies, see README-stitching.txt.
 
 The currently supported CFs (clearinghouses) are the GENI Portal,
 ProtoGENI,  SFA (!PlanetLab), and GCF. Omni works with any GENI AM API compliant AM.
-These include InstaGENI and ExoGENI racks, ProtoGENI, !OpenFlow, SFA, FOAM and GCF.
+These include InstaGENI and ExoGENI racks, ProtoGENI, !OpenFlow, SFA, AL2S, FOAM and GCF.
 
 Omni performs the following functions:
  * Talks to each CF in its native API

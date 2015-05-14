@@ -3,6 +3,9 @@
 The GENI-NSF repositories are very much a community driven effort, and
 your contributions are critical. A big thank you to all our [contributors](CONTRIBUTORS.md)!
 
+## Getting the Source
+GCF / geni-tools source code is available on [Github: ](https://github.com/GENI-NSF/geni-tools).
+
 ## Mailing Lists
 GENI developers discuss general GENI development on dev@geni.net. Subscribe here: http://lists.geni.net/mailman/listinfo/dev
 
@@ -11,10 +14,10 @@ GCF / geni-tools developers can subscribe to gcf-dev@geni.net here: http://lists
 Omni users may raise issues or get announcements on the general [GENI Users mailing list](https://groups.google.com/forum/#!forum/geni-users).
 
 ## Tracking Issues
-GCF / geni-tools has numerous existing tickets on our old Trac system: http://trac.gpolab.bbn.com/gcf. Look there first to see if the issue is known, or if there are comments on a suggested solution.
+GCF / geni-tools has numerous existing tickets on [GitHub](https://github.com/GENI-NSF/geni-tools/issues) and our old Trac system: http://trac.gpolab.bbn.com/gcf. Look there first to see if the issue is known, or if there are comments on a suggested solution.
 
 ## Guidelines
- - geni-nsf projects use the branching model found at
+ - GENI-NSF projects use the branching model found at
  http://nvie.com/posts/a-successful-git-branching-model/
   - All work happens in issue-specific branches off of the `develop`
   branch, and then is merged back into `develop` using `merge --no-ff`.

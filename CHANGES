@@ -2,6 +2,8 @@
 
 gcf 2.9:
  * Add Markdown style README, CONTRIBUTING and CONTRIBUTORS files. (#551)
+  * Source code is now available from Github: https://github.com/GENI-NSF/geni-tools.
+    In future, issues will be reported there as well.
  * Remove references to the omni-users mailing list. (#813)
   * Use the [https://groups.google.com/forum/#!forum/geni-users GENI Users mailing list].
 
