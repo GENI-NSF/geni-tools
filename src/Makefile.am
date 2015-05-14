@@ -7,21 +7,27 @@ stitcher: $(srcdir)/stitcher.py
 omni-configure: $(srcdir)/omni-configure.py
 	cp omni-configure.py omni-configure
 
+clear-passphrases: $(srcdir)/clear-passphrases.py
+	cp clear-passphrases.py clear-passphrases
+
 # Distribute but do not install
 EXTRA_DIST =  \
 	omni.py \
 	omni-configure.py \
-	stitcher.py
+	stitcher.py \
+	clear-passphrases.py
 
 CLEANFILES =  \
 	omni \
 	omni-configure \
-	stitcher
+	stitcher \
+	clear-passphrases
 
 bin_SCRIPTS = \
 	omni \
 	omni-configure \
-	stitcher
+	stitcher \
+	clear-passphrases
 
 nobase_python_PYTHON = \
 	gcf/gcf_version.py \
