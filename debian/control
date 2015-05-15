@@ -10,7 +10,9 @@ Vcs-Browser: https://github.com/GENI-NSF/geni-tools
 
 Package: geni-tools
 Architecture: all
-Depends: ${misc:Depends}, ${python:Depends}
+Depends: ${misc:Depends}, ${python:Depends}, python-m2crypto,
+         python-dateutil, python-openssl, libxmlsec1, xmlsec1,
+         libxmlsec1-openssl, libxmlsec1-dev
 Description: Command lines tools for using GENI
  omni, stitcher, sample aggregate manager, and other GENI
  tools. Formerly "gcf".
