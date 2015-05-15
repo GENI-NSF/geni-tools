@@ -22,9 +22,7 @@ dist_doc_DATA = \
 	README.txt \
 	TROUBLESHOOTING.txt
 
-exampledir = $(docdir)/examples
-
-dist_example_DATA = \
+dist_pkgdata_DATA = \
 	omni_config.sample
 
 EXTRA_DIST =  \

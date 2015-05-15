@@ -7,27 +7,25 @@ stitcher: $(srcdir)/stitcher.py
 omni-configure: $(srcdir)/omni-configure.py
 	cp omni-configure.py omni-configure
 
-clear-passphrases: $(srcdir)/clear-passphrases.py
-	cp clear-passphrases.py clear-passphrases
-
 # Distribute but do not install
 EXTRA_DIST =  \
 	omni.py \
 	omni-configure.py \
-	stitcher.py \
-	clear-passphrases.py
+	stitcher.py
 
 CLEANFILES =  \
 	omni \
 	omni-configure \
-	stitcher \
-	clear-passphrases
+	stitcher
 
 bin_SCRIPTS = \
 	omni \
 	omni-configure \
-	stitcher \
-	clear-passphrases
+	stitcher
+
+dist_pkgdata_SCRIPTS = \
+	delegateSliceCred.py \
+	clear-passphrases.py
 
 nobase_dist_python_DATA = \
 	gcf/gcf_version.py \
@@ -131,11 +129,6 @@ nobase_dist_python_DATA = \
 	gcf/sfa/util/xrn.py \
 	gcf/stitcher_logging.conf \
 	gcf/stitcher_logging_deft.py
-
-exampledir = $(docdir)/examples
-
-dist_example_DATA = \
-	delegateSliceCred.py
 
 EXTRA_DIST += \
 	gcf/geni/am/amapi2-request.xml \
