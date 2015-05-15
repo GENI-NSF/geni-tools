@@ -171,10 +171,6 @@ you may be asked to submit the debug logs found in
 backup files. Control the number of backups using the `--logFileCount`
 option.)
 
-`./stitcherTestFiles` contains a selection of sample request RSpecs
-for use with stitching. Note this is not exhaustive; multiple links
-between the same aggregate pairs are possible for example.
-
 When complete, `stitcher` writes a file to `~/.gcf`, listing the
 aggregates at which it made reservations. This file is used by
 `stitcher` later to drive calls, e.g. to `sliverstatus` or 
