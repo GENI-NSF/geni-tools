@@ -324,7 +324,7 @@ def getAMTypeFromGetVersionOut(amUrl, amOutput) :
 def getParser() : 
   parser = omni.getParser()
 
-  usage = "\n\tTypically: \t%s slicename" % os.path.basename(sys.argv[0])
+  usage = "\n\tTypically: \t%s slicename --useSliceAggregates" % os.path.basename(sys.argv[0]).split(".")[0]
   usage += "\n\nReports the status of nodes and the ssh command to login to them."
   usage += "\nTry the --no-keys and -o options."
   usage += "\nIn addition, takes the same options as omni (-c, -a, -V, etc)."
