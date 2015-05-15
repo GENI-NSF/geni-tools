@@ -52,9 +52,6 @@ EXTRA_DIST =  \
 	debian/compat \
 	debian/control \
 	debian/copyright \
-	debian/docs \
-	debian/README.Debian \
-	debian/README.source \
 	debian/rules \
 	gcf_config.sample \
 	mac_install/INSTALL.txt \
