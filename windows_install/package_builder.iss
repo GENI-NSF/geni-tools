@@ -23,6 +23,8 @@ Source: ..\README-omni.txt; DestDir: {app}
 Source: ..\README-omniconfigure.txt; DestDir: {app}
 Source: ..\README-stitching.txt; DestDir: {app}
 Source: ..\README-clearpassphrases.txt; DestDir: {app}
+Source: ..\CONTRIBUTORS.md; DestDir: {app}
+Source: ..\CONTRIBUTING.md; DestDir: {app}
 Source: ..\src\dist\_hashlib.pyd; DestDir: {app}
 Source: ..\src\dist\_socket.pyd; DestDir: {app}
 Source: ..\src\dist\_ssl.pyd; DestDir: {app}

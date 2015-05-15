@@ -28,7 +28,7 @@ import datetime
 import logging
 import time
 
-from .utils import StitchingRetryAggregateNewVlanError, StitchingRetryAggregateNewVlanImmediatelyError, StitchingError
+from .utils import StitchingRetryAggregateNewVlanError, StitchingRetryAggregateNewVlanImmediatelyError, StitchingError, StitchingStoppedError
 from .objects import Aggregate
 
 class Launcher(object):
@@ -70,7 +70,7 @@ class Launcher(object):
                             incompleteAMs += 1
                         if agg.userRequested and agg.manifestDom is None:
                             self.logger.debug("WARN: Some non transit AMs not done, like %s", agg)
-                    raise StitchingError("Per commandline option, stopping reservation before doing transit AMs. %d AM(s) not reserved." % incompleteAMs)
+                    raise StitchingStoppedError("Per commandline option, stopping reservation before doing transit AMs. %d AM(s) not reserved." % incompleteAMs)
 
             self.logger.debug("\nThere are %d ready aggregates: %s",
                               len(ready_aggs), ready_aggs)

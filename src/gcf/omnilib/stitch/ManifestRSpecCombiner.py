@@ -31,7 +31,7 @@ from __future__ import absolute_import
 import json
 import logging
 import sys
-from xml.dom.minidom import getDOMImplementation, Node, Text, Comment
+from xml.dom.minidom import getDOMImplementation, Node, Text, Comment, CDATASection
 
 from . import objects
 from . import defs
@@ -637,7 +637,7 @@ class ManifestRSpecCombiner:
                                 for child in link.childNodes:
                                     if child.nodeType == Node.ELEMENT_NODE and (child.localName == COMP_MGR or child.localName == INTFC_REF or child.localName == objects.Link.PROPERTY_TAG):
                                         continue
-                                    if isinstance(child, Text) or isinstance(child, Comment):
+                                    if isinstance(child, Text) or isinstance(child, Comment) or isinstance(child, CDATASection):
                                         if str(child.data).strip() == "":
                                             continue
                                         self.logger.debug("Looking at template element under link: %s", child.data)
@@ -650,11 +650,11 @@ class ManifestRSpecCombiner:
                                     for child2 in link2Clone.childNodes:
                                         if child2.nodeType == Node.ELEMENT_NODE and (child2.localName == COMP_MGR or child2.localName == INTFC_REF or child.localName == objects.Link.PROPERTY_TAG):
                                             continue
-                                        if isinstance(child2, Text) or isinstance(child2, Comment):
+                                        if isinstance(child2, Text) or isinstance(child2, Comment) or isinstance(child2, CDATASection):
                                             if str(child2.data).strip() == "":
                                                 continue
                                             self.logger.debug("Looking at link2Clone element under link: %s", child2.data)
-                                            if child.data == child2.data:
+                                            if (isinstance(child, Text) or isinstance(child, Comment) or isinstance(child, CDATASection)) and child.data == child2.data:
                                                 found = True
                                                 break
                                         else:
@@ -796,7 +796,7 @@ class ManifestRSpecCombiner:
                             for child2 in link2.childNodes:
                                 if child2.nodeType == Node.ELEMENT_NODE and (child2.localName == COMP_MGR or child2.localName == INTFC_REF or child2.localName == objects.Link.PROPERTY_TAG):
                                     continue
-                                if isinstance(child2, Text) or isinstance(child2, Comment):
+                                if isinstance(child2, Text) or isinstance(child2, Comment) or isinstance(child2, CDATASection):
                                     if str(child2.data).strip() == "":
                                         continue
                                     self.logger.debug("Checking that template has this element found under other AMs link: %s", child2.data)
@@ -809,11 +809,11 @@ class ManifestRSpecCombiner:
                                 for child in link.childNodes:
                                     if child.nodeType == Node.ELEMENT_NODE and (child.localName == COMP_MGR or child.localName == INTFC_REF or child.localName == objects.Link.PROPERTY_TAG):
                                         continue
-                                    if isinstance(child, Text) or isinstance(child, Comment):
+                                    if isinstance(child, Text) or isinstance(child, Comment) or isinstance(child, CDATASection):
                                         if str(child.data).strip() == "":
                                             continue
                                         self.logger.debug("Comparing with template element under link: %s", child.data)
-                                        if child.data == child2.data:
+                                        if (isinstance(child2, Text) or isinstance(child2, Comment) or isinstance(child2, CDATASection)) and child.data == child2.data:
                                             found = True
                                             break
                                     else:

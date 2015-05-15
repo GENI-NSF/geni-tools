@@ -20,3 +20,7 @@ UNINSTALLING OMNI TOOLS
 2. Optional: Delete the aliases created during the install.  These aliases are added to your 
    ~/.bash_profile or ~/.bash_login or ~/.profile.  Look for the comment:
    "# Aliases for commands in the GENI omniTools package" 
+
+
+READMEs and associated documentation are installed in
+/Applications/omniTools-2.9, or available online: http://trac.gpolab.bbn.com/gcf
