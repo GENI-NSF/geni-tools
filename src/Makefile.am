@@ -129,13 +129,17 @@ nobase_dist_python_DATA = \
 	gcf/sfa/util/sfalogging.py \
 	gcf/sfa/util/sfatime.py \
 	gcf/sfa/util/xrn.py \
+	gcf/stitcher_logging.conf \
 	gcf/stitcher_logging_deft.py
 
+exampledir = $(docdir)/examples
+
+dist_example_DATA = \
+	delegateSliceCred.py
+
 EXTRA_DIST += \
-	delegateSliceCred.py \
 	gcf/geni/am/amapi2-request.xml \
 	gcf/sfa/README.txt \
-	gcf/stitcher_logging.conf \
 	gcf-am.py \
 	gcf-ch.py \
 	gcf-gch.py \

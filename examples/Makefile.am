@@ -29,3 +29,9 @@ EXTRA_DIST += \
 	expirationofmyslices.py \
 	myscript.py \
 	renewSliceAndSlivers.py
+
+exampledir = $(docdir)/examples
+
+dist_example_DATA = \
+	renewSliceAndSlivers.py \
+	expirationofmyslices.py

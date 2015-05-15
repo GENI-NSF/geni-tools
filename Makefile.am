@@ -14,19 +14,24 @@ dist_doc_DATA = \
 	INSTALL.txt \
 	INSTALL.ubuntu \
 	LICENSE.txt \
-	README-authorization.txt \
 	README-clearpassphrases.txt \
-	README-gcf.txt \
-	README-lib.txt \
 	README-omni.txt \
 	README-omniconfigure.txt \
-	README-scheduling.txt \
 	README-stitching.txt \
 	README.md \
 	README.txt \
 	TROUBLESHOOTING.txt
 
+exampledir = $(docdir)/examples
+
+dist_example_DATA = \
+	omni_config.sample
+
 EXTRA_DIST =  \
+	README-authorization.txt \
+	README-gcf.txt \
+	README-lib.txt \
+	README-scheduling.txt \
 	acceptance_tests/AM_API/am_api_accept_delegate.py \
 	acceptance_tests/AM_API/am_api_accept_nagios.py \
 	acceptance_tests/AM_API/am_api_accept.py \
@@ -53,11 +58,8 @@ EXTRA_DIST =  \
 	debian/rules \
 	gcf_config.sample \
 	mac_install/INSTALL.txt \
-	mac_install/OmniGraphic.png \
 	mac_install/addAliases.command \
-	mac_install/background.png \
 	mac_install/makeMacdmg.sh \
-	omni_config.sample \
 	windows_install/LICENSE.TXT \
 	windows_install/infoAfterFile.rtf \
 	windows_install/install.vbs \
