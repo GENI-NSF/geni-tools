@@ -12,6 +12,7 @@ Contributors recognized by GitHub are listed [on GitHub](https://github.com/GENI
 
 Past contributors have included:
  - David Margery, Inria
+ - Tomasz Buchert, Inria
  - Ezra Kissel, Indiana University
  - Nick Bastin, Barnstormer Softworks
  - Hussam Nasir, University of Kentucky
