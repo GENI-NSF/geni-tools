@@ -14,7 +14,7 @@ GCF / geni-tools developers can subscribe to gcf-dev@geni.net here: http://lists
 Omni users may raise issues or get announcements on the general [GENI Users mailing list](https://groups.google.com/forum/#!forum/geni-users).
 
 ## Tracking Issues
-GCF / geni-tools has numerous existing tickets on [GitHub](https://github.com/GENI-NSF/geni-tools/issues) and our old Trac system: http://trac.gpolab.bbn.com/gcf. Look there first to see if the issue is known, or if there are comments on a suggested solution.
+GCF / geni-tools has numerous existing tickets on [GitHub](https://github.com/GENI-NSF/geni-tools/issues). Look there first to see if the issue is known, or if there are comments on a suggested solution.
 
 ## Guidelines
  - GENI-NSF projects use the branching model found at
@@ -45,7 +45,7 @@ GCF / geni-tools has numerous existing tickets on [GitHub](https://github.com/GE
  request fixes or resolves
 
 ## Reporting Issues ##
- - Please check [GitHub Issues](https://github.com/GENI-NSF/geni-tools/issues) and our old [Trac tickets](http://trac.gpolab.bbn.com/gcf/report) to see if the issue has already been reported.
+ - Please check [GitHub Issues](https://github.com/GENI-NSF/geni-tools/issues) to see if the issue has already been reported.
  - Please give specific examples, sample outputs, etc
  - When reporting issues, please include the output of `omni --version` at least. Even better, include the complete `stitcher.log` or the output of running `omni --debug`.
  - To attach your `stitcher.log` or test case RSpecs or other large output, upload the file to some web server and provide a pointer. For example, use Gist:
