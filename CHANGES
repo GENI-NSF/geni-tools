@@ -6,6 +6,7 @@ gcf 2.9:
     In future, issues will be reported there as well.
  * Remove references to the omni-users mailing list. (#813)
   * Use the [https://groups.google.com/forum/#!forum/geni-users GENI Users mailing list].
+ * Add autoconf/automake support
 
  * Omni
   * If `sliverstatus` fails in a way that indicates there are no local resources,
