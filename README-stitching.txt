@@ -171,7 +171,8 @@ you may be asked to submit the debug logs found in
 backup files. Control the number of backups using the `--logFileCount`
 option.)
 
-When complete, `stitcher` writes a file to `~/.gcf`, listing the
+When complete, `stitcher` writes a file to `~/.gcf` (or the directory
+specified by `--fileDir`), listing the
 aggregates at which it made reservations. This file is used by
 `stitcher` later to drive calls, e.g. to `sliverstatus` or 
 `renewsliver` or `deletesliver`. This file is named something like
