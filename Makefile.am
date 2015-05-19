@@ -15,6 +15,7 @@ dist_doc_DATA = \
 	INSTALL.ubuntu \
 	LICENSE.txt \
 	README-clearpassphrases.txt \
+	README-gcf.txt \
 	README-omni.txt \
 	README-omniconfigure.txt \
 	README-stitching.txt \
@@ -23,12 +24,14 @@ dist_doc_DATA = \
 	TROUBLESHOOTING.txt
 
 dist_pkgdata_DATA = \
-	omni_config.sample
+	gcf_config.sample \
+	omni_config.sample \
+	agg_nick_cache.base
 
 EXTRA_DIST =  \
 	README-authorization.txt \
-	README-gcf.txt \
 	README-lib.txt \
+	README-packaging.md \
 	README-scheduling.txt \
 	acceptance_tests/AM_API/am_api_accept_delegate.py \
 	acceptance_tests/AM_API/am_api_accept_nagios.py \
@@ -45,13 +48,11 @@ EXTRA_DIST =  \
 	acceptance_tests/AM_API/request_pgv2.xml \
 	acceptance_tests/AM_API/request.xml.sample \
 	acceptance_tests/AM_API/untrusted-usercred.xml \
-	agg_nick_cache.base \
 	debian/changelog \
 	debian/compat \
 	debian/control \
 	debian/copyright \
 	debian/rules \
-	gcf_config.sample \
 	mac_install/INSTALL.txt \
 	mac_install/addAliases.command \
 	mac_install/makeMacdmg.sh \

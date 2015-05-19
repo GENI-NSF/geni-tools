@@ -25,7 +25,14 @@ bin_SCRIPTS = \
 
 dist_pkgdata_SCRIPTS = \
 	delegateSliceCred.py \
-	clear-passphrases.py
+	clear-passphrases.py \
+	gcf-am.py \
+	gcf-ch.py \
+	gcf-test.py \
+	gen-certs.py
+
+dist_pkgdata_DATA = \
+	omni_log_conf_sample.conf
 
 nobase_dist_python_DATA = \
 	gcf/gcf_version.py \
@@ -112,6 +119,7 @@ nobase_dist_python_DATA = \
 	gcf/omnilib/xmlrpc/__init__.py \
 	gcf/oscript.py \
 	gcf/sfa/__init__.py \
+	gcf/sfa/README.txt \
 	gcf/sfa/trust/abac_credential.py \
 	gcf/sfa/trust/certificate.py \
 	gcf/sfa/trust/credential_factory.py \
@@ -131,15 +139,4 @@ nobase_dist_python_DATA = \
 	gcf/stitcher_logging_deft.py
 
 EXTRA_DIST += \
-	gcf/geni/am/amapi2-request.xml \
-	gcf/sfa/README.txt \
-	gcf-am.py \
-	gcf-ch.py \
-	gcf-gch.py \
-	gcf-pgch.py \
-	gcf-proxy-test.py \
-	gcf-proxy.py \
-	gcf-test.py \
-	gen-certs.py \
-	omni_log_conf_sample.conf \
 	omni_unittest.py
