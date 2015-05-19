@@ -98,6 +98,8 @@ gcf 2.9:
     `--no-ansible-username` to ensure no username is specified in the
     inventory file. (#794)
   * Changed usage message for `readyToLogin` to encourage use of `--useSliceAggregates`. (#816)
+  * Fix error message on `readyToLogin` when no aggregates specifies. (#821)
+
  * gcf
   * Make the user credential optional to `ListResources`. (#792)
    * Implement AM API Draft proposal "AD".

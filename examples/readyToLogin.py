@@ -778,8 +778,11 @@ def main_no_print(argv=None, opts=None, slicen=None):
 
       aggregateURNs = slivers.keys()
   if len(aggregateURNs) == 0 and (not options.aggregate or (len(options.aggregate) == 0)):
-    print "ERROR: There are no known resources at any aggregates. Try using '-a' to specify an aggregate."
-    sys.exit(-1)      
+      if not options.useSliceAggregates:
+          print "ERROR: You must specify which aggregates to check. Try using '--useSliceAggregates' to check all aggregates known to have resources for this slice, or '-a' to specify one or more specific aggregates."
+      else:
+          print "ERROR: There are no known resources at any aggregates. Try using '-a' to specify an aggregate."
+    sys.exit(-1)
 
   # construct a list of aggregates to 
   newAggURLs = [ lookupURL( handler.logger, config, urn )[1] for urn in aggregateURNs ] 
