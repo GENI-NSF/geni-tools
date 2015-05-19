@@ -56,6 +56,7 @@ gcf 2.9:
    * Results from all calls are combined into a single return message and structure.
    * APIv2 results will be keyed by AM URL and have the value of True or False usually, but sometimes a struct.
    * This is useful when a circuit was reserved using `-V3` and some AMs spoke APIv2 only.
+   * Fix handling of return when tried to delete at an AM with no resources. (#823)
   * scs.py now honors `--timeout` to set the SSL connection timeout. (#785)
   * For `--fixedEndpoint` calls, avoid adding the fake interface to links
     with no stitching path, such as for a LAN within a single AM. (#790)
