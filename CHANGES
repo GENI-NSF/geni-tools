@@ -7,6 +7,7 @@ gcf 2.9:
  * Remove references to the omni-users mailing list. (#813)
   * Use the [https://groups.google.com/forum/#!forum/geni-users GENI Users mailing list].
  * Add autoconf/automake support
+ * Add `utah-stitch` AM and `clemson-clab` and `wisconsin-clab` for new Cloudlab sites. (#817)
 
  * Omni
   * If `sliverstatus` fails in a way that indicates there are no local resources,
