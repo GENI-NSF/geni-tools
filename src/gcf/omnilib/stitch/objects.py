@@ -3978,7 +3978,7 @@ class Aggregate(object):
             omniargs = ['-V%d' % self.api_version,'--raise-error-on-v2-amapi-error', '-o', '-a', self.url, opName, slicename]
 
         # Raw omni call results, for returning
-        text = None
+        text = ""
         result = None
 
         self.logger.info("Doing %s at %s...", opName, self)
@@ -4050,13 +4050,21 @@ class Aggregate(object):
                             val = ""
                             if ae.returnstruct.has_key("value"):
                                 val = ae.returnstruct["value"]
+                            #self.logger.debug("%s at %s gave code %d, output: '%s', value: '%s'", opName, self, code, msg, val)
                             if code == 12 and (amcode == 12 or amcode is None):
                                 # This counts as success
                                 self.logger.info(" ... but this error means there was nothing to delete")
                                 noError = True
+                                if self.nick:
+                                    text = "Success: Nothing to delete at %s" % self.nick
+                                else:
+                                    text = "Success: Nothing to delete at %s" % self.urn
+                            else:
+                                text = "Failed to %s at %s: code %d: %s %s" % (opName, self, code, msg, val)
                         except Exception, e2:
                             # Failed to parse the error code.
                             self.logger.debug("Failed to parse return code out of error doing %s at %s: parsing %s gave %s", opName, self, ae, e2)
+                            text = "Unknown error doing %s at %s: %s" % (opName, self, e)
                 if not noError:
                     self.logger.error("Failed to %s at %s: %s", opName, self, e)
                     raise StitchingError(e) # FIXME: Right way to re-raise?
