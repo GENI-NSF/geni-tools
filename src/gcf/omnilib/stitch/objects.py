@@ -957,9 +957,10 @@ class Aggregate(object):
             self.slicecred = _load_cred(MyHandler(self.logger, opts), opts.slicecredfile)
         sliceexp = get_cred_exp(self.logger, self.slicecred)
         sliceExpFromNow = naiveUTC(sliceexp) - now
-        minDays = sliceExpFromNow.days
+        minDays = max(sliceExpFromNow.days, 1) # Start out going for 1 day from now at least
         newExpires = naiveUTC(sliceexp)
         self.logger.debug("Starting newExpires at slice expiration %s, so init minDays to %d", sliceexp, minDays)
+        #self.logger.debug("now=%s", now)
 
         # Singleton for getting the default sliver expirations by AM type, that knows about values
         # from the omni_config
@@ -1042,6 +1043,17 @@ class Aggregate(object):
                     self.logger.debug("After %s, minDays=%d, newExpires=%s", am, minDays, newExpires)
             # End loop over AMs on path
         # End loop over paths
+
+        minHours = 6
+        if self.api_version > 2:
+            minHours = allocHours
+        if naiveUTC(newExpires) - naiveUTC(now) < datetime.timedelta(hours=minHours):
+            self.logger.debug("Calculated new expiration within %d hour(s): reset to %d hour(s) from now", minHours, minHours)
+            newExpires = naiveUTC(now) + datetime.timedelta(hours=minHours)
+
+        if naiveUTC(sliceexp) < naiveUTC(newExpires):
+            self.logger.debug("Calculated new expiration after slice expiration: reset to slice expiration")
+            newExpires = sliceexp
 
         # In APIv3+, this should be a temporary hold. So only request the resources for a few hours.
         if self.api_version > 2:

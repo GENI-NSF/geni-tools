@@ -94,6 +94,8 @@ gcf 2.9:
     at once on Windows. (#824)
   * Define default initial sliver expirations for other Utah/PG AMs (Apt, Cloudlab, stitch). (#826)
     * Allow defining new such AMs in the omni config `omni_defaults` -> `utah_am_urns` (CSV).
+  * When calculating `expires` time to request, don't exceed the slice expiration,
+    and don't request less than some # of hours - 6 for APIv2, 3 for v3+. (#827)
 
  * Scripts
   * Initial commit of `examples/renewSliceAndSlivers.py`. (#798)
