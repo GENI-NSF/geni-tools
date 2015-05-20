@@ -90,6 +90,8 @@ gcf 2.9:
    * Bug fix for merging comments when template has a comment child and other does not. (#815)
   * Quiet down errors deleting a failed reservation from EG AMs (harmless). (#811)
   * Remove reference to ION as a real aggregate in the README. ION has been decommissioned. (#797)
+  * Gracefully handle error when 2 stitcher instances are running in the same directory
+    at once on Windows. (#824)
 
  * Scripts
   * Initial commit of `examples/renewSliceAndSlivers.py`. (#798)
