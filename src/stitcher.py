@@ -304,7 +304,16 @@ def call(argv, options=None):
         if os.path.exists(dfn):
             os.remove(dfn)
         if os.path.exists(bfn):
-            os.rename(bfn, dfn)
+            try:
+                os.rename(bfn, dfn)
+            except OSError, e:
+                # Issue #824 partial solution
+                if "being used by another process" in str(e):
+                    # On Windows, when another stitcher instance running in same directory, so has stitcher.log open
+                    # WindowsError: [Error 32] The process cannot access the file because it is being used by another process
+                    sys.exit("Error: Is another stitcher process running in this directory? Run stitcher from a different directory, or re-run with the option `--fileDir <separate directory for this run's output files>`")
+                else:
+                    raise
 
     # Then have Omni configure the logger
     try:
