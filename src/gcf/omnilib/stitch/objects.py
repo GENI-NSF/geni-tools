@@ -972,10 +972,11 @@ class Aggregate(object):
         # This would be better from GetVersion or some cache file we periodically download. FIXME!
         # HACK!
         if self.isPG:
-            # If this is Utah PG or DDC, set to their shorter expiration
-            if self.urn in [defs.PGU_URN, defs.IGUDDC_URN]:
+            # If this is a Utah AM (PG, DDC, Apt, Cloudlab, Stitch), set to their shorter expiration
+#            if self.urn in [defs.PGU_URN, defs.IGUDDC_URN]:
+            if defs_getter.isUtah(self):
                 amExpDays = defs_getter.getUtah()
-                self.logger.debug("%s is Utah PG or DDC - %d day sliver expiration", self, defs_getter.getUtah())
+                self.logger.debug("%s is a Utah AM (PG, DDC, Apt, Cloudlab, Stitch) - %d day sliver expiration", self, defs_getter.getUtah())
             else:
                 amExpDays = defs_getter.getIG()
         elif self.isEG:
@@ -1011,10 +1012,11 @@ class Aggregate(object):
                     # This would be better from GetVersion or some cache file we periodically download. FIXME!
                     # HACK!
                     if am.isPG:
-                        # If this is Utah PG or DDC, set to their shorter expiration
-                        if am.urn in [defs.PGU_URN, defs.IGUDDC_URN]:
+                        # If this is a Utah AM (PG, DDC, Apt, Cloudlab, Stitch), set to their shorter expiration
+#                        if am.urn in [defs.PGU_URN, defs.IGUDDC_URN]:
+                        if defs_getter.isUtah(am):
                             amExpDays = defs_getter.getUtah()
-                            self.logger.debug("AM's path includes %s which is Utah PG or DDC - %d day sliver expiration", am, defs_getter.getUtah())
+                            self.logger.debug("AM's path includes %s which is a Utah AM (PG, DDC, Apt, Cloudlab, stitch) - %d day sliver expiration", am, defs_getter.getUtah())
                         else:
                             amExpDays = defs_getter.getIG()
                     elif am.isEG:
