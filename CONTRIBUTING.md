@@ -19,7 +19,7 @@ GCF / geni-tools has numerous existing tickets on [GitHub](https://github.com/GE
 ## General Guidelines
  - GENI-NSF projects are open source GitHub repositories, and as such follow the general [GitHub open source project guidelines](https://guides.github.com/activities/contributing-to-open-source/#contributing).
  - Create a GitHub Issue for any bug, feature, or enhancement you
- intend to address. (See [Reporting Issues](#reporting-issues).)
+ intend to address. (See '[Reporting Issues](#reporting-issues)'.)
  - Submit enhancements or bug fixes using pull requests (see the [sample workflow below](#sample-contribution-workflow)).
  - GENI-NSF projects use the branching model found at
  http://nvie.com/posts/a-successful-git-branching-model/
@@ -49,7 +49,7 @@ GCF / geni-tools has numerous existing tickets on [GitHub](https://github.com/GE
  5. Test your fix
   - Test your Omni/Stitcher fix against multiple aggregate types and varying situations.
   - Changes to gcf should be tested with [gcf-test.py](src/gcf-test.py) minimally, and
- preferably also with the included [AM acceptance tests](acceptance_tests/AM_API] or equivalent.
+ preferably also with the included [AM acceptance tests](acceptance_tests/AM_API) or equivalent.
  6. Pull in any new changes from the main repository ('upstream' repository) ([see instructions](https://help.github.com/articles/syncing-a-fork)).
  7. [Submit a pull request](https://help.github.com/articles/using-pull-requests/) against the `develop` branch of the project repository.
  - In your pull request description, note what issue(s) your pull request fixes or resolves.
@@ -80,3 +80,5 @@ GCF / geni-tools has numerous existing tickets on [GitHub](https://github.com/GE
  - Use relative imports (`from __future__ import absolute_import`).
  - Use 4 space indents.
  - Name classes, methods, arguments and variables to describe their use.
+
+_Thank you for your contributions!_
