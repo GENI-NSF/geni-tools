@@ -2042,15 +2042,19 @@ class StitchingHandler(object):
                 try:
                     (text, result) = am.deleteReservation(self.opts, self.slicename)
                     self.logger.info("Deleted reservation at %s.", am)
-                    if retText != "":
-                        retText += "\n %s" % text
-                    else:
-                        retText = text
+                    if text is not None and text.strip() != "":
+                        if retText != "":
+                            retText += "\n %s" % text
+                        else:
+                            retText = text
                     if am.api_version < 3 or not isinstance(result, dict):
                         if not (isinstance(result, tuple) and isinstance(result[0], list)):
-                            # Some kind of error
-                            self.logger.debug("Struct result from delete or deletesliver unknown from %s: %s", am, result)
-                            retStruct[am.url] = result
+                            if result is None and text.startswith("Success"):
+                                retStruct[am.url] = True
+                            else:
+                                # Some kind of error
+                                self.logger.debug("Struct result from delete or deletesliver unknown from %s: %s", am, result)
+                                retStruct[am.url] = result
                         else:
                             (succ, fail) = result
                             # FIXME: Do the handler_utils tricks for comparing URLs?

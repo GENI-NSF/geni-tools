@@ -957,9 +957,10 @@ class Aggregate(object):
             self.slicecred = _load_cred(MyHandler(self.logger, opts), opts.slicecredfile)
         sliceexp = get_cred_exp(self.logger, self.slicecred)
         sliceExpFromNow = naiveUTC(sliceexp) - now
-        minDays = sliceExpFromNow.days
+        minDays = max(sliceExpFromNow.days, 1) # Start out going for 1 day from now at least
         newExpires = naiveUTC(sliceexp)
         self.logger.debug("Starting newExpires at slice expiration %s, so init minDays to %d", sliceexp, minDays)
+        #self.logger.debug("now=%s", now)
 
         # Singleton for getting the default sliver expirations by AM type, that knows about values
         # from the omni_config
@@ -972,10 +973,11 @@ class Aggregate(object):
         # This would be better from GetVersion or some cache file we periodically download. FIXME!
         # HACK!
         if self.isPG:
-            # If this is Utah PG or DDC, set to their shorter expiration
-            if self.urn in [defs.PGU_URN, defs.IGUDDC_URN]:
+            # If this is a Utah AM (PG, DDC, Apt, Cloudlab, Stitch), set to their shorter expiration
+#            if self.urn in [defs.PGU_URN, defs.IGUDDC_URN]:
+            if defs_getter.isUtah(self):
                 amExpDays = defs_getter.getUtah()
-                self.logger.debug("%s is Utah PG or DDC - %d day sliver expiration", self, defs_getter.getUtah())
+                self.logger.debug("%s is a Utah AM (PG, DDC, Apt, Cloudlab, Stitch) - %d day sliver expiration", self, defs_getter.getUtah())
             else:
                 amExpDays = defs_getter.getIG()
         elif self.isEG:
@@ -1011,10 +1013,11 @@ class Aggregate(object):
                     # This would be better from GetVersion or some cache file we periodically download. FIXME!
                     # HACK!
                     if am.isPG:
-                        # If this is Utah PG or DDC, set to their shorter expiration
-                        if am.urn in [defs.PGU_URN, defs.IGUDDC_URN]:
+                        # If this is a Utah AM (PG, DDC, Apt, Cloudlab, Stitch), set to their shorter expiration
+#                        if am.urn in [defs.PGU_URN, defs.IGUDDC_URN]:
+                        if defs_getter.isUtah(am):
                             amExpDays = defs_getter.getUtah()
-                            self.logger.debug("AM's path includes %s which is Utah PG or DDC - %d day sliver expiration", am, defs_getter.getUtah())
+                            self.logger.debug("AM's path includes %s which is a Utah AM (PG, DDC, Apt, Cloudlab, stitch) - %d day sliver expiration", am, defs_getter.getUtah())
                         else:
                             amExpDays = defs_getter.getIG()
                     elif am.isEG:
@@ -1040,6 +1043,17 @@ class Aggregate(object):
                     self.logger.debug("After %s, minDays=%d, newExpires=%s", am, minDays, newExpires)
             # End loop over AMs on path
         # End loop over paths
+
+        minHours = 6
+        if self.api_version > 2:
+            minHours = allocHours
+        if naiveUTC(newExpires) - naiveUTC(now) < datetime.timedelta(hours=minHours):
+            self.logger.debug("Calculated new expiration within %d hour(s): reset to %d hour(s) from now", minHours, minHours)
+            newExpires = naiveUTC(now) + datetime.timedelta(hours=minHours)
+
+        if naiveUTC(sliceexp) < naiveUTC(newExpires):
+            self.logger.debug("Calculated new expiration after slice expiration: reset to slice expiration")
+            newExpires = sliceexp
 
         # In APIv3+, this should be a temporary hold. So only request the resources for a few hours.
         if self.api_version > 2:
@@ -3978,7 +3992,7 @@ class Aggregate(object):
             omniargs = ['-V%d' % self.api_version,'--raise-error-on-v2-amapi-error', '-o', '-a', self.url, opName, slicename]
 
         # Raw omni call results, for returning
-        text = None
+        text = ""
         result = None
 
         self.logger.info("Doing %s at %s...", opName, self)
@@ -4050,13 +4064,21 @@ class Aggregate(object):
                             val = ""
                             if ae.returnstruct.has_key("value"):
                                 val = ae.returnstruct["value"]
+                            #self.logger.debug("%s at %s gave code %d, output: '%s', value: '%s'", opName, self, code, msg, val)
                             if code == 12 and (amcode == 12 or amcode is None):
                                 # This counts as success
                                 self.logger.info(" ... but this error means there was nothing to delete")
                                 noError = True
+                                if self.nick:
+                                    text = "Success: Nothing to delete at %s" % self.nick
+                                else:
+                                    text = "Success: Nothing to delete at %s" % self.urn
+                            else:
+                                text = "Failed to %s at %s: code %d: %s %s" % (opName, self, code, msg, val)
                         except Exception, e2:
                             # Failed to parse the error code.
                             self.logger.debug("Failed to parse return code out of error doing %s at %s: parsing %s gave %s", opName, self, ae, e2)
+                            text = "Unknown error doing %s at %s: %s" % (opName, self, e)
                 if not noError:
                     self.logger.error("Failed to %s at %s: %s", opName, self, e)
                     raise StitchingError(e) # FIXME: Right way to re-raise?
