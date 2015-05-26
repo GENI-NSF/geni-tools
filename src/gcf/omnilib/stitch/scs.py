@@ -97,11 +97,28 @@ class Service(object):
 
     def GetVersion(self, printResult=True):
         server = make_client(self.url, keyfile=self.key, certfile=self.cert, verbose=self.verbose, timeout=self.timeout)
+        #import ssl
+        #server = make_client(self.url, keyfile=self.key, certfile=self.cert, verbose=self.verbose, timeout=self.timeout, ssl_version=ssl._SSLv2_IF_EXISTS)
+        #server = make_client(self.url, keyfile=self.key, certfile=self.cert, verbose=self.verbose, timeout=self.timeout, ssl_version=ssl.PROTOCOL_SSLv23)
+        #server = make_client(self.url, keyfile=self.key, certfile=self.cert, verbose=self.verbose, timeout=self.timeout, ssl_version=ssl.PROTOCOL_SSLv3)
+        #server = make_client(self.url, keyfile=self.key, certfile=self.cert, verbose=self.verbose, timeout=self.timeout, ssl_version=ssl.PROTOCOL_TLSv1)
+        # SSLv3 causes a handshake error at the I2 SCS on my ubu14.04 openssl 1.0.1f. Same machine doesnt do v2 only
+        # On that machine, tested a good selection of AMs. Maybe try locahost:4433 using openssl s_server?
+        # - I cannot get the error on that machine. SSLv23 falls back on TLS1.
+        # ubu10.04 openssl 1.0.1 does v23 just fine. Does TLSv1 just fine. Doesn't do v2 only.
+        # On my win7 machine, SSLv23 works fine at the SCS. SSLv2 fails with "no cipher list" and "Errno 1". SSLv3 works. TLSv1 works
+        # And TLSv1 works at a smattering of test AMs
+        # On my MacOSX yosemite machine, everything but SSLv2 works to talk to the SCS (had to edit a bunch of code to avoid imports of M2Crypto).
         try:
             result = server.GetVersion()
         except xmlrpclib.Error as v:
             if printResult:
                 print "ERROR", v
+            raise
+        except Exception, e:
+            if printResult:
+                import traceback
+                print "ERROR: %s" % traceback.format_exc()
             raise
         if printResult:
             print "GetVersion said:"

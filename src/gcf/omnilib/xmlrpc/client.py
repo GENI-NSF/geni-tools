@@ -21,14 +21,17 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
+import httplib
 import os
+import socket
+import ssl
 import urllib
 import xmlrpclib
 
 class SafeTransportWithCert(xmlrpclib.SafeTransport):
 
     def __init__(self, use_datetime=0, keyfile=None, certfile=None,
-                 timeout=None):
+                 timeout=None, ssl_version=ssl.PROTOCOL_TLSv1):
         # Ticket #776: As of Python 2.7.9, server certs are verified by default.
         # But we don't have those. To preserve old functionality with new python,
         # pass an explicit context
@@ -45,22 +48,79 @@ class SafeTransportWithCert(xmlrpclib.SafeTransport):
         if certfile:
             self.__x509['cert_file'] = certfile
         self._timeout = timeout
+        self.ssl_version = ssl_version
 
     def make_connection(self, host):
         host_tuple = (host, self.__x509)
-        conn = xmlrpclib.SafeTransport.make_connection(self, host_tuple)
-        if self._timeout:
-            if hasattr(conn, '_conn'):
-                # Python 2.6
+        if self._connection and host_tuple == self._connection[0]:
+            return self._connection[1]
+        #conn = xmlrpclib.SafeTransport.make_connection(self, host_tuple)
+        chost, self._extra_headers, x509 = self.get_host_info(host_tuple)
+        # HTTPSConnection instead of HTTPS is issue6267 of June 2009 - before the 2.7 maint branch
+        import sys
+        if sys.version_info < (2,7,0):
+            self._connection = host_tuple, TLS1P26HTTPS(chost, None, **(x509 or {}))
+        else:
+            self._connection = host_tuple, TLS1HTTPSConnection(chost, None, **(x509 or {}))
+        conn = self._connection[1]
+        if hasattr(conn, '_conn'):
+            # Python 2.6
+            if self._timeout:
                 conn._conn.timeout = self._timeout
-            else:
-                # Python 2.7
+            conn._conn.ssl_version = self.ssl_version
+        else:
+            # Python 2.7
+            if self._timeout:
                 conn.timeout = self._timeout
+            conn.ssl_version = self.ssl_version
         return conn
+
+# A custom HTTPSConnection that calls ssl.wrap_socket specifying the desired ssl_version, defaulting to PROTOCOL_TLSv1 instead of PROTOTOCOL_SSLv23
+# Used directly by our SafeTransport, and indirectly by the below TLS1P26HTTPS
+class TLS1HTTPSConnection(httplib.HTTPSConnection):
+    def __init__(self, host, port=None, key_file=None, cert_file=None, strict=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, source_address=None, ssl_version=ssl.PROTOCOL_TLSv1):
+        import sys
+        if sys.version_info >= (2,7,0):
+            # source_address added for issue 3972 Jan 2010. Note the 2.7 maint branch was Jul 2010. This is first seen in 2.7 alpha 2.
+            httplib.HTTPSConnection.__init__(self, host, port, key_file, cert_file, strict, timeout, source_address)
+        else:
+            httplib.HTTPSConnection.__init__(self, host, port, key_file, cert_file, strict, timeout)
+        self.ssl_version = ssl_version
+
+    def connect(self):
+        import sys
+        if sys.version_info >= (2,7,0):
+            sock = socket.create_connection((self.host, self.port), self.timeout, self.source_address)
+        else:
+            sock = socket.create_connection((self.host, self.port), self.timeout)
+
+        # Note these next fixes require python at least from Oct 2009 so 2.6.3
+        if sys.version_info >= (2,6,3):
+            if self._tunnel_host:
+                self.sock = sock
+                self._tunnel()
+
+        # Force use of TLSv1 with PROTOCOL_TLSv1
+        # Default is PROTOCOL_SSLv23 which allows either 2 or 3
+        # Another option is PROTOCOL_SSLv3
+        # We want TLS1 to avoid POODLE vulnerability. In addition, some client/server combinations fail the handshake
+        # if you start with SSL23 and the server wants TLS1. See issue #745
+        if self.ssl_version is None:
+            print "Requested a None ssl version"
+            self.ssl_version = ssl.PROTOCOL_TLSv1
+        print "Wrapping socket to use SSL version %s" % ssl._PROTOCOL_NAMES[self.ssl_version]
+        self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file, ssl_version=self.ssl_version)
+
+# For Python2.6 safe transport, use our custom HTTPSConnection
+class TLS1P26HTTPS(httplib.HTTPS):
+    _connection_class = TLS1HTTPSConnection
+    def __init__(self, host='', port=None, key_file=None, cert_file=None,
+                 strict=None):
+        HTTPS.__init__(self, host, port, key_file, cert_file, strict)
 
 class SafeTransportNoCert(xmlrpclib.SafeTransport):
     # A standard SafeTransport that honors the requested SSL timeout
-    def __init__(self, use_datetime=0, timeout=None):
+    def __init__(self, use_datetime=0, timeout=None, ssl_version=ssl.PROTOCOL_TLSv1):
         # Ticket #776: As of Python 2.7.9, server certs are verified by default.
         # But we don't have those. To preserve old functionality with new python,
         # pass an explicit context
@@ -73,21 +133,34 @@ class SafeTransportNoCert(xmlrpclib.SafeTransport):
             xmlrpclib.SafeTransport.__init__(self, use_datetime)
         self.__x509 = dict()
         self._timeout = timeout
+        self.ssl_version = ssl_version
 
     def make_connection(self, host):
         host_tuple = (host, self.__x509)
-        conn = xmlrpclib.SafeTransport.make_connection(self, host_tuple)
-        if self._timeout:
-            if hasattr(conn, '_conn'):
-                # Python 2.6
+        if self._connection and host_tuple == self._connection[0]:
+            return self._connection[1]
+        #conn = xmlrpclib.SafeTransport.make_connection(self, host_tuple)
+        chost, self._extra_headers, x509 = self.get_host_info(host_tuple)
+        import sys
+        if sys.version_info < (2,7,0):
+            self._connection = host_tuple, TLS1P26HTTPS(chost, None, **(x509 or {}))
+        else:
+            self._connection = host_tuple, TLS1HTTPSConnection(chost, None, **(x509 or {}))
+        conn = self._connection[1]
+        if hasattr(conn, '_conn'):
+            # Python 2.6
+            if self._timeout:
                 conn._conn.timeout = self._timeout
-            else:
-                # Python 2.7
+            conn._conn.ssl_version = self.ssl_version
+        else:
+            # Python 2.7
+            if self._timeout:
                 conn.timeout = self._timeout
+            conn.ssl_version = self.ssl_version
         return conn
 
 def make_client(url, keyfile, certfile, verbose=False, timeout=None,
-                allow_none=False):
+                allow_none=False, ssl_version=ssl.PROTOCOL_TLSv1):
     """Create a connection to an XML RPC server, using SSL with client certificate
     authentication if requested.
     Returns the XML RPC server proxy.
@@ -106,7 +179,7 @@ def make_client(url, keyfile, certfile, verbose=False, timeout=None,
 
         cert_transport = SafeTransportWithCert(keyfile=keyfile,
                                                certfile=certfile,
-                                               timeout=timeout)
+                                               timeout=timeout, ssl_version=ssl_version)
     else:
         # Note that the standard transport you get for https connections
         # does not take the requested timeout. So here we extend
@@ -118,7 +191,7 @@ def make_client(url, keyfile, certfile, verbose=False, timeout=None,
             url2 = url
         type, uri = urllib.splittype(url2.lower())
         if type == "https":
-            cert_transport = SafeTransportNoCert(timeout=timeout)
+            cert_transport = SafeTransportNoCert(timeout=timeout, ssl_version=ssl_version)
 
     return xmlrpclib.ServerProxy(url, transport=cert_transport,
                                  verbose=verbose, allow_none=allow_none)
