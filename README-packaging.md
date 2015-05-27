@@ -21,7 +21,7 @@ after unpacking the tar file. Once the tar file has been downloaded,
 follow these steps to build the package:
 
 ```
-VERSION=2.9
+VERSION=2.10
 mv geni-tools-${VERSION}.tar.gz geni-tools_${VERSION}.orig.tar.gz
 tar zxf geni-tools_${VERSION}.orig.tar.gz
 cd geni-tools-${VERSION}
@@ -44,6 +44,6 @@ handling. The extra step is only necessary when installing the debian
 package manually.
 
 ```
-dpkg -i geni-tools_2.9-1_all.deb
+dpkg -i geni-tools_2.10-1_all.deb
 apt-get -f install
 ```

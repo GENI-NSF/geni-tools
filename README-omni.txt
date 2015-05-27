@@ -41,6 +41,8 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
 
+New in v2.10:
+
 New in v2.9:
  * If `sliverstatus` fails in a way that indicates there are no local resources,
    and the caller specified `--raise-error-on-v2-amapi-error`, still delete any
@@ -621,7 +623,7 @@ Omni supports the following command-line options.
 {{{
 $ ~/gcf/src/omni.py -h                            
 Usage: 
-GENI Omni Command Line Aggregate Manager Tool Version 2.9
+GENI Omni Command Line Aggregate Manager Tool Version 2.10
 Copyright (c) 2011-2015 Raytheon BBN Technologies
 
 omni.py [options] [--project <proj_name>] <command and arguments> 
