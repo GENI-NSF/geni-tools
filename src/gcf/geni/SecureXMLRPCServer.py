@@ -102,7 +102,7 @@ class SecureXMLRPCServer(SimpleXMLRPCServer):
 #                                      ssl_version=ssl.PROTOCOL_TLSv1,
                                       ssl_version=ssl.PROTOCOL_SSLv23, # Ideally we'd accept any TLS but no SSL. Sigh.
                                       ca_certs=ca_certs)
-#                                      ciphers='HIGH:MEDIUM:!ADH:!SSLv2:!MD5:!RC4:@STRENGTH') # Hopefully this effectively exclues SSLv2 and 3?
+#                                      ciphers='HIGH:MEDIUM:!ADH:!SSLv2:!MD5:!RC4:@STRENGTH') # Hopefully this effectively excludes SSLv2 and 3?
         if bind_and_activate:
             # This next throws a socket.error on error, eg
             # Address already in use or Permission denied. 
