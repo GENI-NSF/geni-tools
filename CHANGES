@@ -1,5 +1,121 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 2.9:
+ * Add Markdown style README, CONTRIBUTING and CONTRIBUTORS files. (#551)
+  * Source code is now available from Github: https://github.com/GENI-NSF/geni-tools.
+    All issues are now reported on geni-tools as well. (#814)
+ * Remove references to the omni-users mailing list. (#813)
+  * Use the [https://groups.google.com/forum/#!forum/geni-users GENI Users mailing list].
+ * Add autoconf/automake support
+ * Add `utah-stitch` AM and `clemson-clab` and `wisconsin-clab` for new Cloudlab sites. (#817)
+
+ * Omni
+  * If `sliverstatus` fails in a way that indicates there are no local resources,
+    and the caller specified `--raise-error-on-v2-amapi-error`, still delete any
+    sliver info records at the clearinghouse (as necessary). (#778)
+  * If `deletesliver` or `delete` fail indicating there are no local resources,
+    delete any sliver info records at the clearinghouse (as necessary). (#782)
+  * Add 11 aggregates to the nickname cache. (#783)
+  * Trim fractional seconds from user input datetimes before passing to servers. (#795)
+   * Avoids errors in ProtoGENI based code.
+  * Allow getting Ad RSpecs (calling `ListResources` not in slice context)
+    without a user credential. (#793)
+   * Implements AM API Change Proposal AD.
+  * If the return from `POA` is a `geni_credential`, or per sliver has a
+    `geni_credential`, then save that cred in a separate file. (#803)
+   * Also when saving output, JSON that has XML content shouldn't get
+     the header inserted within the XML content.
+  * Fix `delete` when called on multiple AMs. (#808)
+
+ * Stitcher
+  * Better support for AM API version 3 (#261)
+   * When saving the slice credential renames the file (`.json` extension), save that.
+   * Set the API version for an AM to the command line request version, or the most recent
+     lower version number.
+   * When picking the requested expiration time for an AM, limit it to 3 hours when doing Allocate.
+   * Set the AM URL to the v3 URL if using v3
+   * Tune the pause before redoing a request to be shorter if only dealing with v3 AMs
+   * Warn when done if any reservations are only allocations.
+   * Always use APIv2 when calling `getversion`
+  * Support partial requests with two new options:
+   * `--noDeleteAtEnd`: When specified, do not delete any successful reservations when the overall
+     request has failed, or when the user has interrupted stitcher with Ctrl-C.
+   * `--noTransitAMs`: When specified, stop when the only aggregates ready to reserve are those
+     added by the SCS (which we assume are transit or intermediate aggregates).
+   * In both these cases, finish by printing out how many reservations you have, and saving a
+     combined manifest RSpec for your reservations, and a combined request RSpec for the reservations
+     that you still need to make. The experimenter must manually edit this request to fill in the proper
+     `suggestedVLANRange` and `vlanRangeAvailability` in the proper hops in the request's stitching extension.
+     See the comments at the top of the RSpec: `get_vlantag_from` indicates what other `hop` the given `hop`
+     should take its VLAN tag from. `Have Reservation?` indicates if you have a reservation here. And
+     `AM Depends on` indicates which other AMs must be reserved first before you make a reservation here.
+   * Clean up the log messages in these cases to not look so scary. (#812)
+  * Support `delete` and `deletesliver` locally, calling APIv2 or v3 as appropriate. (#807)
+   * Defer to Omni if there is only a single aggregate.
+   * Each AM is a separate Omni call.
+   * Results from all calls are combined into a single return message and structure.
+   * APIv2 results will be keyed by AM URL and have the value of True or False usually, but sometimes a struct.
+   * This is useful when a circuit was reserved using `-V3` and some AMs spoke APIv2 only.
+   * Fix handling of return when tried to delete at an AM with no resources. (#823)
+  * scs.py now honors `--timeout` to set the SSL connection timeout. (#785)
+  * For `--fixedEndpoint` calls, avoid adding the fake interface to links
+    with no stitching path, such as for a LAN within a single AM. (#790)
+  * If SCS gave same suggested VLAN tag to 2 paths (same hop), then retry
+    at the SCS. (#802)
+   * The SCS does not deconflict suggestions across paths, so this can happen.
+  * When a request fails due to VLAN unavailable someplace along a path where the VLAN
+    was a choice from 'any', no need to go back to the SCS; delete the intermediate reservations
+    and mark the failed tag unavailable, and let that first AM pick the tag again.
+    This should mean fewer un-necessary deletes and fewer calls to the SCS. (#648)
+   * Also fix this block to count this as a local VLAN retry.
+  * When merging manifests, handle a request for component_manager of the ExoSM,
+    where the manifest component_manager will be more specific. (#780)
+   * If there isn't an exact match and the specific component_manager doesn't belong 
+     to an aggregate we are using, then try to match without the sub-authority.
+  * When redoing a request from the SCS, be sure to copy any existing state
+    from an AM not in the SCS workflow. (#781)
+  * When checking if an EG URN belongs to this AM, compare them exactly,
+    not using `startswith`, so an EG rack doesn't claim a URN for the ExoSM. (#779)
+  * In debug when printing raw return from SCS, print the name of the path for each hop. (#800)
+  * Clarify error message when request 'any' VLAN and get VLAN_UNAVAILABLE. (#801)
+  * Fix finding a hop when parsing EG manifests to consider the path ID, thus
+    supporting 2 links across the same interface. (#805)
+  * Fixes for merging manifests, particularly those including ExoGENI AMs on links. (#806)
+   * Fill in missing properties and interface_refs on links when the template was a real manifest.
+   * Slightly prefer PG AMs as the template AM.
+   * Ensure we have all component_managers, interfaces, and comments on links.
+   * Skip adding a comment for an AM with no information to add.
+   * Support starting with an EG AM and adding in missing hops in the stitching extension, albeit
+     out of order and without the proper nextHop values.
+   * Bug fix for merging comments when template has a comment child and other does not. (#815)
+  * Quiet down errors deleting a failed reservation from EG AMs (harmless). (#811)
+  * Remove reference to ION as a real aggregate in the README. ION has been decommissioned. (#797)
+  * Gracefully handle error when 2 stitcher instances are running in the same directory
+    at once on Windows. (#824)
+  * Define default initial sliver expirations for other Utah/PG AMs (Apt, Cloudlab, stitch). (#826)
+    * Allow defining new such AMs in the omni config `omni_defaults` -> `utah_am_urns` (CSV).
+  * When calculating `expires` time to request, don't exceed the slice expiration,
+    and don't request less than some # of hours - 6 for APIv2, 3 for v3+. (#827)
+
+ * Scripts
+  * Initial commit of `examples/renewSliceAndSlivers.py`. (#798)
+  * `readyToLogin --ansible-inventory` will now specify the ansible
+    username in the inventory file if the GENI username and the
+    username on the local system are different.  Alternatively, you
+    can use `--ansible-username` to specify the username or you can use
+    `--no-ansible-username` to ensure no username is specified in the
+    inventory file. (#794)
+  * Changed usage message for `readyToLogin` to encourage use of `--useSliceAggregates`. (#816)
+  * Fix error message on `readyToLogin` when no aggregates specified. (#821)
+
+ * gcf
+  * Make the user credential optional to `ListResources`. (#792)
+   * Implement AM API Draft proposal "AD".
+   * `CredentialVerify` now requires a valid credential over the given `target_urn`
+     if supplied, but returns `True` if no credentials are supplied AND no `target_urn`.
+  * Print AM version when logging that GENI AM is listening. (#804)
+   * Thanks to David Margery
+
 gcf 2.8.1:
  * Give `omni-configure` the ability to find PKCS#8 private keys,
    not just PKCS#1. With openssl v1.0.0 PKCS#8 is the default, so new

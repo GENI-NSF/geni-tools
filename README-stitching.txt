@@ -16,8 +16,9 @@ network topology, and this client expands that request using the
 "Stitching Computation Service", and then attempts to reserve the
 necessary resources at each aggregate involved in the topology.
 
-'''Note''': This is new functionality, relying on several prototype services;
-expect problems. If issues arise, email [mailto:omni-help@geni.net omni-help@geni.net]. 
+'''Note''': This is complex functionality, relying on multiple services;
+expect problems. If issues arise, report them on the
+[https://groups.google.com/forum/#!forum/geni-users GENI Users mailing list].
 See below for known limitations.
 
 Currently, GENI stitching creates point to point (not multipoint or
@@ -115,9 +116,17 @@ are trying to reserve in the RSpec that are not linked with
 a stitching link may not be reserved, because stitcher may not know
 the URL to contact that aggregate. 
 
-All calls use AM APIv2 (hard-coded) currently, due to aggregate
-limitations. If an aggregate does not speak AM API v2, `stitcher`
+All calls use AM APIv2 by default currently, due to aggregate
+limitations. If an aggregate does not speak at least AM API v2, `stitcher`
 exits.
+
+AM API v3 is supported where possible. If you invoke stitcher
+with `-V3`, the stitcher uses APIv3 at aggregates that support
+APIv3. Stitcher will in this case only `allocate` the resources at
+those aggregates. Therefore, you will need to use omni later to call
+`omni -a <AM> -V3 provision <slice>` and `omni -a <AM> -V3 poa <slice> geni_start`
+to complete your reservation. You will then also want to
+use stitcher to renew your resources, as in `stitcher renewsliver <slice> <new time>`
 
 Your input request RSpec does ''not'' need a stitching extension, but
 should be a single RSpec for all resources that you want in your slice.
@@ -162,11 +171,8 @@ you may be asked to submit the debug logs found in
 backup files. Control the number of backups using the `--logFileCount`
 option.)
 
-`./stitcherTestFiles` contains a selection of sample request RSpecs
-for use with stitching. Note this is not exhaustive; multiple links
-between the same aggregate pairs are possible for example.
-
-When complete, `stitcher` writes a file to `~/.gcf`, listing the
+When complete, `stitcher` writes a file to `~/.gcf` (or the directory
+specified by `--fileDir`), listing the
 aggregates at which it made reservations. This file is used by
 `stitcher` later to drive calls, e.g. to `sliverstatus` or 
 `renewsliver` or `deletesliver`. This file is named something like
@@ -270,10 +276,10 @@ Other options you should not need to use:
  - `--logFileCount` to change the number of backup stitcher log files
  to keep (default is 5).
  - `--ionRetryIntervalSecs <# seconds>`: # of seconds to sleep between
- reservation attempts at ION or another DCN based aggregate. Default
+ reservation attempts at a DCN based aggregate (e.g. MAX). Default
  is 600 (10 minutes), to allow routers to reset.
  - `--ionStatusIntervalSecs <# seconds>`: # of seconds to sleep between
- sliverstatus calls at ION or another DCN based aggregate. Default
+ sliverstatus calls at a DCN based aggregate (e.g. MAX). Default
  is 30 (seconds).
  - `--scsURL <url>`: URL at which the Stitching Computation Service
  runs. Use the default.
@@ -301,7 +307,17 @@ Other options you should not need to use:
  - `--useSCSugg`: Always use the VLAN tag suggested by the
  SCS. Usually stitcher asks the aggregate to pick, despite what the
  SCS suggested.
-
+ - `--noDeleteAtEnd`: When specified, do not delete any successful reservations when the overall
+   request has failed, or when the user has interrupted stitcher with Ctrl-C.
+ - `--noTransitAMs`: When specified, stop when the only aggregates ready to reserve are those
+   added by the SCS (which we assume are transit or intermediate aggregates).
+  - In both these cases, finish by printing out how many reservations you have, and saving a
+    combined manifest RSpec for your reservations, and a combined request RSpec for the reservations
+    that you still need to make. The experimenter must manually edit this request to fill in the proper
+    `suggestedVLANRange` and `vlanRangeAvailability` in the proper hops in the request's stitching extension.
+    See the comments at the top of the RSpec: `get_vlantag_from` indicates what other `hop` the given `hop`
+    should take its VLAN tag from. `Have Reservation?` indicates if you have a reservation here. And
+    `AM Depends on` indicates which other AMs must be reserved first before you make a reservation here.
 
 == Tips and Details ==
 
@@ -325,7 +341,7 @@ In running stitcher, follow these various tips:
  stitcher will delete any existing reservations and exit.
  - When the script completes, you will have reservations at each of the
  aggregates where you requested nodes in your request RSpec, plus any
- intermediate aggregates required to complete your circuit (e.g. ION)
+ intermediate aggregates required to complete your circuit (e.g. AL2S)
   - or none, if your request failed.
  - Stitcher makes reservations at ''all'' aggregates involved in your
  stitching circuits. Note however that stitcher only knows how to
@@ -357,6 +373,11 @@ python src/gcf/omnilib/stitch/scs.py --listaggregates --key <path-to-key> --cert
   - A fixed endpoint is any switch/port that happens to connect to
   other things but not an explicit node. Use the `--fixedEndpoint`
   option to be sure aggregates can handle this.
+  - Typically when using this option, you supply a partial stitching
+    extension in your request RSpec, indicating as hop1 a GENI
+    aggregate with compute resources, and the other end your switch or
+    other fixed endpoint. This should correspond to a main body link
+    which has an interface at the GENI aggregate but no 2nd interface.
  - Stitching to ExoGENI aggregates
   - ExoGENI reservations can come from the specific rack, or from the
   ExoSM's allocation of resources at that rack. You can control in
@@ -376,7 +397,7 @@ ports to use to connect each aggregate, specifying a full path between
 the aggregates. However, experimenters do not
 need to do this themselves. Instead, there is a Stitching Computation
 Service (SCS) which will fill in these details, including any transit
-networks at which you need a reservation (like ION). For details on
+networks at which you need a reservation (like AL2S). For details on
 this service, see the
 [https://wiki.maxgigapop.net/twiki/bin/view/GENI/NetworkStitchingAPI MAX SCS wiki page].
 
@@ -397,27 +418,9 @@ instance is operated by Internet2.
 Known issues with this service can be found on the
 [http://groups.geni.net/geni/query?status=new&status=assigned&status=reopened&component=MAXSCS GENI Trac]
 
-=== ION Aggregate ===
-
-Many connections will cross Internet2's ION network. To support this,
-Internet2 currently operates a ''prototype'' GENI aggregate over
-ION. This aggregate accepts calls using the GENI Aggregate Manager
-API, and translates those into calls to OSCARS (ION).
-
-This aggregate has no compute resources - it exists only to provision
-circuits between other aggregates. When you request a stitched link
-between 2 aggregates, often stitcher and the SCS will automatically
-add ION to your request to provide connectivity.
-
-This same software runs other aggregates for OSCARS networks,
-specifically the MAX aggregate.
-
-Known issues with this aggregate can be found on the
-[http://groups.geni.net/geni/query?status=new&status=assigned&status=reopened&component=I2AM GENI Trac]
-
 === AL2S Aggregate ===
 
-Increasingly, connections will cross Internet2's AL2S network. To
+Many connections will cross Internet2's AL2S network. To
 support this, Internet2 has developed an AL2S / OESS aggregate. This
 aggregate accepts calls using the GENI Aggregate Manager API, and
 translates those into calls to the Internet2 OESS system.
@@ -430,13 +433,22 @@ add AL2S to your request to provide connectivity.
 Known issues with this aggregate can be found on the
 [http://groups.geni.net/geni/query?status=new&status=assigned&status=reopened&component=STITCHING GENI Trac]
 
+=== ION Aggregate ===
+
+Previously Internet2 ran an aggregate for their ION network. This
+aggregate, as with the ION service, has been decommissioned. The ION AM
+translated GENI calls into OSCARS calls, and allocated dynamic
+circuits to complete stitched links. This service and aggregate have
+been replaced by AL2S.
+
 == Troubleshooting ==
 
-Stitching is relatively new to GENI, and uses several prototype services (this
-client, the Stitching Computation Service, the ION and AL2S aggregates, as well
+Stitching uses several complex services (this
+client, the Stitching Computation Service, the AL2S aggregate, as well
 as stitching implementations at aggregates). Therefore, bugs and rough
 edges are expected. Please note failure conditions, expect occasional
-failures, and report any apparent bugs to [mailto:omni-help@geni.net omni-help@geni.net].
+failures, and report any apparent bugs on the
+[https://groups.google.com/forum/#!forum/geni-users GENI Users mailing list].
 
 As with Omni errors, when reporting problems please include as much
 detail as possible:
@@ -641,9 +653,6 @@ Cannot find the set of paths for the RequestTopology. '.
   with only ExoGENI resources, works fine.
   - Stitching between ExoGENI and non ExoGENI resources only works at
   a very few ExoGENI sites currently.
-  - You can have only 1 stitched link per ExoGENI node (though you can
-  have multiple nodes).
-   - See http://groups.geni.net/exogeni/ticket/193
   - Due to limitations in the `stitcher` tool, you cannot reserve some
   ExoGENI resources from the ExoSM, and some from an individual
   ExoGENI rack. You must either use all ExoSM resources, or all
@@ -653,14 +662,15 @@ Cannot find the set of paths for the RequestTopology. '.
    an explicit capacity (whose value defaults to the `--defaultCapacity` option).
   - Works around issues http://groups.geni.net/geni/ticket/1039 and 
     http://groups.geni.net/geni/ticket/1101
- - AM API v3 is not supported - VLAN tag selection is not optimal
+ - AM API v3 support is limited. Users must manually provision, and
+   VLAN tag negotiation is not supported.
  - AM API v1 only aggregates are not supported
  - Aggregates do not support `Update`, so you cannot add a link to
  an existing reservation.
  - Some fatal errors at aggregates are not recognized, so the script keeps trying longer
  than it should.
- - [http://trac.gpolab.bbn.com/gcf/query?status=accepted&status=assigned&status=new&status=reopened&component=stitcher&order=priority&col=id&col=summary&col=status&col=type&col=priority&col=milestone&col=component Known stitcher defects] 
- are listed on the gcf trac.
+ - [https://github.com/GENI-NSF/geni-tools/issues?q=is%3Aopen+is%3Aissue+label%3Astitcher Known stitcher defects]
+   are listed on the project Github repository.
  - Python2.6 has a 60 second delay talking to the SSL protected SCS
    run by Internet2. If you are running python2.6, use `--scsURL http://geni-scs.net.internet2.edu:8081/geni/xmlrpc`
 
@@ -671,8 +681,7 @@ Cannot find the set of paths for the RequestTopology. '.
  - Summarize errors at the end of the run.
  - Support stitch-to-aggregate at ProtoGENI based aggregates if supported
  - Clean up hard-coded aggregate-specific sliver expiration policy handling
- - Support AM API v3; specifically, use `allocate` where supported to
- more rapidly negotiate VLAN tags.
+ - Fully support AM API v3; specifically, `provision` reservations on success
  - Consolidate constants
  - Fully handle negotiating among AMs for a VLAN tag to use
   - As in when the returned `suggestedVLANRange` is not what was requested

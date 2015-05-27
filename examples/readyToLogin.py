@@ -30,6 +30,7 @@ import os.path
 from optparse import OptionParser
 import xml.etree.ElementTree as etree
 import re
+import getpass
 
 import gcf.oscript as omni
 import gcf.omnilib.util.omnierror as oe
@@ -49,6 +50,7 @@ from gcf.omnilib.util.handler_utils import _lookupAggNickURLFromURNInNicknames a
 options = None
 slicename = None
 config = None
+geni_username = None
 NSPrefix = None
 VALID_NS = ['{http://www.geni.net/resources/rspec/3}',
             '{http://www.protogeni.net/resources/rspec/2}'
@@ -322,7 +324,7 @@ def getAMTypeFromGetVersionOut(amUrl, amOutput) :
 def getParser() : 
   parser = omni.getParser()
 
-  usage = "\n\tTypically: \t%s slicename" % os.path.basename(sys.argv[0])
+  usage = "\n\tTypically: \t%s slicename --useSliceAggregates" % os.path.basename(sys.argv[0]).split(".")[0]
   usage += "\n\nReports the status of nodes and the ssh command to login to them."
   usage += "\nTry the --no-keys and -o options."
   usage += "\nIn addition, takes the same options as omni (-c, -a, -V, etc)."
@@ -355,6 +357,14 @@ def getParser() :
   parser.add_option("--ansible-inventory",
                     dest="ansible_inventory",
                     help="Create an ansible inventory containing a single line for each host in your slice.",
+                    action="store_true", default=False)
+  parser.add_option("--ansible-username",
+                    dest="ansible_username",
+                    action="store", type="string", 
+                    help="Specify the username to use in ansible.")
+  parser.add_option("--no-ansible-username",
+                    dest="no_ansible_username",
+                    help="Never include the username to use in the ansible inventory file.",
                     action="store_true", default=False)
   return parser
 
@@ -721,9 +731,18 @@ Host %(client_id)s
       f.write(c)
       f.write("\n")
 
+def get_geni_username( handler, framework):
+    from gcf.omnilib.util.handler_utils import _get_user_urn
+    from gcf.sfa.util.xrn import get_leaf
+    username = get_leaf(_get_user_urn(handler.logger, framework.config))
+    if not username:
+        print "readyToLogin failed to find your GENI username.  Please supply it with the --ansible-username option."
+        sys.exit(-1)
+    return username
+
 
 def main_no_print(argv=None, opts=None, slicen=None):
-  global slicename, options, config
+  global slicename, options, config, geni_username
 
   slicename = slicen
   parseArguments(argv=argv, opts=opts)
@@ -734,10 +753,12 @@ def main_no_print(argv=None, opts=None, slicen=None):
   # Set loglevel to WARN to supress any normal printout
   options.warn = True
   framework, config, args, opts = omni.initialize( [], options )
-
+  handler = CallHandler(framework,config,options)
+  
   # If creating an ansible inventory don't check the keys
   if options.ansible_inventory:
       options.include_keys = False
+      geni_username = get_geni_username( handler, framework )
 
   keyList = findUsersAndKeys( )
   if options.include_keys and sum(len(val) for val in keyList.itervalues())== 0:
@@ -757,11 +778,13 @@ def main_no_print(argv=None, opts=None, slicen=None):
 
       aggregateURNs = slivers.keys()
   if len(aggregateURNs) == 0 and (not options.aggregate or (len(options.aggregate) == 0)):
-    print "ERROR: There are no known resources at any aggregates. Try using '-a' to specify an aggregate."
-    sys.exit(-1)      
+      if not options.useSliceAggregates:
+          print "ERROR: You must specify which aggregates to check. Try using '--useSliceAggregates' to check all aggregates known to have resources for this slice, or '-a' to specify one or more specific aggregates."
+      else:
+          print "ERROR: There are no known resources at any aggregates. Try using '-a' to specify an aggregate."
+      sys.exit(-1)
 
   # construct a list of aggregates to 
-  handler = CallHandler(framework,config,options)
   newAggURLs = [ lookupURL( handler.logger, config, urn )[1] for urn in aggregateURNs ] 
   if options.aggregate:
       options.aggregate = options.aggregate + newAggURLs
@@ -815,10 +838,11 @@ def main_no_print(argv=None, opts=None, slicen=None):
                                }
       #else:
       #    print "Not getting node status for %s" % amUrl
+        
   return loginInfoDict, keyList
 
 def createAnsibleInventory(loginInfoDict, keyList):
-  global options
+  global options, geni_username
   '''List the Login Information from all AMs and all hosts '''
 
   # Check if the output option is set
@@ -835,6 +859,19 @@ def createAnsibleInventory(loginInfoDict, keyList):
 
   firstTime = {}
 
+  try:
+      local_username = getpass.getuser()
+  except:
+      local_username = None
+
+  include_username = None
+  if options.ansible_username:
+      include_username = options.ansible_username
+  elif options.no_ansible_username:
+      pass
+  elif (geni_username is not None) and (local_username != geni_username):
+      include_username = geni_username
+  
   for amUrl, amInfo in loginInfoDict.items() :
     sortedAMInfo = {}
     for item in amInfo['info']:
@@ -849,15 +886,16 @@ def createAnsibleInventory(loginInfoDict, keyList):
               firstTime[amUrl] = {}
           if not firstTime[amUrl].has_key( item['client_id'] ):
               firstTime[amUrl][item['client_id'] ] = {}
-              output += inventoryInfoForOneUser( item )
+              output += inventoryInfoForOneUser( item, username=include_username )
           f.write(output)
 
-def inventoryInfoForOneUser( item, key=None ):
+def inventoryInfoForOneUser( item, key=None, username=None ):
     output = "%s " % item['client_id']
     output += " ansible_ssh_host=%s " % item['hostname']
     if str(item['port']) != '22' :
         output += " ansible_ssh_port=%s " % item['port']
-    # output += " ansible_ssh_user=%s " % item['username']
+    if username:
+        output += " ansible_ssh_user=%s " % username
     output += "\n"
     return output
 
@@ -865,6 +903,7 @@ def main(argv=None):
     if not argv:
         argv = sys.argv[1:]
     loginInfoDict, keyList = main_no_print(argv=argv)
+
     if not options.ansible_inventory:
         printSSHConfigInfo(loginInfoDict, keyList)
         #    for am, amInfo in loginInfoDict.items():

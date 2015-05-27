@@ -124,10 +124,10 @@ def call(argv, options=None):
     parser.add_option("--logFileCount", default=5, type="int",
                       help="Number of backup log files to keep, Default %default")
     parser.add_option("--ionRetryIntervalSecs", type="int", 
-                      help="Seconds to sleep before retrying at ION (default: %default)",
+                      help="Seconds to sleep before retrying at DCN aggregates (default: %default)",
                       default=gcf.omnilib.stitch.objects.DCN_AM_RETRY_INTERVAL_SECS)
     parser.add_option("--ionStatusIntervalSecs", type="int", 
-                      help="Seconds to sleep between sliverstatus calls at ION (default %default)",
+                      help="Seconds to sleep between sliverstatus calls at DCN aggregates (default %default)",
                       default=30)
     parser.add_option("--noReservation", default=False, action="store_true",
                       help="Do no reservations: just generate the expanded request RSpec (default %default)")
@@ -140,6 +140,10 @@ def call(argv, options=None):
                       help="Disable checking current VLAN availability where possible.")
     parser.add_option("--genRequest", default=False, action="store_true",
                       help="Generate and save an expanded request RSpec, but do no reservation.")
+    parser.add_option("--noDeleteAtEnd", default=False, action="store_true",
+                      help="On failure or Ctrl-C do not delete any reservations completed at some aggregates (default %default).")
+    parser.add_option("--noTransitAMs", default=False, action="store_true",
+                      help="Do not reserve resources at intermediate / transit aggregates; allow experimenter to manually complete the circuit (default %default).")
     parser.add_option("--fakeModeDir",
                       help="Developers only: If supplied, use canned server responses from this directory",
                       default=None)
@@ -300,7 +304,16 @@ def call(argv, options=None):
         if os.path.exists(dfn):
             os.remove(dfn)
         if os.path.exists(bfn):
-            os.rename(bfn, dfn)
+            try:
+                os.rename(bfn, dfn)
+            except OSError, e:
+                # Issue #824 partial solution
+                if "being used by another process" in str(e):
+                    # On Windows, when another stitcher instance running in same directory, so has stitcher.log open
+                    # WindowsError: [Error 32] The process cannot access the file because it is being used by another process
+                    sys.exit("Error: Is another stitcher process running in this directory? Run stitcher from a different directory, or re-run with the option `--fileDir <separate directory for this run's output files>`")
+                else:
+                    raise
 
     # Then have Omni configure the logger
     try:
@@ -425,6 +438,11 @@ def call(argv, options=None):
             # Note that the converse is not true: You can require noEGStitching and still use
             # the ExoSM, assuming we edit the request to the ExoSM carefully.
 
+    if options.noTransitAMs:
+        logger.info("Per options not completing reservations at transit / SCS added aggregates")
+        if not options.noDeleteAtEnd:
+            logger.debug(" ... therefore setting noDeleteAtEnd")
+            options.noDeleteAtEnd = True
     handler = StitchingHandler(options, config, logger)
     return handler.doStitching(args)
 

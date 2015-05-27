@@ -28,7 +28,7 @@ import datetime
 import logging
 import time
 
-from .utils import StitchingRetryAggregateNewVlanError, StitchingRetryAggregateNewVlanImmediatelyError, StitchingError
+from .utils import StitchingRetryAggregateNewVlanError, StitchingRetryAggregateNewVlanImmediatelyError, StitchingError, StitchingStoppedError
 from .objects import Aggregate
 
 class Launcher(object):
@@ -56,6 +56,22 @@ class Launcher(object):
                         self.logger.debug("%s is not complete but also not ready. inProcess=%s, depsComplete=%s", agg, agg.inProcess, agg.dependencies_complete)
                 raise StitchingError("Internal stitcher error: No aggregates are ready to allocate but not all are complete?")
 
+            if self.opts.noTransitAMs:
+                allTransit = True
+                for agg in ready_aggs:
+                    if agg.userRequested:
+                        allTransit = False
+                        break
+                if allTransit:
+                    self.logger.debug("Only transit AMs are now ready to allocate - will stop")
+                    incompleteAMs = 0
+                    for agg in self.aggs:
+                        if not agg.completed:
+                            incompleteAMs += 1
+                        if agg.userRequested and agg.manifestDom is None:
+                            self.logger.debug("WARN: Some non transit AMs not done, like %s", agg)
+                    raise StitchingStoppedError("Per commandline option, stopping reservation before doing transit AMs. %d AM(s) not reserved." % incompleteAMs)
+
             self.logger.debug("\nThere are %d ready aggregates: %s",
                               len(ready_aggs), ready_aggs)
             for agg in ready_aggs:
@@ -72,7 +88,12 @@ class Launcher(object):
 
                     # Aggregate.BUSY_POLL_INTERVAL_SEC = 10 # dossl does 10
                     # Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS = 30
-                    secs = Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS
+                    # Use the v3 AM sleep by default.
+                    # But if any v2 AMs have (or have had) reservations, then use that sleep
+                    secs = Aggregate.PAUSE_FOR_V3_AM_TO_FREE_RESOURCES_SECS
+                    for agg2 in self.aggs:
+                        if agg2.api_version == 2 and secs < Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS and agg2.triedRes:
+                            secs = Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS
                     if not isinstance(se, StitchingRetryAggregateNewVlanImmediatelyError):
                         if agg.dcn:
                             secs = Aggregate.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS

@@ -1,7 +1,7 @@
 # Script to build the .dmg file on a Mac. 
 SRCDIR=~/gcf
 COVERDIR=~/omniTools
-DESTDIR=${COVERDIR}/omniTools-2.8.1
+DESTDIR=${COVERDIR}/omniTools-2.9
 
 # Clear out any previous build
 rm -rf $DESTDIR/*
@@ -58,4 +58,6 @@ cp ${SRCDIR}/README-clearpassphrases.txt $DESTDIR
 cp ${SRCDIR}/README-omni.txt $DESTDIR
 cp ${SRCDIR}/README-omniconfigure.txt $DESTDIR
 cp ${SRCDIR}/README-stitching.txt $DESTDIR
+cp ${SRCDIR}/CONTRIBUTING.md $DESTDIR
+cp ${SRCDIR}/CONTRIBUTORS.md $DESTDIR
 

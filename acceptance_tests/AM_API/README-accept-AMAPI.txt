@@ -478,8 +478,8 @@ Options:
                         Requested end time for any newly allocated or
                         provisioned slivers - may be ignored by the AM
     --start-time=GENI_START_TIME
-                        Requested start time for any allocated slivers
-                        - NOW if not provided, could be for future reservations
+                        Requested start time for any allocated slivers - NOW
+                        if not provided, could be for future reservations
     --optionsfile=JSON_OPTIONS_FILENAME
                         Send all options defined in named JSON format file to
                         methods that take options
@@ -525,6 +525,9 @@ Options:
                         logging config file]. Default: 'acceptance.log'
     --tostdout          Print results like rspecs to STDOUT instead of to log
                         stream
+    --noLoggingConfiguration
+                        Do not configure python logging; for use by other
+                        tools.
 
   File Output:
     Control name of output file and whether to output to a file
@@ -569,6 +572,9 @@ Options:
     --GetVersionCacheName=GETVERSIONCACHENAME
                         File where GetVersion info will be cached, default is
                         ~/.gcf/get_version_cache.json
+    --noCacheFiles      Disable both GetVersion and Aggregate Nickname cache
+                        functionality completely; no files are downloaded,
+                        saved, or loaded.
 
   Aggregate Nickname Cache:
     Control Aggregate Nickname Cache

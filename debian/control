@@ -1,0 +1,18 @@
+Source: geni-tools
+Section: contrib/misc
+Priority: optional
+Maintainer: Tom Mitchell <tmitchell@bbn.com>
+Build-Depends: debhelper (>= 8.0.0), autotools-dev, dh-python, python
+Standards-Version: 3.9.4
+Homepage: https://www.geni.net
+Vcs-Git: https://github.com/GENI-NSF/geni-tools.git
+Vcs-Browser: https://github.com/GENI-NSF/geni-tools
+
+Package: geni-tools
+Architecture: all
+Depends: ${misc:Depends}, ${python:Depends}, python-m2crypto,
+         python-dateutil, python-openssl, libxmlsec1, xmlsec1,
+         libxmlsec1-openssl, libxmlsec1-dev
+Description: Command lines tools for using GENI
+ omni, stitcher, sample aggregate manager, and other GENI
+ tools. Formerly "gcf".

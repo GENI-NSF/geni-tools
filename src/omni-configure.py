@@ -925,7 +925,7 @@ class PGFramework( ConfigFramework_Base ):
         elif user_urn.find('wall2.ilabt.iminds.be') != -1 :
             sa = 'https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/sa'
         else:
-            raise Exception("Creation of omni_config for users at %s is not supported. Please contact omni-users@geni.net" % user_urn.split('+')[-3])
+            raise Exception("Creation of omni_config for users at %s is not supported. Please report this on the GENI Users mailing list: https://groups.google.com/forum/#!forum/geni-users" % user_urn.split('+')[-3])
 
         logger.debug("Framework is ProtoGENI, use as SA: %s", sa)
 
