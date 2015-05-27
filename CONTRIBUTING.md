@@ -3,16 +3,10 @@
 The GENI-NSF repositories are very much a community driven effort, and
 your contributions are critical. A big thank you to all our [contributors](CONTRIBUTORS.md)!
 
-## Getting the Source
-GCF / geni-tools source code is available on [GitHub](https://github.com/GENI-NSF/geni-tools).
-
 ## Mailing Lists
  * GENI developers discuss general GENI development on dev@geni.net. Subscribe here: http://lists.geni.net/mailman/listinfo/dev.
  * GCF / geni-tools developers can subscribe to gcf-dev@geni.net here: http://lists.geni.net/mailman/listinfo/gcf-dev.
  * Omni users may raise issues or get announcements on the general [GENI Users mailing list](https://groups.google.com/forum/#!forum/geni-users).
-
-## Tracking Issues
-GCF / geni-tools has numerous existing tickets on [GitHub](https://github.com/GENI-NSF/geni-tools/issues). Look there first to see if the issue is known, or if there are comments on a suggested solution. See [below for tips on reporting new issues](#reporting-issues).
 
 ## General Guidelines
  - GENI-NSF projects are open source GitHub repositories, and as such follow the general [GitHub open source project guidelines](https://guides.github.com/activities/contributing-to-open-source/#contributing).
@@ -26,6 +20,21 @@ GCF / geni-tools has numerous existing tickets on [GitHub](https://github.com/GE
    - For example, a branch for Issue 123 might be named `tkt123-handlectrlc`.
   - Even on your fork, plsase create a separate feature specific branch off of `develop` for your work on a specific issue.
  - Note that all `GENI-NSF` code is released under the [GENI Public License](LICENSE.txt) and should include that license.
+
+## Tracking Issues
+GCF / geni-tools has numerous existing tickets on [GitHub](https://github.com/GENI-NSF/geni-tools/issues). Look there first to see if the issue is known, or if there are comments on a suggested solution. See [below for tips on reporting new issues](#reporting-issues).
+
+## Reporting Issues ##
+ - Review the general [GitHub guidlines on isssues](https://guides.github.com/features/issues/).
+ - Please check [existing issues](https://github.com/GENI-NSF/geni-tools/issues) to see if the issue has already been reported.
+ - Please give specific examples, sample outputs, etc
+ - Please do not include any passwords, private keys, your `omni.bundle`, or any information you don't want public.
+ - When reporting issues, please include the output of `omni --version` at least. Even better, include the complete `stitcher.log` or the output of running `omni --debug`.
+ - To attach your `stitcher.log` or test case RSpecs or other large output, upload the file to some web server and provide a pointer. For example, use Gist:
+  - Copy & paste your log/patch/file attachment to http://gist.github.com/, hit the `Create Public` button and link to it from your issue by copying & pasting its URL.
+
+## Getting the Source
+GCF / geni-tools source code is available on [GitHub](https://github.com/GENI-NSF/geni-tools).
 
 ## Sample Contribution Workflow ##
  1. [Report the issue](#reporting-issues)
@@ -47,15 +56,6 @@ GCF / geni-tools has numerous existing tickets on [GitHub](https://github.com/GE
  5. Pull in any new changes from the main repository ('upstream' repository) ([see instructions](https://help.github.com/articles/syncing-a-fork)).
  6. [Submit a pull request](https://help.github.com/articles/using-pull-requests/) against the `develop` branch of the project repository.
  - In your pull request description, note what issue(s) your pull request addresses.
-
-## Reporting Issues ##
- - Review the general [GitHub guidlines on isssues](https://guides.github.com/features/issues/).
- - Please check [existing issues](https://github.com/GENI-NSF/geni-tools/issues) to see if the issue has already been reported.
- - Please give specific examples, sample outputs, etc
- - Please do not include any passwords, private keys, your `omni.bundle`, or any information you don't want public.
- - When reporting issues, please include the output of `omni --version` at least. Even better, include the complete `stitcher.log` or the output of running `omni --debug`.
- - To attach your `stitcher.log` or test case RSpecs or other large output, upload the file to some web server and provide a pointer. For example, use Gist:
-  - Copy & paste your log/patch/file attachment to http://gist.github.com/, hit the `Create Public` button and link to it from your issue by copying & pasting its URL.
 
 ## Code Style ##
  - Include the [GENI Public License](LICENSE.txt) as a comment at the top of all source files.
