@@ -9,7 +9,7 @@ your contributions are critical. A big thank you to all our [contributors](CONTR
  * Omni users may raise issues or get announcements on the general [GENI Users mailing list](https://groups.google.com/forum/#!forum/geni-users).
 
 ## General Guidelines
- - GENI-NSF projects are open source GitHub repositories, and as such follow the general [GitHub open source project guidelines](https://guides.github.com/activities/contributing-to-open-source/#contributing).
+ - GENI-NSF projects follow the general [GitHub open source project guidelines](https://guides.github.com/activities/contributing-to-open-source/#contributing).
  - [Create a GitHub Issue](#reporting-issues) for any bug, feature, or enhancement you find or intend to address.
  - Submit enhancements or bug fixes using pull requests (see the [sample workflow below](#sample-contribution-workflow)).
  - GENI-NSF projects use the branching model found at
@@ -28,7 +28,7 @@ GCF / geni-tools has numerous existing tickets on [GitHub](https://github.com/GE
  - Give specific examples, sample outputs, etc
  - Do not include any passwords, private keys, your `omni.bundle`, or any information you don't want public.
  - When reporting issues, please include the output of `omni --version` at least. Even better, include the complete `stitcher.log` or the output of running `omni --debug`.
- - To attach your `stitcher.log` or test case RSpecs or other large output, upload the file to some web server and provide a pointer. For example, use Gist:
+ - To attach your `stitcher.log` or test case RSpecs or other large output, upload the file to some web server and provide a pointer. For example, to use Gist:
   - Copy & paste your log/patch/file attachment to http://gist.github.com/, hit the `Create Public` button and link to it from your issue by copying & pasting its URL.
 
 ## Getting the Source
@@ -38,15 +38,15 @@ GCF / geni-tools source code is available on [GitHub](https://github.com/GENI-NS
  1. [Report the issue](#reporting-issues)
  2. Create an issue-specific branch off of the `develop` branch in your [fork of the repository](http://guides.github.com/activities/forking/)
   - Per the [branching model](http://nvie.com/posts/a-successful-git-branching-model/)
-  - E.G. `git checkout develop` and then `git checkout -b tkt1234-addnewfeature`
+  - E.G. `git checkout develop`, `git pull origin develop`, and then `git checkout -b tkt1234-addnewfeature`
  3. Develop your fix
   - Follow the [code guidelines below](#code-style).
   - Reference the appropriate issue numbers in your commit messages.
   - Include the [GENI Public License](LICENSE.txt) and a copyright notice in any new source files.
   - All changes should be listed in the [CHANGES](CHANGES) file, with an issue number.
-   - Changes to Omni should additionally be listed in [README-omni.txt](README-omni.txt).
+   - Changes to Omni should also be listed in [README-omni.txt](README-omni.txt).
   - Where the options or command behavior has changed, document that in
- [README-omni.txt](README-omni.txt) or [README-stitching.txt](README-stitching.txt) as appropriate.
+ [README-omni.txt](README-omni.txt) or [README-stitching.txt](README-stitching.txt).
  4. Test your fix
   - Test your Omni/Stitcher fix against multiple aggregate types and varying situations.
   - Changes to gcf should be tested with [gcf-test.py](src/gcf-test.py) minimally, and
