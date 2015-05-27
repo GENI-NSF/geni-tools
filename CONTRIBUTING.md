@@ -4,9 +4,9 @@ The GENI-NSF repositories are very much a community driven effort, and
 your contributions are critical. A big thank you to all our [contributors](CONTRIBUTORS.md)!
 
 ## Mailing Lists
- * GENI developers discuss general GENI development on dev@geni.net. Subscribe here: http://lists.geni.net/mailman/listinfo/dev.
- * GCF / geni-tools developers can subscribe to gcf-dev@geni.net here: http://lists.geni.net/mailman/listinfo/gcf-dev.
  * Omni users may raise issues or get announcements on the general [GENI Users mailing list](https://groups.google.com/forum/#!forum/geni-users).
+ * GCF / geni-tools developers can subscribe to gcf-dev@geni.net here: http://lists.geni.net/mailman/listinfo/gcf-dev.
+ * GENI developers discuss general GENI development on dev@geni.net. Subscribe here: http://lists.geni.net/mailman/listinfo/dev.
 
 ## General Guidelines
  - GENI-NSF projects follow the general [GitHub open source project guidelines](https://guides.github.com/activities/contributing-to-open-source/#contributing).
@@ -16,8 +16,8 @@ your contributions are critical. A big thank you to all our [contributors](CONTR
  http://nvie.com/posts/a-successful-git-branching-model/
   - All work happens in issue-specific branches off of the `develop`
   branch.
-   - For example, a branch for Issue 123 might be named `tkt123-handlectrlc`.
- - Note that all `GENI-NSF` code is released under the [GENI Public License](LICENSE.txt) and should include that license.
+   - For example, a branch for Issue 1234 might be named `tkt1234-my-feature`.
+ - Note that all GENI-NSF code is released under the [GENI Public License](LICENSE.txt) and should include that license.
 
 ## Reporting Issues ##
  - Check [existing issues](https://github.com/GENI-NSF/geni-tools/issues) first to see if the issue has already been reported.
@@ -35,7 +35,7 @@ GCF / geni-tools source code is available on [GitHub](https://github.com/GENI-NS
  1. [Report the issue](#reporting-issues) or check issue comments for a suggested solution.
  2. Create an issue-specific branch off of the `develop` branch in your [fork of the repository](http://guides.github.com/activities/forking/).
   - Per the [branching model](http://nvie.com/posts/a-successful-git-branching-model/)
-  - E.G. `git checkout develop`, `git pull origin develop`, and then `git checkout -b tkt1234-addnewfeature`
+  - E.G. `git checkout develop`, `git pull origin develop`, and then `git checkout -b tkt1234-my-feature`
  3. Develop your fix.
   - Follow the [code guidelines below](#code-style).
   - Reference the appropriate issue numbers in your commit messages.
