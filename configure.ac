@@ -1,4 +1,4 @@
-AC_INIT([geni-tools], [2.9], [help@geni.net])
+AC_INIT([geni-tools], [2.10], [help@geni.net])
 AM_INIT_AUTOMAKE([foreign -Wall])
 AC_PROG_MKDIR_P
 AC_PROG_INSTALL
