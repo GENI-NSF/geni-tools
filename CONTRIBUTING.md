@@ -19,9 +19,6 @@ your contributions are critical. A big thank you to all our [contributors](CONTR
    - For example, a branch for Issue 123 might be named `tkt123-handlectrlc`.
  - Note that all `GENI-NSF` code is released under the [GENI Public License](LICENSE.txt) and should include that license.
 
-## Tracking Issues
-GCF / geni-tools has numerous existing tickets on [GitHub](https://github.com/GENI-NSF/geni-tools/issues). Look there first to see if the issue is known, or if there are comments on a suggested solution.
-
 ## Reporting Issues ##
  - Check [existing issues](https://github.com/GENI-NSF/geni-tools/issues) first to see if the issue has already been reported.
  - Review the general [GitHub guidlines on isssues](https://guides.github.com/features/issues/).
@@ -35,11 +32,11 @@ GCF / geni-tools has numerous existing tickets on [GitHub](https://github.com/GE
 GCF / geni-tools source code is available on [GitHub](https://github.com/GENI-NSF/geni-tools).
 
 ## Sample Contribution Workflow ##
- 1. [Report the issue](#reporting-issues)
- 2. Create an issue-specific branch off of the `develop` branch in your [fork of the repository](http://guides.github.com/activities/forking/)
+ 1. [Report the issue](#reporting-issues) or check issue comments for a suggested solution.
+ 2. Create an issue-specific branch off of the `develop` branch in your [fork of the repository](http://guides.github.com/activities/forking/).
   - Per the [branching model](http://nvie.com/posts/a-successful-git-branching-model/)
   - E.G. `git checkout develop`, `git pull origin develop`, and then `git checkout -b tkt1234-addnewfeature`
- 3. Develop your fix
+ 3. Develop your fix.
   - Follow the [code guidelines below](#code-style).
   - Reference the appropriate issue numbers in your commit messages.
   - Include the [GENI Public License](LICENSE.txt) and a copyright notice in any new source files.
