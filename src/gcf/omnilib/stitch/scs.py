@@ -97,11 +97,13 @@ class Service(object):
 
     def GetVersion(self, printResult=True):
         server = make_client(self.url, keyfile=self.key, certfile=self.cert, verbose=self.verbose, timeout=self.timeout)
-        #import ssl
+#        import ssl
+        # "HIGH:MEDIUM:!RC4"
+        # "HIGH:MEDIUM:!ADH:!SSLv2:!MD5:!RC4:@STRENGTH"
         #server = make_client(self.url, keyfile=self.key, certfile=self.cert, verbose=self.verbose, timeout=self.timeout, ssl_version=ssl._SSLv2_IF_EXISTS)
-        #server = make_client(self.url, keyfile=self.key, certfile=self.cert, verbose=self.verbose, timeout=self.timeout, ssl_version=ssl.PROTOCOL_SSLv23)
-        #server = make_client(self.url, keyfile=self.key, certfile=self.cert, verbose=self.verbose, timeout=self.timeout, ssl_version=ssl.PROTOCOL_SSLv3)
-        #server = make_client(self.url, keyfile=self.key, certfile=self.cert, verbose=self.verbose, timeout=self.timeout, ssl_version=ssl.PROTOCOL_TLSv1)
+#        server = make_client(self.url, keyfile=self.key, certfile=self.cert, verbose=self.verbose, timeout=self.timeout, ssl_version=ssl.PROTOCOL_SSLv23, ciphers="HIGH:MEDIUM:!ADH:!SSLv2:!MD5:!RC4:@STRENGTH")
+#        server = make_client(self.url, keyfile=self.key, certfile=self.cert, verbose=self.verbose, timeout=self.timeout, ssl_version=ssl.PROTOCOL_SSLv3)
+#        server = make_client(self.url, keyfile=self.key, certfile=self.cert, verbose=self.verbose, timeout=self.timeout, ssl_version=ssl.PROTOCOL_TLSv1, ciphers="HIGH:MEDIUM:!ADH:!SSLv2:!MD5:!RC4:@STRENGTH")
         # SSLv3 causes a handshake error at the I2 SCS on my ubu14.04 openssl 1.0.1f. Same machine doesnt do v2 only
         # On that machine, tested a good selection of AMs. Maybe try locahost:4433 using openssl s_server?
         # - I cannot get the error on that machine. SSLv23 falls back on TLS1.
