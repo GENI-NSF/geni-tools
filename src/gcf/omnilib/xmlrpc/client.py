@@ -110,13 +110,13 @@ class TLS1HTTPSConnection(httplib.HTTPSConnection):
         # We want TLS1 to avoid POODLE vulnerability. In addition, some client/server combinations fail the handshake
         # if you start with SSL23 and the server wants TLS1. See issue #745
         if self.ssl_version is None:
-            print "Requested a None ssl version"
+            #print "Requested a None ssl version"
             self.ssl_version = ssl.PROTOCOL_TLSv1
-        print "Wrapping socket to use SSL version %s" % ssl._PROTOCOL_NAMES[self.ssl_version]
-        if self.ciphers is None:
-            print "Using cipherlist: 'DEFAULT:!aNULL:!eNULL:!LOW:!EXPORT:!SSLv2'"
-        else:
-            print "Using cipherlist: '%s'" % self.ciphers
+        #print "Wrapping socket to use SSL version %s" % ssl._PROTOCOL_NAMES[self.ssl_version]
+        #if self.ciphers is None:
+        #    print "Using cipherlist: 'DEFAULT:!aNULL:!eNULL:!LOW:!EXPORT:!SSLv2'"
+        #else:
+        #    print "Using cipherlist: '%s'" % self.ciphers
         self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file, ssl_version=self.ssl_version, ciphers=self.ciphers)
 
 # For Python2.6 safe transport, use our custom HTTPSConnection
@@ -170,13 +170,15 @@ class SafeTransportNoCert(xmlrpclib.SafeTransport):
             conn.ciphers = self.ciphers
         return conn
 
-# ssl_version would otherwise default to PROTOCOL_SSLv23, but here we insist on TLSv1
-# leave out ciphers to get the default of 'DEFAULT:!aNULL:!eNULL:!LOW:!EXPORT:!SSLv2',
+# ssl_version would otherwise default to PROTOCOL_SSLv23, but here we insist on TLSv1 (which secretly maybe also allows SSLv3?).
+# Leave out ciphers to get the default of 'DEFAULT:!aNULL:!eNULL:!LOW:!EXPORT:!SSLv2',
 # but we can probably do better. Consider
 # "HIGH:MEDIUM:!RC4" (assuming disabled SSLv2 and v3)
-# or else "HIGH:MEDIUM:!ADH:!SSLv2:!MD5:!RC4:@STRENGTH" perhaps
+# or else "HIGH:MEDIUM:!ADH:!SSLv2:!MD5:!RC4:@STRENGTH" perhaps.
+# By specifying TLSv1 this works at servers that have disabled SSLv2 and SSLv3.
 def make_client(url, keyfile, certfile, verbose=False, timeout=None,
-                allow_none=False, ssl_version=ssl.PROTOCOL_TLSv1, ciphers=None):
+                allow_none=False, ssl_version=ssl.PROTOCOL_TLSv1, ciphers="HIGH:MEDIUM:!ADH:!SSLv2:!MD5:!RC4:@STRENGTH"):
+#                allow_none=False, ssl_version=ssl.PROTOCOL_TLSv1, ciphers=None):
     """Create a connection to an XML RPC server, using SSL with client certificate
     authentication if requested.
     Returns the XML RPC server proxy.
