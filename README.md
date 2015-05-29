@@ -15,3 +15,5 @@ For further information on Omni, see the [Omni wiki](http://trac.gpolab.bbn.com/
 and [Omni README](README-omni.txt).
 
 For further information on the GCF aggregate, also see <http://trac.gpolab.bbn.com/gcf> and the [GCF README](README.txt).
+
+geni-tools is released under the terms of the [GENI Public License](LICENSE.txt).
