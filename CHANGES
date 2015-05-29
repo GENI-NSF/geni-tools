@@ -1,12 +1,16 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 2.10:
+
 gcf 2.9:
  * Add Markdown style README, CONTRIBUTING and CONTRIBUTORS files. (#551)
   * Source code is now available from Github: https://github.com/GENI-NSF/geni-tools.
-    In future, issues will be reported there as well.
+    All issues are now reported on geni-tools as well. (#814)
+    Issues after #820 are ''only'' on Github.
  * Remove references to the omni-users mailing list. (#813)
   * Use the [https://groups.google.com/forum/#!forum/geni-users GENI Users mailing list].
  * Add autoconf/automake support
+ * Add `utah-stitch` AM and `clemson-clab` and `wisconsin-clab` for new Cloudlab sites. (#817)
 
  * Omni
   * If `sliverstatus` fails in a way that indicates there are no local resources,
@@ -55,6 +59,7 @@ gcf 2.9:
    * Results from all calls are combined into a single return message and structure.
    * APIv2 results will be keyed by AM URL and have the value of True or False usually, but sometimes a struct.
    * This is useful when a circuit was reserved using `-V3` and some AMs spoke APIv2 only.
+   * Fix handling of return when tried to delete at an AM with no resources. (#823)
   * scs.py now honors `--timeout` to set the SSL connection timeout. (#785)
   * For `--fixedEndpoint` calls, avoid adding the fake interface to links
     with no stitching path, such as for a LAN within a single AM. (#790)
@@ -88,6 +93,12 @@ gcf 2.9:
    * Bug fix for merging comments when template has a comment child and other does not. (#815)
   * Quiet down errors deleting a failed reservation from EG AMs (harmless). (#811)
   * Remove reference to ION as a real aggregate in the README. ION has been decommissioned. (#797)
+  * Gracefully handle error when 2 stitcher instances are running in the same directory
+    at once on Windows. (#824)
+  * Define default initial sliver expirations for other Utah/PG AMs (Apt, Cloudlab, stitch). (#826)
+    * Allow defining new such AMs in the omni config `omni_defaults` -> `utah_am_urns` (CSV).
+  * When calculating `expires` time to request, don't exceed the slice expiration,
+    and don't request less than some # of hours - 6 for APIv2, 3 for v3+. (#827)
 
  * Scripts
   * Initial commit of `examples/renewSliceAndSlivers.py`. (#798)
@@ -98,6 +109,8 @@ gcf 2.9:
     `--no-ansible-username` to ensure no username is specified in the
     inventory file. (#794)
   * Changed usage message for `readyToLogin` to encourage use of `--useSliceAggregates`. (#816)
+  * Fix error message on `readyToLogin` when no aggregates specified. (#821)
+
  * gcf
   * Make the user credential optional to `ListResources`. (#792)
    * Implement AM API Draft proposal "AD".
