@@ -69,13 +69,12 @@ def parse_args(argv):
     parser.add_option("--ch_url", help="CH SA URL", default=None)
     parser.add_option("--cert", help="User SSL cert filename", default=None)
     parser.add_option("--key", help="User SSL key filename", default=None)
-    parser.add_option("--rspec", help="RSPEC file for allocation", default=None)
     parser.add_option("--slice_urn", help="URN of slice against which to allocate", default=None)
 
     [opts, args] = parser.parse_args(argv)
 
-    if opts.url == None or opts.ch_url == None or opts.cert == None or opts.key == None \
-            or opts.rspec == None or opts.slice_urn == None:
+    if opts.url == None or opts.ch_url == None or opts.cert == None \
+            or opts.key == None or opts.slice_urn == None:
             parser.print_help()
             sys.exit()
 
@@ -87,7 +86,6 @@ def main():
     opts = parse_args(sys.argv)
 
     cert = open(opts.cert, 'r').read()
-    rspec = open(opts.rspec, 'r').read()
 
     creds = get_credentials(opts)
 
@@ -95,9 +93,7 @@ def main():
     
     # I'm hard-coding a call for createsliver. There are also issues around renew to consider.
     method = "CreateSliver_V2"
-    args = {'slice_urn' : opts.slice_urn,
-            'rspec' : rspec
-            }
+    args = {'slice_urn' : opts.slice_urn }
     opts = {'geni_am_urn' : 'https://foo.example.com'}
 
     # This is the TOTAL (current + requested) allocation state per user/slice
