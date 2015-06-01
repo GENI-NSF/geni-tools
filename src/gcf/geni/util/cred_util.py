@@ -132,20 +132,8 @@ class CredentialVerifier(object):
             logger.info('Combined dir of %d trusted certs %s into file %s for Python SSL support', okFileCount, caCerts, comboFullPath)
         return comboFullPath
 
-    def verify_from_strings(self, gid_string, cred_strings, target_urn,
-                            privileges, options=None):
-
-        '''Create Credential and GID objects from the given strings,
-        and then verify the GID has the right privileges according 
-        to the given credentials on the given target.'''
-        def make_cred(cred_string):
-            credO = None
-            try:
-                credO = CredentialFactory.createCred(credString=cred_string)
-            except Exception, e:
-                self.logger.warn("Skipping unparsable credential. Error: %s. Credential begins: %s...", e, cred_string[:60])
-            return credO
-
+    # Get the GID of the caller, substituting the real user if this is a 'speaks-for' invocation
+    def get_caller_gid(self, gid_string, cred_strings, options=None):
         root_certs = \
             [Certificate(filename=root_cert_file) \
                  for root_cert_file in self.root_cert_files]
@@ -165,6 +153,25 @@ class CredentialVerifier(object):
             speaksfor_urn = speaksfor_gid.get_urn()
             self.logger.info("Speaks-for Invocation: %s speaking for %s" % (caller_gid.get_urn(), speaksfor_urn))
             caller_gid = speaksfor_gid
+
+        return caller_gid
+
+    def verify_from_strings(self, gid_string, cred_strings, target_urn,
+                            privileges, options=None):
+
+        '''Create Credential and GID objects from the given strings,
+        and then verify the GID has the right privileges according 
+        to the given credentials on the given target.'''
+        def make_cred(cred_string):
+            credO = None
+            try:
+                credO = CredentialFactory.createCred(credString=cred_string)
+            except Exception, e:
+                self.logger.warn("Skipping unparsable credential. Error: %s. Credential begins: %s...", e, cred_string[:60])
+            return credO
+
+        # Get the GID of the caller, substituting the real user if this is a 'speaks-for' invocation
+        caller_gid = self.get_caller_gid(gid_string, cred_strings, options)
 
         # Remove the abac credentials
         cred_strings = [cred_string for cred_string in cred_strings \
