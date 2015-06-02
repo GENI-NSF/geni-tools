@@ -1,6 +1,10 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
 gcf 2.10:
+ * Omni
+  * Continue anyway if no aggregate nickname cache can be loaded. (#822)
+   * Sliver info reporting and operations on AMs by nickname will likely fail.
+
  * Stitcher
   * Catch expiration too great errors from PG AMs and quit. (#828)
 
