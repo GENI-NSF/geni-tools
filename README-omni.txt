@@ -42,6 +42,8 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 == Release Notes ==
 
 New in v2.10:
+ * Continue anyway if no aggregate nickname cache can be loaded. (#822)
+  * Sliver info reporting and operations on AMs by nickname will likely fail.
 
 New in v2.9:
  * If `sliverstatus` fails in a way that indicates there are no local resources,

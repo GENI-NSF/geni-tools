@@ -218,7 +218,8 @@ def load_agg_nick_config(opts, logger):
             except ConfigParser.Error as exc:
                 logger.error("agg_nick_cache file %s could not be parsed: %s"% (filename, str(exc)))
     if not readConfigFile:
-        raise OmniError, "Failed to read any possible agg_nick_cache file."
+        logger.error("Failed to read any possible agg_nick_cache file; Check your network connection and/or permissions to read/write '%s'.", opts.aggNickCacheName)
+        return {}
 
     config = load_aggregate_nicknames( config, confparser, filename, logger, opts )
     config = load_omni_defaults( config, confparser, filename, logger, opts )
