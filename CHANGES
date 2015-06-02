@@ -1,6 +1,9 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
 gcf 2.10:
+ * Stitcher
+  * Catch expiration too great errors from PG AMs and quit. (#828)
+
  * gcf
   * Add utility function to derive the effective user's client cert, after
     accounting for speaks-for. This allows an AM to know the "real" user's URN
