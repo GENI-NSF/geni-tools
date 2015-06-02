@@ -669,9 +669,8 @@ Cannot find the set of paths for the RequestTopology. '.
  an existing reservation.
  - Some fatal errors at aggregates are not recognized, so the script keeps trying longer
  than it should.
- - [http://trac.gpolab.bbn.com/gcf/query?status=accepted&status=assigned&status=new&status=reopened&component=stitcher&order=priority&col=id&col=summary&col=status&col=type&col=priority&col=milestone&col=component Known stitcher defects] 
- are listed on the gcf trac. In the near future, all current issues will be listed on
- [https://github.com/GENI-NSF/geni-tools/issues?q=is%3Aopen+is%3Aissue+label%3Astitcher our Github repository].
+ - [https://github.com/GENI-NSF/geni-tools/issues?q=is%3Aopen+is%3Aissue+label%3Astitcher Known stitcher defects]
+   are listed on the project Github repository.
  - Python2.6 has a 60 second delay talking to the SSL protected SCS
    run by Internet2. If you are running python2.6, use `--scsURL http://geni-scs.net.internet2.edu:8081/geni/xmlrpc`
 

@@ -1,6 +1,6 @@
 ### DO NOT MODIFY THIS FILE BY HAND ###
 # This file lives at: http://trac.gpolab.bbn.com/gcf/raw-attachment/wiki/Omni/agg_nick_cache
-# Last updated on May 1, 2015
+# Last updated on May 19, 2015
 
 [omni_defaults]
 # This section is for updating Omni defaults without updating Omni.
@@ -556,6 +556,24 @@ utah-clab1=urn:publicid:IDN+utah.cloudlab.us+authority+cm,https://boss.utah.clou
 utah-clab2=urn:publicid:IDN+utah.cloudlab.us+authority+cm,https://boss.utah.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
 utah-clab3=urn:publicid:IDN+utah.cloudlab.us+authority+cm,https://boss.utah.cloudlab.us:12369/protogeni/xmlrpc/am/3.0
 
+# =====
+# Clemson CloudLab (cloudlab.us)
+# =====
+clemson-clab=urn:publicid:IDN+clemson.cloudlab.us+authority+cm,https://boss.clemson.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
+clab-clemson=urn:publicid:IDN+clemson.cloudlab.us+authority+cm,https://boss.clemson.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
+clemson-clab1=urn:publicid:IDN+clemson.cloudlab.us+authority+cm,https://boss.clemson.cloudlab.us:12369/protogeni/xmlrpc/am/1.0
+clemson-clab2=urn:publicid:IDN+clemson.cloudlab.us+authority+cm,https://boss.clemson.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
+clemson-clab3=urn:publicid:IDN+clemson.cloudlab.us+authority+cm,https://boss.clemson.cloudlab.us:12369/protogeni/xmlrpc/am/3.0
+
+# =====
+# Wisconsin CloudLab (cloudlab.us)
+# =====
+wisconsin-clab=urn:publicid:IDN+wisc.cloudlab.us+authority+cm,https://boss.wisc.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
+clab-wisconsin=urn:publicid:IDN+wisc.cloudlab.us+authority+cm,https://boss.wisc.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
+wisconsin-clab1=urn:publicid:IDN+wisc.cloudlab.us+authority+cm,https://boss.wisc.cloudlab.us:12369/protogeni/xmlrpc/am/1.0
+wisconsin-clab2=urn:publicid:IDN+wisc.cloudlab.us+authority+cm,https://boss.wisc.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
+wisconsin-clab3=urn:publicid:IDN+wisc.cloudlab.us+authority+cm,https://boss.wisc.cloudlab.us:12369/protogeni/xmlrpc/am/3.0
+
 # ====
 # Apt (https://www.aptlab.net/)
 # ====
@@ -660,3 +678,12 @@ uchicago-ig3=urn:publicid:IDN+geni.uchicago.edu+authority+cm,https://geni.uchica
 moxi-of=urn:publicid:IDN+openflow:foam:moxifoam.ictc.indiana.gigapop.net+authority+am,https://moxifoam.600wchicag.omnipop.cic.net:3626/foam/gapi/2
 moxi-of1=urn:publicid:IDN+openflow:foam:moxifoam.ictc.indiana.gigapop.net+authority+am,https://moxifoam.600wchicag.omnipop.cic.net:3626/foam/gapi/1
 moxi-of2=urn:publicid:IDN+openflow:foam:moxifoam.ictc.indiana.gigapop.net+authority+am,https://moxifoam.600wchicag.omnipop.cic.net:3626/foam/gapi/2
+
+# =====
+# Utah stitching aggregate, providing L2 connectivity to Utah IG, Utah DDC, PG Utah, and Cloudlab
+# =====
+utah-stitch=urn:publicid:IDN+stitch.geniracks.net+authority+cm,https://boss.stitch.geniracks.net:12369/protogeni/xmlrpc/am/2.0
+utah-stitch1=urn:publicid:IDN+stitch.geniracks.net+authority+cm,https://boss.stitch.geniracks.net:12369/protogeni/xmlrpc/am/1.0
+utah-stitch2=urn:publicid:IDN+stitch.geniracks.net+authority+cm,https://boss.stitch.geniracks.net:12369/protogeni/xmlrpc/am/2.0
+utah-stitch3=urn:publicid:IDN+stitch.geniracks.net+authority+cm,https://boss.stitch.geniracks.net:12369/protogeni/xmlrpc/am/3.0
+

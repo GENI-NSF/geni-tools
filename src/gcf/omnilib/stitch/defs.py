@@ -49,9 +49,12 @@ EXOSM_URL = "https://geni.renci.org:11443/orca/xmlrpc"
 # Need to be able to ID Utah AMs for default sliver expirations (see below)
 PGU_URN = "urn:publicid:IDN+emulab.net+authority+cm"
 IGUDDC_URN = "urn:publicid:IDN+utahddc.geniracks.net+authority+cm"
+USTITCH_URN = "urn:publicid:IDN+stitch.geniracks.net+authority+cm"
+APT_URN = "urn:publicid:IDN+apt.emulab.net+authority+cm"
+CL_URN_END = ".cloudlab.us+authority+cm"
 
 # Default sliver expirations by AM type in days as of September, 2014
-# Utah is Utah DDC and ProtoGENI Utah
+# Utah is Utah DDC and ProtoGENI Utah and Utah Stitch and ALL Cloudlab (including Clemson and Wisconsin). And Apt
 # See ticket #577
 DEF_SLIVER_EXPIRATION_UTAH = 5
 DEF_SLIVER_EXPIRATION_IG = 90
@@ -67,13 +70,14 @@ DEF_SLIVER_EXPIRATION_EG = 14
 class DefaultSliverExpirations(object):
     instance = None
 
-    def __init__(self, config, logger):
+    def __init__(self, config, logger=None):
         self.config = config
         self.logger = logger
         self.utah = None
         self.ig = None
         self.gram = None
         self.eg = None
+        self.otherUtahUrns = None
 
     @classmethod
     def getInstance(cls, config=None, logger=None):
@@ -93,6 +97,38 @@ class DefaultSliverExpirations(object):
         if not match:
             raise Exception("Could not find integer in value")
         return int(match.group(1))
+
+    # Is this AM one of the AMs subject to the Utah default sliver expiration?
+    # Start with hard-codede defaults, but then accept additional Utah URNs from omni_defaults.utah_am_urns (CSV list)
+    def isUtah(self, agg):
+        if agg is None or not agg.isPG:
+            return False
+        if not agg.urn:
+            return False
+        if agg.urn in [PGU_URN, IGUDDC_URN, USTITCH_URN, APT_URN]:
+            return True
+        if agg.urn.endswith(CL_URN_END):
+            return True
+
+        if self.otherUtahUrns is None and self.config and self.config.has_key('omni_defaults') and self.config['omni_defaults'].has_key('utah_am_urns') and self.config['omni_defaults']['utah_am_urns']:
+            try:
+                urns = str(self.config['omni_defaults']['utah_am_urns']).strip().split(',')
+                self.otherUtahUrns = []
+                for urn in urns:
+                    if not urn:
+                        continue
+                    u = urn.strip()
+                    if u == '':
+                        continue
+                    self.otherUtahUrns.append(u)
+                if self.logger is not None:
+                    self.logger.debug("otherUrns IDing Utah AMs: %s", self.otherUtahUrns)
+            except Exception, e:
+                if self.logger is not None:
+                    self.logger.debug("Failed to parse omni_defaults/utah_am_urns: %s", e)
+        if self.otherUtahUrns is not None and agg.urn in self.otherUtahUrns:
+            return True
+        return False
 
     def getUtah(self):
         if self.utah:
