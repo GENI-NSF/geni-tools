@@ -12,6 +12,12 @@ gcf 2.10:
   * Add utility function to derive the effective user's client cert, after
     accounting for speaks-for. This allows an AM to know the "real" user's URN
     and email, for example (#831)
+  * Speaks for attempts to validate the tool cert by taking the issuer from the user
+    GID (signer of the speaks for credential), in cases where the tool cert didn't
+    validate on its own and has the same issuer as the user cert. This helps where
+    tool certs and user certs are issued by the same intermediate CA (as with those
+    from the GENI Clearinghosue), when used on webservers that don't pass the full
+    client certificate chain (like nginx). (#832)
 
 gcf 2.9:
  * Add Markdown style README, CONTRIBUTING and CONTRIBUTORS files. (#551)
