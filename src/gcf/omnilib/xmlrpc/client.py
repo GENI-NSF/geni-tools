@@ -50,6 +50,7 @@ class SafeTransportWithCert(xmlrpclib.SafeTransport):
         self._timeout = timeout
         self.ssl_version = ssl_version
         self.ciphers = ciphers
+        self._connection = (None, None)
 
     def make_connection(self, host):
         host_tuple = (host, self.__x509)
