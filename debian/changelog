@@ -1,3 +1,9 @@
+geni-tools (2.9-3) UNRELEASED; urgency=medium
+
+  * Final 2.9 changes
+
+ -- Tom Mitchell <tmitchel@bbn.com>  Tue, 3 June 2015 08:30:00 -0400
+
 geni-tools (2.9-2) UNRELEASED; urgency=medium
 
   * Add some more files to package
