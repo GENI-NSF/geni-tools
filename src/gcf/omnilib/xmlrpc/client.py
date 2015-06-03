@@ -114,18 +114,23 @@ class TLS1HTTPSConnection(httplib.HTTPSConnection):
             #print "Requested a None ssl version"
             self.ssl_version = ssl.PROTOCOL_TLSv1
         #print "Wrapping socket to use SSL version %s" % ssl._PROTOCOL_NAMES[self.ssl_version]
-        #if self.ciphers is None:
-        #    print "Using cipherlist: 'DEFAULT:!aNULL:!eNULL:!LOW:!EXPORT:!SSLv2'"
-        #else:
-        #    print "Using cipherlist: '%s'" % self.ciphers
-        self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file, ssl_version=self.ssl_version, ciphers=self.ciphers)
+
+        if sys.version_info >= (2,7,0):
+            #if self.ciphers is None:
+            #    print "Using cipherlist: 'DEFAULT:!aNULL:!eNULL:!LOW:!EXPORT:!SSLv2'"
+            #else:
+            #    print "Using cipherlist: '%s'" % self.ciphers
+            self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file, ssl_version=self.ssl_version, ciphers=self.ciphers)
+        else:
+            # Python 2.6 doesn't let you specify the ciphers to use
+            self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file, ssl_version=self.ssl_version)
 
 # For Python2.6 safe transport, use our custom HTTPSConnection
 class TLS1P26HTTPS(httplib.HTTPS):
     _connection_class = TLS1HTTPSConnection
     def __init__(self, host='', port=None, key_file=None, cert_file=None,
                  strict=None):
-        HTTPS.__init__(self, host, port, key_file, cert_file, strict)
+        httplib.HTTPS.__init__(self, host, port, key_file, cert_file, strict)
 
 class SafeTransportNoCert(xmlrpclib.SafeTransport):
     # A standard SafeTransport that honors the requested SSL timeout
