@@ -84,3 +84,46 @@ rpmbuild -ba geni-tools.spec
 This will generate the following files:
  * The rpm: `"${HOME}"/rpmbuild/RPMS/noarch/geni-tools-2.9-1.el6.noarch.rpm`
  * The source rpm: `"${HOME}"/rpmbuild/SRPMS/geni-tools-2.9-1.el6.src.rpm`
+
+# Creating a yum repository
+
+Install the `createrepo` tool:
+
+```
+yum install createrepo
+```
+
+Create a repository directory and move the files into it:
+
+```
+mkdir repo
+cd repo
+mv "${HOME}"/rpmbuild/RPMS/noarch/geni-tools-2.9-1.el6.noarch.rpm .
+mv "${HOME}"/rpmbuild/SRPMS/geni-tools-2.9-1.el6.src.rpm .
+mv "${HOME}"/rpmbuild/SOURCES/geni-tools-2.9.tar.gz .
+mv "${HOME}"/rpmbuild/SPECS/geni-tools.spec .
+
+```
+
+Generate the repository metadata:
+
+```
+createrepo --database .
+```
+
+Copy this entire directory to the repository server
+(update the host and path as needed):
+
+```
+scp -r * repo.example.com:/path/centos/6/os/x86_64
+```
+
+Configure yum for the new repository by creating a file
+in `/etc/yum.repos.d` named geni.repo with the following
+contents (updating the host and path as needed):
+
+```
+[geni]
+name = GENI software repository
+baseurl = http://repo.example.com/path/centos/$releasever/os/$basearch/
+```
