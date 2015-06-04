@@ -28,6 +28,8 @@ import urllib
 import xmlrpclib
 
 class SafeTransportWithCert(xmlrpclib.SafeTransport):
+    '''Sample client for talking XMLRPC over SSL supplying
+    a client X509 identity certificate.'''
 
     def __init__(self, use_datetime=0, keyfile=None, certfile=None,
                  timeout=None, ssl_version=ssl.PROTOCOL_TLSv1, ciphers=None):
@@ -49,6 +51,7 @@ class SafeTransportWithCert(xmlrpclib.SafeTransport):
         self._timeout = timeout
         self.ssl_version = ssl_version
         self.ciphers = ciphers
+        self._connection = (None, None)
 
     def make_connection(self, host):
         host_tuple = (host, self.__x509)
@@ -56,7 +59,7 @@ class SafeTransportWithCert(xmlrpclib.SafeTransport):
             return self._connection[1]
         #conn = xmlrpclib.SafeTransport.make_connection(self, host_tuple)
         chost, self._extra_headers, x509 = self.get_host_info(host_tuple)
-        # HTTPSConnection instead of HTTPS is issue6267 of June 2009 - before the 2.7 maint branch
+        # HTTPSConnection instead of HTTPS is python issue6267 of June 2009 - before the 2.7 maint branch
         import sys
         if sys.version_info < (2,7,0):
             self._connection = host_tuple, TLS1P26HTTPS(chost, None, **(x509 or {}))
@@ -83,7 +86,7 @@ class TLS1HTTPSConnection(httplib.HTTPSConnection):
     def __init__(self, host, port=None, key_file=None, cert_file=None, strict=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, source_address=None, ssl_version=ssl.PROTOCOL_TLSv1, ciphers=None):
         import sys
         if sys.version_info >= (2,7,0):
-            # source_address added for issue 3972 Jan 2010. Note the 2.7 maint branch was Jul 2010. This is first seen in 2.7 alpha 2.
+            # source_address added for python issue 3972 Jan 2010. Note the 2.7 maint branch was Jul 2010. This is first seen in 2.7 alpha 2.
             httplib.HTTPSConnection.__init__(self, host, port, key_file, cert_file, strict, timeout, source_address)
         else:
             httplib.HTTPSConnection.__init__(self, host, port, key_file, cert_file, strict, timeout)
@@ -107,23 +110,28 @@ class TLS1HTTPSConnection(httplib.HTTPSConnection):
         # Default is PROTOCOL_SSLv23 which allows either 2 or 3
         # Another option is PROTOCOL_SSLv3
         # We want TLS1 to avoid POODLE vulnerability. In addition, some client/server combinations fail the handshake
-        # if you start with SSL23 and the server wants TLS1. See issue #745
+        # if you start with SSL23 and the server wants TLS1. See geni-tools issue #745
         if self.ssl_version is None:
             #print "Requested a None ssl version"
             self.ssl_version = ssl.PROTOCOL_TLSv1
         #print "Wrapping socket to use SSL version %s" % ssl._PROTOCOL_NAMES[self.ssl_version]
-        #if self.ciphers is None:
-        #    print "Using cipherlist: 'DEFAULT:!aNULL:!eNULL:!LOW:!EXPORT:!SSLv2'"
-        #else:
-        #    print "Using cipherlist: '%s'" % self.ciphers
-        self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file, ssl_version=self.ssl_version, ciphers=self.ciphers)
+
+        if sys.version_info >= (2,7,0):
+            #if self.ciphers is None:
+            #    print "Using cipherlist: 'DEFAULT:!aNULL:!eNULL:!LOW:!EXPORT:!SSLv2'"
+            #else:
+            #    print "Using cipherlist: '%s'" % self.ciphers
+            self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file, ssl_version=self.ssl_version, ciphers=self.ciphers)
+        else:
+            # Python 2.6 doesn't let you specify the ciphers to use
+            self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file, ssl_version=self.ssl_version)
 
 # For Python2.6 safe transport, use our custom HTTPSConnection
 class TLS1P26HTTPS(httplib.HTTPS):
     _connection_class = TLS1HTTPSConnection
     def __init__(self, host='', port=None, key_file=None, cert_file=None,
                  strict=None):
-        HTTPS.__init__(self, host, port, key_file, cert_file, strict)
+        httplib.HTTPS.__init__(self, host, port, key_file, cert_file, strict)
 
 class SafeTransportNoCert(xmlrpclib.SafeTransport):
     # A standard SafeTransport that honors the requested SSL timeout
@@ -169,13 +177,14 @@ class SafeTransportNoCert(xmlrpclib.SafeTransport):
             conn.ciphers = self.ciphers
         return conn
 
-# ssl_version would otherwise default to PROTOCOL_SSLv23, but here we insist on TLSv1
-# leave out ciphers to get the default of 'DEFAULT:!aNULL:!eNULL:!LOW:!EXPORT:!SSLv2',
+# ssl_version would otherwise default to PROTOCOL_SSLv23, but here we insist on TLSv1 (which secretly maybe also allows SSLv3).
+# Leave out ciphers to get the default of 'DEFAULT:!aNULL:!eNULL:!LOW:!EXPORT:!SSLv2',
 # but we can probably do better. Consider
 # "HIGH:MEDIUM:!RC4" (assuming disabled SSLv2 and v3)
-# or else "HIGH:MEDIUM:!ADH:!SSLv2:!MD5:!RC4:@STRENGTH" perhaps
+# or else "HIGH:MEDIUM:!ADH:!SSLv2:!MD5:!RC4:@STRENGTH", which is what we use (though python2.6 ignores it).
+# By specifying TLSv1 this works at servers that have disabled SSLv2 and SSLv3.
 def make_client(url, keyfile, certfile, verbose=False, timeout=None,
-                allow_none=False, ssl_version=ssl.PROTOCOL_TLSv1, ciphers=None):
+                allow_none=False, ssl_version=ssl.PROTOCOL_TLSv1, ciphers="HIGH:MEDIUM:!ADH:!SSLv2:!MD5:!RC4:@STRENGTH"):
     """Create a connection to an XML RPC server, using SSL with client certificate
     authentication if requested.
     Returns the XML RPC server proxy.
