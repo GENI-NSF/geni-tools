@@ -44,6 +44,11 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 New in v2.10:
  * Continue anyway if no aggregate nickname cache can be loaded. (#822)
   * Sliver info reporting and operations on AMs by nickname will likely fail.
+ * For connections to servers, use TLSv1 if possible (falling back to SSLv3
+   in the usual OpenSSL way), plus a restricted set of ciphers
+   (`HIGH:MEDIUM:!ADH:!SSLv2:!MD5:!RC4:@STRENGTH`) when using python2.7.
+   This avoids some security issues, and allows Omni on older clients
+   to connect to some updated servers. (#745)
 
 New in v2.9:
  * If `sliverstatus` fails in a way that indicates there are no local resources,

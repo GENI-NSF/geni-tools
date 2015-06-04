@@ -4,6 +4,11 @@ gcf 2.10:
  * Omni
   * Continue anyway if no aggregate nickname cache can be loaded. (#822)
    * Sliver info reporting and operations on AMs by nickname will likely fail.
+  * For connections to servers, use TLSv1 if possible (falling back to SSLv3
+    in the usual OpenSSL way), plus a restricted set of ciphers
+    (`HIGH:MEDIUM:!ADH:!SSLv2:!MD5:!RC4:@STRENGTH`) when using python2.7.
+    This avoids some security issues, and allows Omni on older clients
+    to connect to some updated servers. (#745)
 
  * Stitcher
   * Catch expiration too great errors from PG AMs and quit. (#828)
@@ -18,6 +23,11 @@ gcf 2.10:
     tool certs and user certs are issued by the same intermediate CA (as with those
     from the GENI Clearinghosue), when used on webservers that don't pass the full
     client certificate chain (like nginx). (#832)
+  * For connections to servers, use TLSv1 if possible (falling back to SSLv3
+    in the usual OpenSSL way), plus a restricted set of ciphers
+    (`HIGH:MEDIUM:!ADH:!SSLv2:!MD5:!RC4:@STRENGTH`) when using python2.7.
+    This avoids some security issues, and allows older clients
+    to connect to some updated servers. (#745)
 
 gcf 2.9:
  * Add Markdown style README, CONTRIBUTING and CONTRIBUTORS files. (#551)
