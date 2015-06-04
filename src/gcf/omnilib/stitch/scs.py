@@ -77,7 +77,6 @@ class Result(object):
             ret +=" %s" % self.result[self.OUTPUT]
         return ret
 
-# FIXME: Support authentication by the service at some point
 class Service(object):
     def __init__(self, url, key=None, cert=None, timeout=None, verbose=False):
         self.url = url
@@ -97,11 +96,21 @@ class Service(object):
 
     def GetVersion(self, printResult=True):
         server = make_client(self.url, keyfile=self.key, certfile=self.cert, verbose=self.verbose, timeout=self.timeout)
+
+        # As a sample of how to do make_client specifying the SSL version / ciphers (these are the defaults though):
+#        import ssl
+#        server = make_client(self.url, keyfile=self.key, certfile=self.cert, verbose=self.verbose, timeout=self.timeout, ssl_version=ssl.PROTOCOL_TLSv1, ciphers="HIGH:MEDIUM:!ADH:!SSLv2:!MD5:!RC4:@STRENGTH")
+
         try:
             result = server.GetVersion()
         except xmlrpclib.Error as v:
             if printResult:
                 print "ERROR", v
+            raise
+        except Exception, e:
+            if printResult:
+                import traceback
+                print "ERROR: %s" % traceback.format_exc()
             raise
         if printResult:
             print "GetVersion said:"
