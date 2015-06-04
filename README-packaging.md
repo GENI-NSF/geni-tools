@@ -47,3 +47,40 @@ package manually.
 dpkg -i geni-tools_2.9-1_all.deb
 apt-get -f install
 ```
+
+# Building a package for RedHat/CentOS
+
+The geni-tools distribution includes the information needed to build an
+rpm package. In order to build the package you must first install
+the rpm packaging tools. On CentOS 6.6, the tools can be
+installed with the following commands:
+
+```
+yum install rpm-build rpmdevtools rpmlint
+yum groupinstall "Development Tools"
+```
+
+As a regular user (not root), set up an rpm build area:
+
+```
+rpmdev-setuptree
+```
+
+Download the geni-tools tar file. Check for the file on the releases tab at
+the [GitHub project page](https://github.com/GENI-NSF/geni-tools).
+
+Once the tar file has been downloaded,
+follow these steps to build the package:
+
+```
+VERSION=2.9
+mv geni-tools-${VERSION}.tar.gz "${HOME}"/rpmbuild/SOURCES
+tar zxf geni-tools-${VERSION}.tar.gz 
+mv geni-tools-${VERSION}/geni-tools.spec "${HOME}"/rpmbuild/SPECS
+cd "${HOME}"/rpmbuild/SPECS
+rpmbuild -ba geni-tools.spec
+```
+
+This will generate the following files:
+ * The rpm: `"${HOME}"/rpmbuild/RPMS/noarch/geni-tools-2.9-1.el6.noarch.rpm`
+ * The source rpm: `"${HOME}"/rpmbuild/SRPMS/geni-tools-2.9-1.el6.src.rpm`
