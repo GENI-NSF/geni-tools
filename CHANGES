@@ -14,6 +14,7 @@ gcf 2.10:
   * Catch expiration too great errors from PG AMs and quit. (#828)
   * Bug fix combining manifests involving a fixed endpoint. (#833)
   * Support detecting OESS AM using `geni_am_type`. (#835)
+  * AL2S supports speaks for. Don't exit if using speaksfor and AL2S. (#834)
 
  * gcf
   * Add utility function to derive the effective user's client cert, after
