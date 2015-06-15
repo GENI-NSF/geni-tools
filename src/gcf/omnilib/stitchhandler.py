@@ -2210,7 +2210,8 @@ class StitchingHandler(object):
     def addCapacityOneLink(self, link):
         # look for property elements
         if len(link.properties) > 2:
-            raise StitchingError("Your request RSpec is malformed: include either 2 or 0 property elements on link '%s'" % link.id)
+#            raise StitchingError("Your request RSpec is malformed: include either 2 or 0 property elements on link '%s'" % link.id)
+            self.logger.debug("Request RSpec has % property elements on link '%s'", len(link.properties), link.id)
         # Get the 2 node IDs
         ifcs = link.interfaces
         if len(ifcs) < 2:
@@ -2283,11 +2284,13 @@ class StitchingHandler(object):
                 raise StitchingError("Malformed property on link '%s' has matching source and dest_id: %s" % (link.id, prop2D))
             # FIXME: Compare to the interface_refs
             if prop1S != prop2D or prop1D != prop2S:
-                raise StitchingError("Malformed properties on link '%s': source and dest tags are not reversed" % link.id)
-            if props[0].capacity and not props[1].capacity:
-                props[1].capacity = props[0].capacity
-            if props[1].capacity and not props[0].capacity:
-                props[0].capacity = props[1].capacity
+#                raise StitchingError("Malformed properties on link '%s': source and dest tags are not reversed" % link.id)
+                self.logger.debug("On link '%s': source and dest tags are not reversed" % link.id)
+            else:
+                if props[0].capacity and not props[1].capacity:
+                    props[1].capacity = props[0].capacity
+                if props[1].capacity and not props[0].capacity:
+                    props[0].capacity = props[1].capacity
             for prop in props:
                 if prop.capacity is None or prop.capacity == "":
                     prop.capacity = self.opts.defaultCapacity
@@ -2306,11 +2309,15 @@ class StitchingHandler(object):
         # FIXME: Compare to the interface_refs
         if prop.capacity is None or prop.capacity == "":
             prop.capacity = self.opts.defaultCapacity
+
         # FIXME: Warn about really small or big capacities?
-        # Create the 2nd property with the source and dest reversed
-        prop2 = LinkProperty(prop.dest_id, prop.source_id, prop.latency, prop.packet_loss, prop.capacity)
-        link.properties = [prop, prop2]
-        self.logger.debug("Link '%s' added missing reverse property", link.id)
+
+        # FIXME: Do we need the reciprocal property?
+#        # Create the 2nd property with the source and dest reversed
+#        prop2 = LinkProperty(prop.dest_id, prop.source_id, prop.latency, prop.packet_loss, prop.capacity)
+#        link.properties = [prop, prop2]
+#        self.logger.debug("Link '%s' added missing reverse property", link.id)
+
     # End of addCapacityOneLink
 
     # Ensure all implicit AMs (from interface_ref->node->component_manager_id) are explicit on the link
