@@ -402,6 +402,7 @@ class Aggregate(object):
         self.isPG = False
         self.isGRAM = False
         self.isOESS = False
+        self.isFOAM = False
         # reservation tries since last call to SCS
         self.allocateTries = 0 # see MAX_TRIES
         self.localPickNewVlanTries = 1 # see MAX_AGG_NEW_VLAN_TRIES
