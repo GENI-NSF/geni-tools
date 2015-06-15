@@ -63,6 +63,8 @@ DCN_AM_TYPE = 'dcn' # geni_am_type value from AMs that use the DCN codebase
 ORCA_AM_TYPE = 'orca' # geni_am_type value from AMs that use the Orca codebase
 PG_AM_TYPE = 'protogeni' # geni_am_type / am_type from ProtoGENI based AMs
 GRAM_AM_TYPE = 'gram' # geni_am_type value from AMs that use the GRAM codebase
+FOAM_AM_TYPE = 'foam' # geni_am_type value from some AMs that use the FOAM codebase
+OESS_AM_TYPE = 'oess' # geni_am_type value from AMs that use the OESS codebase
 
 # Max # of times to call the stitching service
 MAX_SCS_CALLS = 5
@@ -3149,9 +3151,30 @@ class StitchingHandler(object):
                         elif GRAM_AM_TYPE in version[aggurl]['value']['geni_am_type']:
                             self.logger.debug("AM %s is GRAM", agg)
                             agg.isGRAM = True
+                        elif FOAM_AM_TYPE in version[aggurl]['value']['geni_am_type']:
+                            self.logger.debug("AM %s is FOAM", agg)
+                            agg.isFOAM = True
+                        elif OESS_AM_TYPE in version[aggurl]['value']['geni_am_type']:
+                            self.logger.debug("AM %s is OESS", agg)
+                            agg.isOESS = True
                     elif version[aggurl]['value'].has_key('geni_am_type') and ORCA_AM_TYPE in version[aggurl]['value']['geni_am_type']:
                             self.logger.debug("AM %s is Orca", agg)
                             agg.isEG = True
+                    elif version[aggurl]['value'].has_key('geni_am_type') and DCN_AM_TYPE in version[aggurl]['value']['geni_am_type']:
+                            self.logger.debug("AM %s is DCN", agg)
+                            agg.dcn = True
+                    elif version[aggurl]['value'].has_key('geni_am_type') and PG_AM_TYPE in version[aggurl]['value']['geni_am_type']:
+                            self.logger.debug("AM %s is ProtoGENI", agg)
+                            agg.isPG = True
+                    elif version[aggurl]['value'].has_key('geni_am_type') and GRAM_AM_TYPE in version[aggurl]['value']['geni_am_type']:
+                            self.logger.debug("AM %s is GRAM", agg)
+                            agg.isGRAM = True
+                    elif version[aggurl]['value'].has_key('geni_am_type') and FOAM_AM_TYPE in version[aggurl]['value']['geni_am_type']:
+                            self.logger.debug("AM %s is FOAM", agg)
+                            agg.isFOAM = True
+                    elif version[aggurl]['value'].has_key('geni_am_type') and OESS_AM_TYPE in version[aggurl]['value']['geni_am_type']:
+                            self.logger.debug("AM %s is OESS", agg)
+                            agg.isOESS = True
 
                     # This code block looks nice but doesn't work - the version object is not the full triple
 #                    elif version[aggurl].has_key['code'] and isinstance(version[aggurl]['code'], dict) and \
@@ -3375,6 +3398,8 @@ class StitchingHandler(object):
                     self.logger.debug("   A GRAM Aggregate")
                 if agg.isOESS:
                     self.logger.debug("   An OESS Aggregate")
+                if agg.isFOAM:
+                    self.logger.debug("   A FOAM Aggregate")
                 if agg.isEG:
                     self.logger.debug("   An Orca Aggregate")
                 if agg.isExoSM:
@@ -3718,6 +3743,7 @@ class StitchingHandler(object):
                 # FIXME: agg.allocateTries?
                 agg.dcn = oldAgg.dcn
                 agg.isOESS = oldAgg.isOESS
+                agg.isFOAM = oldAgg.isFOAM
                 agg.isGRAM = oldAgg.isGRAM
                 agg.isPG = oldAgg.isPG
                 agg.isEG = oldAgg.isEG
