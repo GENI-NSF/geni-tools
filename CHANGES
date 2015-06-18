@@ -30,6 +30,8 @@ gcf 2.10:
     (`HIGH:MEDIUM:!ADH:!SSLv2:!MD5:!RC4:@STRENGTH`) when using python2.7.
     This avoids some security issues, and allows older clients
     to connect to some updated servers. (#745)
+  * Rework the code that calls the cred verifier to reduce code duplication and make 
+    implementations deriving the ReferenceAggregateManager more easy to write. (#836)
 
 gcf 2.9:
  * Add Markdown style README, CONTRIBUTING and CONTRIBUTORS files. (#551)

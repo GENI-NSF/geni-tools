@@ -354,21 +354,10 @@ class ReferenceAggregateManager(object):
 
         # could require list or listnodes?
         privileges = ()
-
-        # Note that verify throws an exception on failure.
-        # Use the client PEM format cert as retrieved
-        # from the https connection by the SecureXMLRPCServer
-        # to identify the caller.
-        credentials = [self.normalize_credential(c) for c in credentials]
-        credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
-        try:
-            self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
-                                                    credentials,
-                                                    None,
-                                                    privileges,
-                                                    options)
-        except Exception, e:
-            raise xmlrpclib.Fault('Insufficient privileges', str(e))
+        self.getVerifiedCredentials(None,
+                                    credentials, 
+                                    options,
+                                    privileges)
 
         # If we get here, the credentials give the caller
         # all needed privileges to act on the given target.
@@ -452,26 +441,14 @@ class ReferenceAggregateManager(object):
         # EG the 'info' privilege in a credential allows the operations
         # listslices, listnodes, policy
         privileges = (ALLOCATE_PRIV,)
-        # Note that verify throws an exception on failure.
-        # Use the client PEM format cert as retrieved
-        # from the https connection by the SecureXMLRPCServer
-        # to identify the caller.
-        credentials = [self.normalize_credential(c) for c in credentials]
-        credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
-        try:
-            creds = self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
-                                                            credentials,
-                                                            slice_urn,
-                                                            privileges,
-                                                            options)
-        except Exception, e:
-            raise xmlrpclib.Fault('Insufficient privileges', str(e))
+
+        creds=self.getVerifiedCredentials(slice_urn, credentials, options, privileges)
+        # If we get here, the credentials give the caller
+        # all needed privileges to act on the given target.
 
         # Grab the user_urn
         user_urn = gid.GID(string=options['geni_true_caller_cert']).get_urn()
 
-        # If we get here, the credentials give the caller
-        # all needed privileges to act on the given target.
 
         rspec_dom = None
         try:
@@ -601,20 +578,7 @@ class ReferenceAggregateManager(object):
         # EG the 'info' privilege in a credential allows the operations
         # listslices, listnodes, policy
         privileges = (PROVISION_PRIV,)
-        # Note that verify throws an exception on failure.
-        # Use the client PEM format cert as retrieved
-        # from the https connection by the SecureXMLRPCServer
-        # to identify the caller.
-        credentials = [self.normalize_credential(c) for c in credentials]
-        credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
-        try:
-            creds = self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
-                                                            credentials,
-                                                            the_slice.urn,
-                                                            privileges,
-                                                            options)
-        except Exception, e:
-            raise xmlrpclib.Fault('Insufficient privileges', str(e))
+        creds = self.getverifiedcredentials(the_slice.urn, credentials, options, privileges)
 
         if 'geni_rspec_version' not in options:
             # This is a required option, so error out with bad arguments.
@@ -679,16 +643,8 @@ class ReferenceAggregateManager(object):
 
         the_slice, slivers = self.decode_urns(urns)
         privileges = (DELETESLIVERPRIV,)
-        credentials = [self.normalize_credential(c) for c in credentials]
-        credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
-        try:
-            self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
-                                                    credentials,
-                                                    the_slice.urn,
-                                                    privileges,
-                                                    options)
-        except Exception, e:
-            raise xmlrpclib.Fault('Insufficient privileges', str(e))
+
+        self.getVerifiedCredentials(the_slice.urn, credentials, options, privileges)
 
         # Grab the user_urn
         user_urn = gid.GID(string=options['geni_true_caller_cert']).get_urn()
@@ -728,17 +684,7 @@ class ReferenceAggregateManager(object):
         # EG the 'info' privilege in a credential allows the operations
         # listslices, listnodes, policy
         privileges = (PERFORM_ACTION_PRIV,)
-        # Note that verify throws an exception on failure.
-        credentials = [self.normalize_credential(c) for c in credentials]
-        credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
-        try:
-            _ = self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
-                                                        credentials,
-                                                        the_slice.urn,
-                                                        privileges,
-                                                        options)
-        except Exception, e:
-            raise xmlrpclib.Fault('Insufficient privileges', str(e))
+        _ = self.getVerifiedCredentials(the_slice.urn, credentials, options, privileges)
 
         # A place to store errors on a per-sliver basis.
         # {sliverURN --> "error", sliverURN --> "error", etc.}
@@ -809,16 +755,7 @@ class ReferenceAggregateManager(object):
         self.expire_slivers()
         the_slice, slivers = self.decode_urns(urns)
         privileges = (SLIVERSTATUSPRIV,)
-        credentials = [self.normalize_credential(c) for c in credentials]
-        credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
-        try:
-            self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
-                                                    credentials,
-                                                    the_slice.urn,
-                                                    privileges,
-                                                    options)
-        except Exception, e:
-            raise xmlrpclib.Fault('Insufficient privileges', str(e))
+        self.getVerifiedCredentials(the_slice.urn, credentials, options, privileges)
 
         geni_slivers = list()
         for sliver in slivers:
@@ -856,16 +793,7 @@ class ReferenceAggregateManager(object):
                 raise ae
 
         privileges = (SLIVERSTATUSPRIV,)
-        credentials = [self.normalize_credential(c) for c in credentials]
-        credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
-        try:
-            self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
-                                                    credentials,
-                                                    the_slice.urn,
-                                                    privileges,
-                                                    options)
-        except Exception, e:
-            raise xmlrpclib.Fault('Insufficient privileges', str(e))
+        self.getVerifiedCredentials(the_slice.urn, credentials, options, privileges)
 
         if 'geni_rspec_version' not in options:
             # This is a required option, so error out with bad arguments.
@@ -925,16 +853,7 @@ class ReferenceAggregateManager(object):
         the_slice, slivers = self.decode_urns(urns)
 
         privileges = (RENEWSLIVERPRIV,)
-        credentials = [self.normalize_credential(c) for c in credentials]
-        credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
-        try:
-            creds = self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
-                                                            credentials,
-                                                            the_slice.urn,
-                                                            privileges,
-                                                            options)
-        except Exception, e:
-            raise xmlrpclib.Fault('Insufficient privileges', str(e))
+        creds = self.getVerifiedCredentials(the_slice.urn, credentials, options, privileges)
 
         # All the credentials we just got are valid
         expiration = self.min_expire(creds, self.max_lease)
@@ -984,16 +903,7 @@ class ReferenceAggregateManager(object):
         self.logger.info('Shutdown(%r)' % (slice_urn))
         self.expire_slivers()
         privileges = (SHUTDOWNSLIVERPRIV,)
-        credentials = [self.normalize_credential(c) for c in credentials]
-        credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
-        try:
-            self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
-                                                    credentials,
-                                                    slice_urn,
-                                                    privileges,
-                                                    options)
-        except Exception, e:
-            raise xmlrpclib.Fault('Insufficient privileges', str(e))
+        self.getVerifiedCredentials(slice_urn, credentials, options, privileges)
 
         the_urn = urn.URN(urn=slice_urn)
         if the_urn.getType() != 'slice':
@@ -1027,6 +937,32 @@ class ReferenceAggregateManager(object):
         return dict(code=code_dict,
                     value="",
                     output=output)
+
+    def getVerifiedCredentials(self, slice_urn, credentials, options, privileges):
+        """Verify that at least one geni_cred in credentials has 
+        all the privileges listed in privileges on slice named
+        slice_urn.
+        options here are passed to the verify_from_string method 
+        of the cred verifier.
+        Raise Exception if no credentials with enough privilegs are found. 
+        Return the credentials returned by the credential verifier otherwise.
+        """
+        # Note that verify throws an exception on failure.
+        # Use the client PEM format cert as retrieved
+        # from the https connection by the SecureXMLRPCServer
+        # to identify the caller.
+        credentials = [self.normalize_credential(c) for c in credentials]
+        credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
+        try:
+            creds = self._cred_verifier.verify_from_strings(self._server.get_pem_cert(),
+                                                            credentials,
+                                                            slice_urn,
+                                                            privileges,
+                                                            options)
+        except Exception, e:
+            raise xmlrpclib.Fault('Insufficient privileges', str(e))
+
+        return creds
 
     def _naiveUTC(self, dt):
         """Converts dt to a naive datetime in UTC.
