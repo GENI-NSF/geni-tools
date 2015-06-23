@@ -2206,49 +2206,69 @@ class StitchingHandler(object):
         return (sliceurn, sliceexp)
     # End of confirmSliceOK
 
-    # Ensure the link has 2 well formed property elements each with a capacity
+    # Ensure the link has well formed property elements for cross-AM links each with a capacity
+    # Really there could be multiple AMs on the link, and each cross-AM link could have different properties,
+    # and properties are unidirectional so capacities could differ in different directions
+    # For now, the first 2 different AMs get properties
     def addCapacityOneLink(self, link):
         # look for property elements
         if len(link.properties) > 2:
 #            raise StitchingError("Your request RSpec is malformed: include either 2 or 0 property elements on link '%s'" % link.id)
-            self.logger.debug("Request RSpec has % property elements on link '%s'", len(link.properties), link.id)
+            self.logger.debug("Request RSpec has %d property elements on link '%s'", len(link.properties), link.id)
         # Get the 2 node IDs
         ifcs = link.interfaces
         if len(ifcs) < 2:
             self.logger.debug("Link '%s' doesn't have at least 2 interfaces? Has %d", link.id, len(ifcs))
+            # If there is a stitching extension path for this, then this is a stitched link.
+            # Theoretically that means we want a property so SCS can put this in the stitching extension,
+            # but the stitching extension already exists
             return
         if len(ifcs) > 2:
             self.logger.debug("Link '%s' has more than 2 interfaces (%d). Picking source and dest from the first 2 on different AMs.", link.id, len(ifcs))
-        node1ID = ifcs[0].client_id
-        node1AM = None
-        for node in self.parsedUserRequest.nodes:
-            if node1ID in node.interface_ids:
-                node1AM = node.amURN
-                break
+
+        # FIXME: Create a list of AM pairs, so I can look for 1 or 2 properties for each pair, and ensure
+        # each has a capacity. AM pairs means 2 interface_refs whose nodes are at different AMs
+
+        # Create a mapping of AM -> interface_id. Then can find the pairs of AMs and ensure there's a property for each,
+        # and use that interface_id for the property.
+        amToIfc = {}
+        for ifc in ifcs:
+            cid = ifc.client_id
+            idam = None
+            for node in self.parsedUserRequest.nodes:
+                if cid in node.interface_ids:
+                    idam = node.amURN
+                    break
+            if idam and idam not in amToIfc:
+                amToIfc[idam] = cid
+
+        self.logger.debug("Link '%s' has interfaces on %d AMs", link.id, len(amToIfc.keys()))
+        if len(amToIfc.keys()) > 0:
+            node1AM = amToIfc.keys()[0]
+            node1ID = amToIfc[node1AM]
 
         # Now find a 2nd interface on a different AM
         node2ID = None
         node2AM = None
-        for ifc in ifcs:
-            if ifc.client_id == node1ID:
-                continue
-            node2ID = ifc.client_id
-            node2AM = None
-            for node in self.parsedUserRequest.nodes:
-                if node2ID in node.interface_ids:
-                    node2AM = node.amURN
-                    break
+        if len(amToIfc.keys()) > 1:
+            keys = amToIfc.keys()
+            node2AM = keys[1]
             if node2AM == node1AM:
-                node2ID = None
-                node2AM = None
-                continue
-            else:
-                break
+                node2AM = keys[0]
+            node2ID = amToIfc[node2AM]
         if node2AM is None:
             # No 2nd interface on different AM found
             self.logger.debug("Link '%s' doesn't have interfaces on more than 1 AM ('%s')?" % (link.id, node1AM))
+            # Even if this is a stitched link, the stitching extensino would already have capacity
+            return
         else:
+            # FIXME: Eventually want all the pairs to have properties
             self.logger.debug("Link '%s' properties will be from '%s' to '%s'", link.id, node1ID, node2ID)
+
+        # If we get here, the link crosses 2+ AMs
+
+        # FIXME: Really I want properties between every pair of AMs (not nodes), and not
+        # just the first 2 different AMs
 
         # If there are no property elements
         if len(link.properties) == 0:
@@ -2263,53 +2283,53 @@ class StitchingHandler(object):
             link.properties = [s_p, d_p]
             return
 
+        # Error check properties:
+        for prop in link.properties:
+            if prop.source_id is None or prop.source_id == "":
+                raise StitchingError("Malformed property on link '%s' missing source_id attribute" % link.id)
+            if prop.dest_id is None or prop.dest_id == "":
+                raise StitchingError("Malformed property on link '%s' missing dest_id attribute" % link.id)
+            if prop.dest_id == prop.source_id:
+                raise StitchingError("Malformed property on link '%s' has matching source and dest_id: '%s'" % (link.id, prop.dest_id))
+
         # If the elements are there, error check them, adding property if necessary
+        # FIXME: Generalize this to find any pair of properties that is reciprocal to ensure that if 1 has a capacity, the other has same
         if len(link.properties) == 2:
             props = link.properties
             prop1S = props[0].source_id
             prop1D = props[0].dest_id
             prop2S = props[1].source_id
             prop2D = props[1].dest_id
-            if prop1S is None or prop1S == "":
-                raise StitchingError("Malformed property on link '%s' missing source_id attribute" % link.id)
-            if prop1D is None or prop1D == "":
-                raise StitchingError("Malformed property on link '%s' missing dest_id attribute" % link.id)
-            if prop1D == prop1S:
-                raise StitchingError("Malformed property on link '%s' has matching source and dest_id: %s" % (link.id, prop1D))
-            if prop2S is None or prop2S == "":
-                raise StitchingError("Malformed property on link '%s' missing source_id attribute" % link.id)
-            if prop2D is None or prop2D == "":
-                raise StitchingError("Malformed property on link '%s' missing dest_id attribute" % link.id)
-            if prop2D == prop2S:
-                raise StitchingError("Malformed property on link '%s' has matching source and dest_id: %s" % (link.id, prop2D))
             # FIXME: Compare to the interface_refs
             if prop1S != prop2D or prop1D != prop2S:
 #                raise StitchingError("Malformed properties on link '%s': source and dest tags are not reversed" % link.id)
+                # This could happen if >2 ifcs and 2 asymetric props
+                # But it could also mean a single property is duplicated
                 self.logger.debug("On link '%s': source and dest tags are not reversed" % link.id)
             else:
                 if props[0].capacity and not props[1].capacity:
                     props[1].capacity = props[0].capacity
                 if props[1].capacity and not props[0].capacity:
                     props[0].capacity = props[1].capacity
-            for prop in props:
-                if prop.capacity is None or prop.capacity == "":
-                    prop.capacity = self.opts.defaultCapacity
+
                 # FIXME: Warn about really small or big capacities?
             return
         # End of handling have 2 current properties
 
-        # There is a single property tag
-        prop = link.properties[0]
-        if prop.source_id is None or prop.source_id == "":
-            raise StitchingError("Malformed property on link '%s' missing source_id attribute" % link.id)
-        if prop.dest_id is None or prop.dest_id == "":
-            raise StitchingError("Malformed property on link '%s' missing dest_id attribute" % link.id)
-        if prop.dest_id == prop.source_id:
-            raise StitchingError("Malformed property on link '%s' has matching source and dest_id: '%s'" % (link.id, prop.dest_id))
-        # FIXME: Compare to the interface_refs
-        if prop.capacity is None or prop.capacity == "":
-            prop.capacity = self.opts.defaultCapacity
-
+        for prop in link.properties:
+            # If this is a cross AM property, then it should have an explicit capacity
+            sourceAM = None
+            destAM = None
+            for node in self.parsedUserRequest.nodes:
+                if prop.source_id in node.interface_ids:
+                    sourceAM = node.amURN
+                if prop.dest_id in node.interface_ids:
+                    destAM = node.amURN
+                if sourceAM and destAM:
+                    break
+            if sourceAM and destAM and sourceAM != destAM:
+                if prop.capacity is None or prop.capacity == "":
+                    prop.capacity = self.opts.defaultCapacity
         # FIXME: Warn about really small or big capacities?
 
         # FIXME: Do we need the reciprocal property?

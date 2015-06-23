@@ -14,8 +14,10 @@ gcf 2.10:
   * Catch expiration too great errors from PG AMs and quit. (#828)
   * Bug fix combining manifests involving a fixed endpoint. (#833)
   * Support detecting OESS AM using `geni_am_type`. (#835)
-  * Do not insist on 2 reciprocal properties in on links, allowing more
-    flexibility perhaps. (#8??)
+  * Do not insist on 2 reciprocal properties on links, allowing more
+    flexibility perhaps. (#838)
+   * Allow links with more than 1 interface per AM, and start supporting
+     multiple AMs per link.
 
  * gcf
   * Add utility function to derive the effective user's client cert, after
