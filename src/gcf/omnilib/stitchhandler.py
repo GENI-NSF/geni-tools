@@ -333,11 +333,13 @@ class StitchingHandler(object):
         # longer necessary (nor a good idea).
 
         # Create the SCS instance if it will be needed
-        if self.isStitching:
+        if self.isStitching and not self.opts.noSCS:
             if not "geni-scs.net.internet2.edu:8443" in self.opts.scsURL:
                 self.logger.info("Using SCS at %s", self.opts.scsURL)
             self.scsService = scs.Service(self.opts.scsURL, key=self.framework.key, cert=self.framework.cert, timeout=self.opts.ssltimeout, verbose=self.opts.verbosessl)
         self.scsCalls = 0
+        if self.isStitching and self.opts.noSCS:
+            self.logger.info("Not calling SCS on stitched topology per commandline option.")
 
         # Create singleton that knows about default sliver expirations by AM type
         defs.DefaultSliverExpirations.getInstance(self.config, self.logger)
@@ -1285,7 +1287,7 @@ class StitchingHandler(object):
 
         # Call SCS if needed
         self.scsCalls = self.scsCalls + 1
-        if self.isStitching:
+        if self.isStitching and not self.opts.noSCS:
             if self.scsCalls == 1:
                 self.logger.info("Calling SCS...")
             else:
@@ -1355,7 +1357,7 @@ class StitchingHandler(object):
         # Done pausing to let AMs free resources
 
         # Parse SCS Response, constructing objects and dependencies, validating return
-        if self.isStitching:
+        if self.isStitching and not self.opts.noSCS:
             self.parsedSCSRSpec, workflow_parser = self.parseSCSResponse(scsResponse)
             scsResponse = None # Just to note we are done with this here (keep no state)
         else:
@@ -1436,7 +1438,7 @@ class StitchingHandler(object):
         # the workflow
         self.ams_to_process = copy.copy(workflow_parser.aggs)
 
-        if self.isStitching:
+        if self.isStitching and not self.opts.noSCS:
             self.logger.debug("SCS workflow said to include resources from these aggregates:")
             for am in self.ams_to_process:
                 self.logger.debug("\t%s", am)
