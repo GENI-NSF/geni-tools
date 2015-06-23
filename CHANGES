@@ -18,6 +18,11 @@ gcf 2.10:
     flexibility perhaps. (#838)
    * Allow links with more than 1 interface per AM, and start supporting
      multiple AMs per link.
+  * Add option `--noSCS` to force skipping the SCS, for use when stitcher
+    calls the SCS but the SCS fails the request, and the request is
+    complete already. Or use this on the expanded request from a stitcher
+    call with `--noReservation`. Lack of a workflow may be a problem
+    in some cases. (#839)
 
  * gcf
   * Add utility function to derive the effective user's client cert, after
