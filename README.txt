@@ -164,6 +164,9 @@ Full details on options for each step are described below.
    supply a matching -V option to that script.
    Supply the --debug argument for more detailed logging.
 
+   You may replace the sample aggregate by extending
+   `ReferenceAggregateManager`, and then supplying the `-D` argument to `gcf-am.py`.
+
 4. Run the GCF installation testing client:
 
    $ python src/gcf-test.py

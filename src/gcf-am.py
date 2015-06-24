@@ -71,7 +71,7 @@ def parse_args(argv):
     parser.add_option("-V", "--api-version", type=int,
                       help="AM API Version", default=2)
     parser.add_option("-D", "--delegate", metavar="DELEGATE",
-                      help="Delegate to instanciate")
+                      help="Delegate to instantiate")
     return parser.parse_args()
 
 def getAbsPath(path):
@@ -153,16 +153,14 @@ def main(argv=None):
         resource_manager = \
             getInstanceFromClassname(opts.authorizer_resource_manager)
 
-    if hasattr(opts, 'delegate'):
+    if hasattr(opts, 'delegate') and opts.delegate is not None and str(opts.delegate).strip() != "":
         delegate = \
-            getInstanceFromClassname(opts.delegate, 
-                                     getAbsPath(opts.rootcadir), 
+            getInstanceFromClassname(opts.delegate, certfile,
                                      config['global']['base_name'],
-                                     "https://%s:%d/" % (opts.host, int(opts.port)),
-                                     certfile
+                                     "https://%s:%d/" % (opts.host, int(opts.port))
                                  )
     else:
-        delegate=None
+        delegate = None
 
     # here rootcadir is supposed to be a single file with multiple
     # certs possibly concatenated together
