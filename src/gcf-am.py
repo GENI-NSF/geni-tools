@@ -70,6 +70,8 @@ def parse_args(argv):
                        help="enable debugging output")
     parser.add_option("-V", "--api-version", type=int,
                       help="AM API Version", default=2)
+    parser.add_option("-D", "--delegate", metavar="DELEGATE",
+                      help="Delegate to instanciate")
     return parser.parse_args()
 
 def getAbsPath(path):
@@ -151,14 +153,24 @@ def main(argv=None):
         resource_manager = \
             getInstanceFromClassname(opts.authorizer_resource_manager)
 
-    # rootcadir is  dir of multiple certificates
-    delegate = geni.ReferenceAggregateManager(getAbsPath(opts.rootcadir))
+    if hasattr(opts, 'delegate'):
+        delegate = \
+            getInstanceFromClassname(opts.delegate, 
+                                     getAbsPath(opts.rootcadir), 
+                                     config['global']['base_name'],
+                                     "https://%s:%d/" % (opts.host, int(opts.port)),
+                                     certfile
+                                 )
+    else:
+        delegate=None
 
     # here rootcadir is supposed to be a single file with multiple
     # certs possibly concatenated together
     comboCertsFile = geni.CredentialVerifier.getCAsFileFromDir(getAbsPath(opts.rootcadir))
 
     if opts.api_version == 1:
+        # rootcadir is dir of multiple certificates
+        delegate = geni.ReferenceAggregateManager(getAbsPath(opts.rootcadir))
         ams = geni.AggregateManagerServer((opts.host, int(opts.port)),
                                           delegate=delegate,
                                           keyfile=keyfile,
@@ -182,7 +194,8 @@ def main(argv=None):
                                                      ca_certs=comboCertsFile,
                                                      base_name=config['global']['base_name'],
                                                      authorizer=authorizer,
-                                                     resource_manager=resource_manager)
+                                                     resource_manager=resource_manager,
+                                                     delegate=delegate)
     else:
         msg = "Unknown API version: %d. Valid choices are \"1\", \"2\", or \"3\""
         sys.exit(msg % (opts.api_version))
