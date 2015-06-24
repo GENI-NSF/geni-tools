@@ -944,7 +944,7 @@ class ReferenceAggregateManager(object):
         slice_urn.
         options here are passed to the verify_from_string method 
         of the cred verifier.
-        Raise Exception if no credentials with enough privilegs are found. 
+        Raise Exception if no credentials with enough privileges are found. 
         Return the credentials returned by the credential verifier otherwise.
         """
         # Note that verify throws an exception on failure.
