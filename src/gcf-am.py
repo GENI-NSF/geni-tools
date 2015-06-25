@@ -153,16 +153,21 @@ def main(argv=None):
         resource_manager = \
             getInstanceFromClassname(opts.authorizer_resource_manager)
 
+    delegate=None
     if hasattr(opts, 'delegate'):
-        delegate = \
-            getInstanceFromClassname(opts.delegate, 
-                                     getAbsPath(opts.rootcadir), 
-                                     config['global']['base_name'],
-                                     "https://%s:%d/" % (opts.host, int(opts.port)),
-                                     certfile
-                                 )
-    else:
-        delegate=None
+        try:
+            delegate = \
+                       getInstanceFromClassname(opts.delegate, 
+                                                getAbsPath(opts.rootcadir), 
+                                                config['global']['base_name'],
+                                                "https://%s:%d/" % (opts.host, int(opts.port)),
+                                                certfile
+                                            )
+        except AttributeError, e:
+            msg="Could not create delegate from name %s: probably not a valid python class name. "%opts.delegate
+            msg+=e.message
+            logging.getLogger('gcf-am').error(msg)
+            sys.exit(msg)
 
     # here rootcadir is supposed to be a single file with multiple
     # certs possibly concatenated together
