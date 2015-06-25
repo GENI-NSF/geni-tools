@@ -161,7 +161,7 @@ def main(argv=None):
                                                 getAbsPath(opts.rootcadir), 
                                                 config['global']['base_name'],
                                                 "https://%s:%d/" % (opts.host, int(opts.port)),
-                                                certfile
+                                                **vars(opts)
                                             )
         except AttributeError, e:
             msg="Could not create delegate from name %s: probably not a valid python class name. "%opts.delegate
