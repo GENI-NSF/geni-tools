@@ -154,7 +154,7 @@ def main(argv=None):
             getInstanceFromClassname(opts.authorizer_resource_manager)
 
     delegate=None
-    if hasattr(opts, 'delegate'):
+    if hasattr(opts, 'delegate') and opts.delegate is not None and str(opts.delegate).strip() != "":
         try:
             delegate = \
                        getInstanceFromClassname(opts.delegate, 
