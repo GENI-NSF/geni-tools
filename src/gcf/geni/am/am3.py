@@ -286,7 +286,7 @@ class ReferenceAggregateManager(object):
 
     # root_cert is a single cert or dir of multiple certs
     # that are trusted to sign credentials
-    def __init__(self, root_cert, urn_authority, url):
+    def __init__(self, root_cert, urn_authority, url, **kwargs):
         self._urn_authority = urn_authority
         self._url = url
         self._cred_verifier = geni.CredentialVerifier(root_cert)
