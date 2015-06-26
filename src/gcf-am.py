@@ -156,16 +156,15 @@ def main(argv=None):
     delegate=None
     if hasattr(opts, 'delegate') and opts.delegate is not None and str(opts.delegate).strip() != "":
         try:
-            delegate = \
-                       getInstanceFromClassname(opts.delegate, 
+            delegate = getInstanceFromClassname(opts.delegate, 
                                                 getAbsPath(opts.rootcadir), 
                                                 config['global']['base_name'],
                                                 "https://%s:%d/" % (opts.host, int(opts.port)),
                                                 **vars(opts)
                                             )
         except AttributeError, e:
-            msg="Could not create delegate from name %s: probably not a valid python class name. "%opts.delegate
-            msg+=e.message
+            msg = "Could not create delegate from name '%s': probably not a valid python class name. " % opts.delegate
+            msg += e.message
             logging.getLogger('gcf-am').error(msg)
             sys.exit(msg)
 
@@ -190,7 +189,8 @@ def main(argv=None):
                                                      ca_certs=comboCertsFile,
                                                      base_name=config['global']['base_name'], 
                                                      authorizer=authorizer,
-                                                     resource_manager=resource_manager)
+                                                     resource_manager=resource_manager,
+                                                     delegate=delegate)
     elif opts.api_version == 3:
         ams = gcf.geni.am.am3.AggregateManagerServer((opts.host, int(opts.port)),
                                                      keyfile=keyfile,
