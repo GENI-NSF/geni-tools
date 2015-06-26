@@ -41,9 +41,10 @@ gcf 2.10:
     to connect to some updated servers. (#745)
   * Rework the code that calls the cred verifier to reduce code duplication and make 
     implementations deriving the ReferenceAggregateManager more easy to write. (#836)
-  * Allow deployments to specify delegate to use in the config file,
-    so as to be able to write delegates whithout touching the main gcf
-    code, therefore easing maintenance (#837).
+  * Allow deployments to specify delegate to use in the config file or
+    from the command line so as to be able to write delegates whithout
+    touching the main gcf code, therefore easing maintenance (#837).
+
 
 gcf 2.9:
  * Add Markdown style README, CONTRIBUTING and CONTRIBUTORS files. (#551)
