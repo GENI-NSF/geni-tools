@@ -1235,8 +1235,11 @@ class AggregateManager(object):
                              credentials,
                              args, options, is_v3=True) as amc:
             if not amc._error:
-                amc._result = \
-                    self._delegate.ListResources(credentials, amc._options)
+                try:
+                    amc._result = \
+                        self._delegate.ListResources(credentials, amc._options)
+                except ApiErrorException as e:
+                    return self._api_error(e)
         return amc._result
 
     def Allocate(self, slice_urn, credentials, rspec, options):
@@ -1256,9 +1259,12 @@ class AggregateManager(object):
             if not amc._error:
                 slice_urn = amc._args['slice_urn']
                 rspec = amc._args['rspec']
-                amc._result = \
-                    self._delegate.Allocate(slice_urn, credentials, 
-                                            rspec, amc._options)
+                try:
+                    amc._result = \
+                       self._delegate.Allocate(slice_urn, credentials, 
+                                               rspec, amc._options)
+                except ApiErrorException as e:
+                    return self._api_error(e)
         return amc._result
 
     def Provision(self, urns, credentials, options):
@@ -1274,8 +1280,11 @@ class AggregateManager(object):
                              args, options, is_v3=True) as amc:
             if not amc._error:
                 urns = amc._args['urns']
-                amc._result = \
-                    self._delegate.Provision(urns, credentials, amc._options)
+                try:
+                    amc._result = \
+                        self._delegate.Provision(urns, credentials, amc._options)
+                except ApiErrorException as e:
+                    return self._api_error(e)
         return amc._result
 
     def Delete(self, urns, credentials, options):
@@ -1289,8 +1298,11 @@ class AggregateManager(object):
                              args, options, is_v3=True) as amc:
             if not amc._error:
                 urns = amc._args['urns']
-                amc._result = \
-                    self._delegate.Delete(urns, credentials, amc._options)
+                try:
+                    amc._result = \
+                        self._delegate.Delete(urns, credentials, amc._options)
+                except ApiErrorException as e:
+                    return self._api_error(e)
         return amc._result
 
     def PerformOperationalAction(self, urns, credentials, action, options):
@@ -1308,10 +1320,13 @@ class AggregateManager(object):
             if not amc._error:
                 urns = amc._args['urns']
                 action = amc._args['action']
-                amc._result = \
-                    self._delegate.PerformOperationalAction(urns, credentials, 
-                                                            action, 
-                                                            amc._options)
+                try: 
+                    amc._result = \
+                        self._delegate.PerformOperationalAction(urns, credentials, 
+                                                                action, 
+                                                                amc._options)
+                except ApiErrorException as e:
+                    return self._api_error(e)
         return amc._result
 
     def Status(self, urns, credentials, options):
@@ -1325,8 +1340,11 @@ class AggregateManager(object):
                              args, options, is_v3 = True) as amc:
             if not amc._error:
                 urns = amc._args['urns']
-                amc._result = \
-                    self._delegate.Status(urns, credentials, amc._options)
+                try:
+                    amc._result = \
+                        self._delegate.Status(urns, credentials, amc._options)
+                except ApiErrorException as e:
+                    return self._api_error(e)
         return amc._result
 
     def Describe(self, urns, credentials, options):
@@ -1342,8 +1360,11 @@ class AggregateManager(object):
                              args, options, is_v3 = True) as amc:
             if not amc._error:
                 urns = amc._args['urns']
-                amc._result = \
-                    self._delegate.Describe(urns, credentials, amc._options)
+                try:
+                    amc._result = \
+                        self._delegate.Describe(urns, credentials, amc._options)
+                except ApiErrorException as e:
+                    return self._api_error(e)
         return amc._result
 
     def Renew(self, urns, credentials, expiration_time, options):
@@ -1359,9 +1380,12 @@ class AggregateManager(object):
             if not amc._error:
                 urns = amc._args['urns']
                 expiration_time = amc._args['expiration_time']
-                amc._result = \
-                    self._delegate.Renew(urns, credentials, expiration_time, 
-                                         amc._options)
+                try:
+                    amc._result = \
+                        self._delegate.Renew(urns, credentials, expiration_time, 
+                                             amc._options)
+                except ApiErrorException as e:
+                    return self._api_error(e)
         return amc._result
 
     def Shutdown(self, slice_urn, credentials, options):
@@ -1375,9 +1399,12 @@ class AggregateManager(object):
                              args, options, is_v3 = True) as amc:
             if not amc._error:
                 slice_urn = amc._args['slice_urn']
-                amc._result = \
-                    self._delegate.Shutdown(slice_urn, credentials, 
-                                            amc._options)
+                try:
+                    amc._result = \
+                        self._delegate.Shutdown(slice_urn, credentials, 
+                                                amc._options)
+                except ApiErrorException as e:
+                    return self._api_error(e)
         return amc._result
 
 
