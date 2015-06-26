@@ -190,7 +190,8 @@ def main(argv=None):
                                                      ca_certs=comboCertsFile,
                                                      base_name=config['global']['base_name'], 
                                                      authorizer=authorizer,
-                                                     resource_manager=resource_manager)
+                                                     resource_manager=resource_manager,
+                                                     delegate=delegate)
     elif opts.api_version == 3:
         ams = gcf.geni.am.am3.AggregateManagerServer((opts.host, int(opts.port)),
                                                      keyfile=keyfile,
