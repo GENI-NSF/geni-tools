@@ -62,6 +62,12 @@ slice_duration=7200
 # urn:publicid:IDN+<base_name>:am1+node+myLinuxGCFBox
 name=am1
 
+# The Aggregate is by default implemented by ReferenceAggregateManager
+# in am2.py or am3.py depending on API version. Specify an alternate
+# class here that extends that class for your own implementation.
+# If a -D/--delegate option is supplied, that takes precedence
+# delegate=gcf.geni.am.am2.ReferenceAggregateManager
+
 # Address that the AM listens on
 host=127.0.0.1
 port=8001
