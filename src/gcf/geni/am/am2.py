@@ -122,7 +122,7 @@ class ReferenceAggregateManager(object):
 
     # root_cert is a single cert or dir of multiple certs
     # that are trusted to sign credentials
-    def __init__(self, root_cert, urn_authority, url):
+    def __init__(self, root_cert, urn_authority, url, **kwargs):
         self._url = url
         self._api_version = 2
         self._slices = dict()
@@ -847,7 +847,8 @@ class AggregateManagerServer(object):
     def __init__(self, addr, keyfile=None, certfile=None,
                  trust_roots_dir=None,
                  ca_certs=None, base_name=None,
-                 authorizer=None, resource_manager=None):
+                 authorizer=None, resource_manager=None,
+                 delegate=None):
         # ca_certs arg here must be a file of concatenated certs
         if ca_certs is None:
             raise Exception('Missing CA Certs')
@@ -856,8 +857,9 @@ class AggregateManagerServer(object):
 
         # Decode the addr into a URL. Is there a pythonic way to do this?
         server_url = "https://%s:%d/" % addr
-        delegate = ReferenceAggregateManager(trust_roots_dir, base_name, 
-                                             server_url)
+        if delegate is None:
+            delegate = ReferenceAggregateManager(trust_roots_dir, base_name, 
+                                                 server_url)
         # FIXME: set logRequests=true if --debug
         self._server = SecureXMLRPCServer(addr, keyfile=keyfile,
                                           certfile=certfile, ca_certs=ca_certs)
