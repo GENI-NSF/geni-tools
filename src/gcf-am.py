@@ -71,7 +71,7 @@ def parse_args(argv):
     parser.add_option("-V", "--api-version", type=int,
                       help="AM API Version", default=2)
     parser.add_option("-D", "--delegate", metavar="DELEGATE",
-                      help="Delegate to instantiate")
+                      help="Classname of aggregate delegate to instantiate (if none, reference implementation is used)")
     return parser.parse_args()
 
 def getAbsPath(path):
