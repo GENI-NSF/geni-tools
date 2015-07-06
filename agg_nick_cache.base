@@ -1,6 +1,6 @@
 ### DO NOT MODIFY THIS FILE BY HAND ###
 # This file lives at: http://trac.gpolab.bbn.com/gcf/raw-attachment/wiki/Omni/agg_nick_cache
-# Last updated on May 27, 2015
+# Last updated on July 6, 2015
 
 [omni_defaults]
 # This section is for updating Omni defaults without updating Omni.
@@ -686,4 +686,12 @@ utah-stitch=urn:publicid:IDN+stitch.geniracks.net+authority+cm,https://boss.stit
 utah-stitch1=urn:publicid:IDN+stitch.geniracks.net+authority+cm,https://boss.stitch.geniracks.net:12369/protogeni/xmlrpc/am/1.0
 utah-stitch2=urn:publicid:IDN+stitch.geniracks.net+authority+cm,https://boss.stitch.geniracks.net:12369/protogeni/xmlrpc/am/2.0
 utah-stitch3=urn:publicid:IDN+stitch.geniracks.net+authority+cm,https://boss.stitch.geniracks.net:12369/protogeni/xmlrpc/am/3.0
+
+# ====
+# iMinds Virtual Wall 1
+# ====
+wall1=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
+wall1-1=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/1.0
+wall1-2=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
+wall1-3=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/3.0
 
