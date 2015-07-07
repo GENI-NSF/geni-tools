@@ -63,6 +63,7 @@ from ...omnilib.util import credparsing as credutils
 
 from ..auth.base_authorizer import *
 from .am_method_context import AMMethodContext
+from .api_error_exception import ApiErrorException
 
 # See sfa/trust/rights.py
 # These are names of operations
@@ -132,16 +133,6 @@ class AM_API(object):
     ALREADY_EXISTS = 17
     # --- Non-standard errors below here. ---
     OUT_OF_RANGE = 19
-
-
-class ApiErrorException(Exception):
-    def __init__(self, code, output):
-        self.code = code
-        self.output = output
-
-    def __str__(self):
-        return "ApiError(%r, %r)" % (self.code, self.output)
-
 
 class Sliver(object):
     """A sliver is a single resource assigned to a single slice

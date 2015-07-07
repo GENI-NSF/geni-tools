@@ -32,7 +32,7 @@ from ...sfa.trust.certificate import Certificate
 from ...sfa.trust.abac_credential import ABACCredential
 from ..util.speaksfor_util import determine_speaks_for
 from ..SecureThreadedXMLRPCServer import SecureThreadedXMLRPCRequestHandler
-
+from .api_error_exception import ApiErrorException
 
 # A class to support wrapping AM API calls from AggregateManager
 # to the delegate to check for authorization and perform speaks-for
@@ -151,7 +151,11 @@ class AMMethodContext:
     # type, value is the exception and traceback_object is the stack trace
     # Otherwise, these arguments are all none
     def __exit__(self, type, value, traceback_object):
-        if type:
+        if type is ApiErrorException:
+            self._logger.exception("Error in %s" % self._method_name)
+            self._result=self._api_error(value);
+            self._error = True
+        elif type:
             self._logger.exception("Error in %s" % self._method_name)
             self._handleError(value)
 
