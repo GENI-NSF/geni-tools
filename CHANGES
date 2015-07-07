@@ -44,6 +44,8 @@ gcf 2.10:
   * Allow aggregate deployments to specify the delegate to use in the
     `gcf_config` file or on the command line, so as to be able to
     write delegates without touching the main gcf code, thereby easing maintenance (#837).
+  * When delegates raise an `ApiErrorException`, catch it to send back
+    a proper return value indicating an error occured. (#841)
 
 gcf 2.9:
  * Add Markdown style README, CONTRIBUTING and CONTRIBUTORS files. (#551)
