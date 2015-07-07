@@ -21,9 +21,9 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 """
-An aggregate manager delegate that raises APIErrorException to test
+An aggregate manager delegate that raises an APIErrorException to test
 behavior in gcf.geni.am.am3.AggregateManager when calling a delagate
-that raises an exception
+that raises an exception.
 """
 
 import gcf.geni.am.am3 as am3
@@ -31,6 +31,6 @@ import gcf.geni.am.am3 as am3
 class ExceptionRaiserDelegate(am3.ReferenceAggregateManager):
     def __init__(self, root_cert, urn_authority, url, **kwargs):
         super(ExceptionRaiserDelegate,self).__init__(root_cert,urn_authority,url,**kwargs)
-    
+
     def Shutdown(self, slice_urn, credentials, options):
         raise am3.ApiErrorException(am3.AM_API.REFUSED, "test exception")
