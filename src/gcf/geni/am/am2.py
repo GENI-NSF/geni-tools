@@ -55,6 +55,7 @@ from ..util.tz_util import tzd
 from ..SecureXMLRPCServer import SecureXMLRPCServer
 from ..auth.base_authorizer import *
 from .am_method_context import AMMethodContext
+from ...gcf_version import GCF_VERSION
 
 # See sfa/trust/rights.py
 # These are names of operations
@@ -125,6 +126,7 @@ class ReferenceAggregateManager(object):
     def __init__(self, root_cert, urn_authority, url, **kwargs):
         self._url = url
         self._api_version = 2
+        self._am_type = "gcf"
         self._slices = dict()
         self._agg = Aggregate()
         self._agg.add_resources([FakeVM(self._agg) for _ in range(3)])
@@ -133,6 +135,7 @@ class ReferenceAggregateManager(object):
         self._my_urn = publicid_to_urn("%s %s %s" % (self._urn_authority, 'authority', 'am'))
         self.max_lease = datetime.timedelta(days=REFAM_MAXLEASE_DAYS)
         self.logger = logging.getLogger('gcf.am2')
+        self.logger.info("Running %s AM v%d code version %s", self._am_type, self._api_version, GCF_VERSION)
 
     def GetVersion(self, options):
         '''Specify version information about this AM. That could
