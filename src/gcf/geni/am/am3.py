@@ -1392,9 +1392,12 @@ class AggregateManagerServer(object):
         if delegate is None:
             delegate = ReferenceAggregateManager(trust_roots_dir, base_name,
                                                  server_url)
-        # FIXME: set logRequests=true if --debug
+
+        # FIXED: set logRequests=true if --debug
+        logRequest=logging.getLogger().getEffectiveLevel()==logging.DEBUG
         self._server = SecureXMLRPCServer(addr, keyfile=keyfile,
-                                          certfile=certfile, ca_certs=ca_certs)
+                                          certfile=certfile, ca_certs=ca_certs, 
+                                          logRequests=logRequest)
         aggregate_manager = AggregateManager(trust_roots_dir, delegate, 
                                              authorizer, resource_manager)
         self._server.register_instance(aggregate_manager)
