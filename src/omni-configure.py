@@ -36,7 +36,7 @@ from base64 import b64encode
 import datetime
 import glob
 import string, re
-import sys, os, platform, shutil
+import sys, os, platform, shutil, binascii
 import zipfile
 from subprocess import Popen, PIPE
 import ConfigParser
@@ -48,6 +48,7 @@ import M2Crypto
 
 logger = None
 
+SCRATCH_DIR = "/tmp/omni_bundle_" + binascii.b2a_hex(os.urandom(15))
 DEFAULT_PRIVATE_CERT_KEY = {
                             'pg' : "~/.ssh/geni_cert_key_pg",
                             # 'pl' : "~/.ssh/geni_cert_key_pl",
@@ -643,11 +644,11 @@ class OmniConfigure( object ):
         # Validate that the sshdir does not conflict with the tmp
         # folders used for the portal
         if opts.framework is 'portal':
-          if opts.sshdir.startswith('/tmp/omni_bundle') :
+          if opts.sshdir.startswith(SCRATCH_DIR) :
                 sys.exit("\n\nExit!\nYou can't use as your ssh directory "+\
                          opts.sshdir + ". It is used internally by the script, rerun "+\
-                         "and choose a directory is not under "+\
-                         "'/tmp/omni_bundle' to store your "+\
+                         "and choose a directory is not under '"+\
+                         SCRATCH_DIR + "' to store your "+\
                          "ssh keys." )
 
         # Expand the portal bundle file to a full path
@@ -1107,13 +1108,13 @@ use the '-z' option to\nspecify a custom location.\n")
                        "key in the bundle, please email help@geni.net")
 
             # Place the private key in the right place
-            omnizip.extract(x, '/tmp/omni_bundle')
+            omnizip.extract(x, SCRATCH_DIR)
             prkeyfname = os.path.join(opts.sshdir, DEFAULT_PRIVATE_KEY[opts.framework])
             fdesc = "Private SSH key"
-            prkeyfname = copyPrivateKeyFile(os.path.join('/tmp/omni_bundle/', x), prkeyfname, msg=fdesc, oktodelete=False,replaceAll=opts.replace_all)
+            prkeyfname = copyPrivateKeyFile(os.path.join(SCRATCH_DIR, x), prkeyfname, msg=fdesc, oktodelete=False,replaceAll=opts.replace_all)
 
             # Place the public key in the right place
-            omnizip.extract(xpub, '/tmp/omni_bundle')
+            omnizip.extract(xpub, SCRATCH_DIR)
             pubname = prkeyfname +'.pub'
 
             # Try and see if this public key name exist
@@ -1121,15 +1122,16 @@ use the '-z' option to\nspecify a custom location.\n")
             # if the file already exists, exit since we can't have a pub key
             # that does not match the private key
             if cmp(tmp, pubname) :
-              # Remove the cert, the private key, and the /tmp/omni_bundle/ssh folder before
+              # Remove the cert, the private key, and the
+              # /tmp/omni_bundle_<random>/ssh folder before
               # we exit
               os.remove(opts.cert)
               os.remove(prkeyfname)
-              shutil.rmtree('/tmp/omni_bundle/ssh')
+              shutil.rmtree(SCRATCH_DIR + '/ssh')
               sys.exit("There is already a key named "+pubname+". Remove it first "+
                        "and then rerun the script")
 
-            shutil.move(os.path.join('/tmp/omni_bundle/', xpub), pubname)
+            shutil.move(os.path.join(SCRATCH_DIR, xpub), pubname)
             fdesc="Public SSH key"
             logger.info("%s stored at:\n\t%s",fdesc, pubname)
             wrotefile(fdesc,pubname,False)
@@ -1144,7 +1146,7 @@ use the '-z' option to\nspecify a custom location.\n")
           if x.startswith('ssh/public') and \
              not x.startswith(pubkey_of_priv_inbundle) :
 
-            omnizip.extract(x, '/tmp/omni_bundle')
+            omnizip.extract(x, SCRATCH_DIR)
             xname = os.path.basename(x)
             xbase = os.path.splitext(xname)[0]
             xfullpath = os.path.join(opts.sshdir, xbase + '.pub')
@@ -1157,13 +1159,13 @@ use the '-z' option to\nspecify a custom location.\n")
                 os.makedirs(dstdir)
 
             logger.debug("Copy public key %s to %s" %(x, xfullpath))
-            shutil.move(os.path.join('/tmp/omni_bundle/', x), xfullpath)
+            shutil.move(os.path.join(SCRATCH_DIR, x), xfullpath)
             fdesc = "Public SSH key"
             logger.info("%s stored at:\n\t%s", fdesc, xfullpath)
             wrotefile(fdesc,xfullpath,False)
             pubkey_list.append(xfullpath)
 
-       shutil.rmtree('/tmp/omni_bundle/ssh')
+       shutil.rmtree(SCRATCH_DIR + '/ssh')
 
        return pubkey_list
 
@@ -1259,16 +1261,16 @@ use the '-z' option to\nspecify a custom location.\n")
         """
         omnizip = zipfile.ZipFile(filename)
         # extract() can only take a directory as argument
-        # extract it at /tmp/omni_bundle and then move it to the file
+        # extract it at /tmp/omni_bundle_<rand_string> and then move it to the file
         # we want
-        omnizip.extract('geni_cert.pem', '/tmp/omni_bundle')
+        omnizip.extract('geni_cert.pem', SCRATCH_DIR)
         omnizip.close()
         # If the destination does not exist create it
         destdir = os.path.dirname(dest)
         if os.path.expanduser(destdir) :
           if not os.path.exists(destdir) :
             os.makedirs(destdir)
-        shutil.move('/tmp/omni_bundle/geni_cert.pem', dest)
+        shutil.move(SCRATCH_DIR + '/geni_cert.pem', dest)
     def loadProjects(self, filename) :
         f = open(filename)
         content = f.read()
@@ -1397,8 +1399,8 @@ default_rspec_extension = rspec
             bundle_omni_configs = ['omni_config_chapi'] + bundle_omni_configs
         for config_loc in bundle_omni_configs:
             try:
-                omnizip.extract(config_loc, '/tmp/omni_bundle')
-                config_path = os.path.join('/tmp/omni_bundle/', config_loc)
+                omnizip.extract(config_loc, SCRATCH_DIR)
+                config_path = os.path.join(SCRATCH_DIR, config_loc)
                 config = loadConfigFile(config_path)
                 break
             except:
@@ -1483,7 +1485,7 @@ def main():
                 cloc = "-c %s " % oconfig._opts.configfile
             logger.info("To test your configuration, run: \n\tomni %s-a gpo-ig getversion \n"%cloc)
             if oconfig._opts.framework is 'portal' :
-                shutil.rmtree('/tmp/omni_bundle')
+                shutil.rmtree(SCRATCH_DIR)
     except KeyboardInterrupt:
         print "\n\nGoodbye.\n"
         return
