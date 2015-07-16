@@ -2,6 +2,7 @@
 
 gcf 2.10:
  * Omni
+  * Modify omni-configure to support multi-user systems (#843)
   * Continue anyway if no aggregate nickname cache can be loaded. (#822)
    * Sliver info reporting and operations on AMs by nickname will likely fail.
   * For connections to servers, use TLSv1 if possible (falling back to SSLv3
@@ -23,6 +24,9 @@ gcf 2.10:
     complete already. Or use this on the expanded request from a stitcher
     call with `--noReservation`. Lack of a workflow may be a problem
     in some cases. (#839)
+
+ * omni-configure
+  * Modify omni-configure to support multi-user systems (#843)
 
  * gcf
   * Add utility function to derive the effective user's client cert, after
