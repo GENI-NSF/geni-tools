@@ -2,7 +2,6 @@
 
 gcf 2.10:
  * Omni
-  * Modify omni-configure to support multi-user systems (#843)
   * Continue anyway if no aggregate nickname cache can be loaded. (#822)
    * Sliver info reporting and operations on AMs by nickname will likely fail.
   * For connections to servers, use TLSv1 if possible (falling back to SSLv3
