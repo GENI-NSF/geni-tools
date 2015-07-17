@@ -710,3 +710,13 @@ im-wilab=urn:publicid:IDN+wilab2.ilabt.iminds.be+authority+cm,https://www.wilab2
 im-wilab1=urn:publicid:IDN+wilab2.ilabt.iminds.be+authority+cm,https://www.wilab2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/1.0
 im-wilab2=urn:publicid:IDN+wilab2.ilabt.iminds.be+authority+cm,https://www.wilab2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
 im-wilab3=urn:publicid:IDN+wilab2.ilabt.iminds.be+authority+cm,https://www.wilab2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/3.0
+
+# ======
+# Kaiserslautern (UKL) OpenGENI
+# ======
+ukl-og=urn:publicid:IDN+glab077.e4.ukl.german-lab.de:gcf+authority+am,https://glab077.e4.ukl.german-lab.de:5002
+ukl-og2=urn:publicid:IDN+glab077.e4.ukl.german-lab.de:gcf+authority+am,https://glab077.e4.ukl.german-lab.de:5002
+ukl-og3=urn:publicid:IDN+glab077.e4.ukl.german-lab.de:gcf+authority+am,https://glab077.e4.ukl.german-lab.de:5001
+kaiserslautern-og=urn:publicid:IDN+glab077.e4.ukl.german-lab.de:gcf+authority+am,https://glab077.e4.ukl.german-lab.de:5002
+kaiserslautern-og2=urn:publicid:IDN+glab077.e4.ukl.german-lab.de:gcf+authority+am,https://glab077.e4.ukl.german-lab.de:5002
+kaiserslautern-og3=urn:publicid:IDN+glab077.e4.ukl.german-lab.de:gcf+authority+am,https://glab077.e4.ukl.german-lab.de:5001
