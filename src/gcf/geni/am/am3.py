@@ -569,7 +569,7 @@ class ReferenceAggregateManager(object):
         # EG the 'info' privilege in a credential allows the operations
         # listslices, listnodes, policy
         privileges = (PROVISION_PRIV,)
-        creds = self.getverifiedcredentials(the_slice.urn, credentials, options, privileges)
+        creds = self.getVerifiedCredentials(the_slice.urn, credentials, options, privileges)
 
         if 'geni_rspec_version' not in options:
             # This is a required option, so error out with bad arguments.
@@ -617,7 +617,7 @@ class ReferenceAggregateManager(object):
                                       and options['geni_end_time']))
         for sliver in slivers:
             # Extend the lease and set to PROVISIONED
-            expiration = min(sliver.getEndTime(), max_expiration)
+            expiration = min(sliver.endTime(), max_expiration)
             sliver.setEndTime(expiration)
             sliver.setExpiration(expiration)
             sliver.setAllocationState(STATE_GENI_PROVISIONED)
