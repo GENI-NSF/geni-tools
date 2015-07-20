@@ -47,6 +47,7 @@ gcf 2.10:
   * When delegates raise an `ApiErrorException`, catch it to send back
     a proper return value indicating an error occured. (#841)
   * Log the HTTP request line when `--debug`. (#842)
+  * Fix some typos in `Provision()` in `am3.py`. (#846)
 
 gcf 2.9:
  * Add Markdown style README, CONTRIBUTING and CONTRIBUTORS files. (#551)
