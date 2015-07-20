@@ -41,6 +41,8 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
 
+ * Fix typo in `Provision()`. (#846)
+
 New in v2.10:
  * Continue anyway if no aggregate nickname cache can be loaded. (#822)
   * Sliver info reporting and operations on AMs by nickname will likely fail.
