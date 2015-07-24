@@ -80,6 +80,9 @@ rm -rf $RPM_BUILD_ROOT
 %{_pydir}/gcf/geni/am/am_method_context.py
 %{_pydir}/gcf/geni/am/am_method_context.pyc
 %{_pydir}/gcf/geni/am/am_method_context.pyo
+%{_pydir}/gcf/geni/am/api_error_exception.py
+%{_pydir}/gcf/geni/am/api_error_exception.pyc
+%{_pydir}/gcf/geni/am/api_error_exception.pyo
 %{_pydir}/gcf/geni/am/fakevm.py
 %{_pydir}/gcf/geni/am/fakevm.pyc
 %{_pydir}/gcf/geni/am/fakevm.pyo
@@ -89,6 +92,9 @@ rm -rf $RPM_BUILD_ROOT
 %{_pydir}/gcf/geni/am/resource.py
 %{_pydir}/gcf/geni/am/resource.pyc
 %{_pydir}/gcf/geni/am/resource.pyo
+%{_pydir}/gcf/geni/am/test_ams.py
+%{_pydir}/gcf/geni/am/test_ams.pyc
+%{_pydir}/gcf/geni/am/test_ams.pyo
 %{_pydir}/gcf/geni/am1.py
 %{_pydir}/gcf/geni/am1.pyc
 %{_pydir}/gcf/geni/am1.pyo
@@ -104,6 +110,9 @@ rm -rf $RPM_BUILD_ROOT
 %{_pydir}/gcf/geni/auth/argument_guard.py
 %{_pydir}/gcf/geni/auth/argument_guard.pyc
 %{_pydir}/gcf/geni/auth/argument_guard.pyo
+%{_pydir}/gcf/geni/auth/authorizer_client.py
+%{_pydir}/gcf/geni/auth/authorizer_client.pyc
+%{_pydir}/gcf/geni/auth/authorizer_client.pyo
 %{_pydir}/gcf/geni/auth/authorizer_server.py
 %{_pydir}/gcf/geni/auth/authorizer_server.pyc
 %{_pydir}/gcf/geni/auth/authorizer_server.pyo
