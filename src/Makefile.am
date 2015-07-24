@@ -41,13 +41,16 @@ nobase_dist_python_DATA = \
 	gcf/geni/am/am2.py \
 	gcf/geni/am/am3.py \
 	gcf/geni/am/am_method_context.py \
+	gcf/geni/am/api_error_exception.py \
 	gcf/geni/am/fakevm.py \
 	gcf/geni/am/__init__.py \
 	gcf/geni/am/proxyam.py \
 	gcf/geni/am/resource.py \
+	gcf/geni/am/test_ams.py \
 	gcf/geni/auth/abac_authorizer.py \
 	gcf/geni/auth/abac_resource_manager.py \
 	gcf/geni/auth/argument_guard.py \
+	gcf/geni/auth/authorizer_client.py \
 	gcf/geni/auth/authorizer_server.py \
 	gcf/geni/auth/base_authorizer.py \
 	gcf/geni/auth/binders.py \
