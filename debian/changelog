@@ -1,3 +1,21 @@
+geni-tools (2.10-1) UNRELEASED; urgency=medium
+
+  * TBD for version 2.10
+
+ -- Tom Mitchell <tmitchel@bbn.com>  Fri, 24 July 2015 11:46:00 -0400
+
+geni-tools (2.9-3) UNRELEASED; urgency=medium
+
+  * Final 2.9 changes
+
+ -- Tom Mitchell <tmitchel@bbn.com>  Tue, 3 June 2015 08:30:00 -0400
+
+geni-tools (2.9-2) UNRELEASED; urgency=medium
+
+  * Add some more files to package
+
+ -- Tom Mitchell <tmitchel@bbn.com>  Tue, 19 May 2015 16:17:29 -0400
+
 geni-tools (2.9-1) UNRELEASED; urgency=medium
 
   * Initial release
