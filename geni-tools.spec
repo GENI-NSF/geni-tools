@@ -1,13 +1,13 @@
 %define _pydir /usr/lib/python2.6/site-packages
 
 Name:           geni-tools
-Version:        2.9
+Version:        2.10
 Release:        1%{?dist}
 Summary:        GENI command line tools
 BuildArch:      noarch
 License:        GENI Public License
 URL:            https://github.com/GENI-NSF/geni-tools
-Source0:        https://github.com/GENI-NSF/geni-tools/releases/download/v2.9/geni-tools-2.9.tar.gz
+Source0:        https://github.com/GENI-NSF/geni-tools/releases/download/v2.10/geni-tools-2.10.tar.gz
 Group:          Applications/Internet
 Requires:       m2crypto
 Requires:       python-dateutil
@@ -415,5 +415,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_datadir}/%{name}/renewSliceAndSlivers.pyo
 
 %changelog
+* Fri Jul 24 2015 Tom Mitchell <tmitchell@bbn.com> - 2.10-1%{?dist}
+- TBD for version 2.10
 * Thu Jun 4 2015 Tom Mitchell <tmitchell@bbn.com> - 2.9-1%{?dist}
 - Initial RPM packaging
