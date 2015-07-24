@@ -402,6 +402,7 @@ class Aggregate(object):
         self.isPG = False
         self.isGRAM = False
         self.isOESS = False
+        self.isFOAM = False
         # reservation tries since last call to SCS
         self.allocateTries = 0 # see MAX_TRIES
         self.localPickNewVlanTries = 1 # see MAX_AGG_NEW_VLAN_TRIES
@@ -2193,7 +2194,7 @@ class Aggregate(object):
                                 self.logger.debug("Fatal error from PG AM - 2 nodes same client_id")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. 2 of your nodes have the same client_id. %s..." % (self, str(ae)[:120])
-                            elif code == 7 and amcode == 7 and "such a short life" in msg:
+                            elif code == 7 and amcode == 7 and ("such a short life" in msg or "expiration increment is greater" in msg):
                                 sliceexp = None
                                 sliceExpiring = False
                                 if self.slicecred:
@@ -2207,7 +2208,27 @@ class Aggregate(object):
                                     expires = rspecs[0].getAttribute(defs.EXPIRES_ATTRIBUTE)
                                     if expires and expires.strip() == "":
                                         expires = None
-                                logmsg = "Fatal error from PG AM: Requested expiration too short"
+                                if "such a short life" in msg:
+                                    logmsg = "Fatal error from PG AM: Requested expiration too short"
+                                else:
+                                    logmsg = "Fatal error from PG AM: Requested expiration too long"
+                                    exps = defs.DefaultSliverExpirations.getInstance()
+                                    exp = exps.getIG()
+                                    if exps.isUtah(self):
+                                        exp  = exps.getUtah()
+                                        logmsg += "; AM is a 'Utah' AM with max initial expiration in days: %d" % (exp)
+                                        if exps.otherUtahUrns and self.urn in self.otherUtahUrns:
+                                            logmsg += "; AM URN was in otherUtahUrns: %s" % self.otherUtahUrns
+                                        if exps.config and exps.config.has_key('omni_defaults') and exps.config['omni_defaults'].has_key('def_sliver_expiration_utah') and exps.config['omni_defaults']['def_sliver_expiration_utah']:
+                                            logmsg += "; Utah expiration came from omni_defaults config"
+                                    else:
+                                        logmsg += "; AM is NOT 'Utah', has max initial expiration in days: %d" % (exp)
+                                        if exps.otherUtahUrns:
+                                            logmsg +="; AM URN was NOT in otherUtahUrns: %s" % self.otherUtahUrns
+                                        else:
+                                            logmsg +="; no otherUtahUrns"
+                                        if exps.config and exps.config.has_key('omni_defaults') and exps.config['omni_defaults'].has_key('def_sliver_expiration_ig') and exps.config['omni_defaults']['def_sliver_expiration_ig']:
+                                            logmsg += "; IG expiration came from omni_defaults config"
                                 if sliceexp is not None:
                                     logmsg += " - slice expiring at %s" % sliceexp.isoformat()
                                     if sliceExpiring:
@@ -2222,7 +2243,10 @@ class Aggregate(object):
                                 if sliceExpiring:
                                     fatalMsg += "Renew your slice (expires soon)."
                                 elif expires:
-                                    fatalMsg += "Requested expiration too soon: %s. Renew your slice?" % expires
+                                    if "such a short life" in msg:
+                                        fatalMsg += "Requested expiration too soon: %s. Renew your slice?" % expires
+                                    else:
+                                        fatalMsg += "Requested expiration too long: %s. Contact geni-users. Perhaps an `omni_defaults` config setting is needed for this AM?" % expires
                                 else:
                                     fatalMsg += "Renew your slice?"
                                 fatalMsg += " %s..." % (str(ae)[:120])

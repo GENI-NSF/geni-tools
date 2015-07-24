@@ -1017,6 +1017,8 @@ class ManifestRSpecCombiner:
             # Collect the AMs that hops at this AM immediately import from (excluding self)
             nextDep = []
             for hop in am.hops:
+                if hop.import_vlans_from is None:
+                    continue
                 if hop.import_vlans_from.aggregate == am:
                     continue
                 if hop.import_vlans_from.aggregate in nextDep:

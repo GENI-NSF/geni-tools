@@ -220,6 +220,16 @@ def verify_speaks_for(cred, tool_gid, speaking_for_urn, \
         try:
             tool_gid.verify_chain(trusted_roots)
         except Exception, e:
+            if user_gid.get_issuer() == tool_gid.get_issuer() and user_gid.get_parent() and not tool_gid.get_parent():
+                if logger:
+                    logger.debug("Tool cert didn't verify (%s). Adding tool issuer (%s) as parent (taken from user_gid)", e, user_gid.get_parent().get_printable_subject())
+                tool_gid.set_parent(user_gid.get_parent())
+                try:
+                    tool_gid.verify_chain(trusted_roots)
+                    return True, user_gid, ""
+                except Exception, e2:
+                    if logger:
+                        logger.debug("Tool cert still doesn't verify: %s", e2)
             return False, None, \
                 "Tool cert not trusted: %s" % e
 

@@ -1,6 +1,6 @@
 == CentOS ==
 
-GCF requires Python 2.6.  It is possible that overriding Python 2.4 with 2.6 could cause
+GCF requires Python 2.6 or 2.7 (2.7 preferred).  It is possible that overriding Python 2.4 with 2.6 could cause
 problems on CentOS 5.5, so we provide these directions for a parallel install of Python.
 
 

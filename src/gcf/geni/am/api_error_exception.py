@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2015 Raytheon BBN Technologies
+# Copyright (c) 2012-2015 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -20,6 +20,19 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
+"""
+When AggregateManager delegate's raise that type of exception, the result of
+the current call will be a well formatted result, with a message as in 
+{ 'output': 'exception output', 
+  'code': {'am_type': 'gcf', 
+           'geni_code': <exception code>}, 
+  'value': ''}
+"""
 
-# The current version of GCF and Omni. Update this with each new release
-GCF_VERSION="2.10"
+class ApiErrorException(Exception):
+    def __init__(self, code, output):
+        self.code = code
+        self.output = output
+
+    def __str__(self):
+        return "ApiError(%r, %r)" % (self.code, self.output)
