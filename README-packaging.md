@@ -73,7 +73,7 @@ Once the tar file has been downloaded,
 follow these steps to build the package:
 
 ```
-VERSION=2.9
+VERSION=2.10
 mv geni-tools-${VERSION}.tar.gz "${HOME}"/rpmbuild/SOURCES
 tar zxf geni-tools-${VERSION}.tar.gz 
 mv geni-tools-${VERSION}/geni-tools.spec "${HOME}"/rpmbuild/SPECS
@@ -82,8 +82,8 @@ rpmbuild -ba geni-tools.spec
 ```
 
 This will generate the following files:
- * The rpm: `"${HOME}"/rpmbuild/RPMS/noarch/geni-tools-2.9-1.el6.noarch.rpm`
- * The source rpm: `"${HOME}"/rpmbuild/SRPMS/geni-tools-2.9-1.el6.src.rpm`
+ * The rpm: `"${HOME}"/rpmbuild/RPMS/noarch/geni-tools-2.10-1.el6.noarch.rpm`
+ * The source rpm: `"${HOME}"/rpmbuild/SRPMS/geni-tools-2.10-1.el6.src.rpm`
 
 # Creating a yum repository
 
@@ -98,9 +98,9 @@ Create a repository directory and move the files into it:
 ```
 mkdir repo
 cd repo
-mv "${HOME}"/rpmbuild/RPMS/noarch/geni-tools-2.9-1.el6.noarch.rpm .
-mv "${HOME}"/rpmbuild/SRPMS/geni-tools-2.9-1.el6.src.rpm .
-mv "${HOME}"/rpmbuild/SOURCES/geni-tools-2.9.tar.gz .
+mv "${HOME}"/rpmbuild/RPMS/noarch/geni-tools-2.10-1.el6.noarch.rpm .
+mv "${HOME}"/rpmbuild/SRPMS/geni-tools-2.10-1.el6.src.rpm .
+mv "${HOME}"/rpmbuild/SOURCES/geni-tools-2.10.tar.gz .
 mv "${HOME}"/rpmbuild/SPECS/geni-tools.spec .
 
 ```
