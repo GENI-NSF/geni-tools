@@ -74,8 +74,8 @@ follow these steps to build the package:
 
 ```
 VERSION=2.10
+tar zxf geni-tools-${VERSION}.tar.gz
 mv geni-tools-${VERSION}.tar.gz "${HOME}"/rpmbuild/SOURCES
-tar zxf geni-tools-${VERSION}.tar.gz 
 mv geni-tools-${VERSION}/geni-tools.spec "${HOME}"/rpmbuild/SPECS
 cd "${HOME}"/rpmbuild/SPECS
 rpmbuild -ba geni-tools.spec
