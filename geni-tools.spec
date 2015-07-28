@@ -362,7 +362,7 @@ rm -rf $RPM_BUILD_ROOT
 %doc %{_docdir}/%{name}/CHANGES
 %doc %{_docdir}/%{name}/CONTRIBUTING.md
 %doc %{_docdir}/%{name}/CONTRIBUTORS.md
-%doc %{_docdir}/%{name}/INSTALL.centos
+%doc %{_docdir}/%{name}/INSTALL-centos.md
 %doc %{_docdir}/%{name}/INSTALL.fedora
 %doc %{_docdir}/%{name}/INSTALL.macos
 %doc %{_docdir}/%{name}/INSTALL.txt

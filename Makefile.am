@@ -8,7 +8,7 @@ dist_doc_DATA = \
 	CHANGES \
 	CONTRIBUTING.md \
 	CONTRIBUTORS.md \
-	INSTALL.centos \
+	INSTALL-centos.md \
 	INSTALL.fedora \
 	INSTALL.macos \
 	INSTALL.txt \
