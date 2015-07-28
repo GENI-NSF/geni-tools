@@ -50,6 +50,7 @@ gcf 2.10:
   * Fix some typos in `Provision()` in `am3.py`. (#846)
   * Add Debian and RPM packaging configuration (#849)
   * Fix am2 not keeping resources' state updated when creating or deleting Slivers (#848)
+  * Update key size and signature algorithm to more modern values (#851)
 
 gcf 2.9:
  * Add Markdown style README, CONTRIBUTING and CONTRIBUTORS files. (#551)
