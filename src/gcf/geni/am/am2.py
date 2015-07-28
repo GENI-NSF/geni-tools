@@ -357,6 +357,7 @@ class ReferenceAggregateManager(object):
         for cid, r in resources.items():
             newslice.resources[cid] = r.id
             r.status = Resource.STATUS_READY
+            r.available = False
         self._slices[slice_urn] = newslice
 
         self.logger.info("Created new slice %s" % slice_urn)
@@ -408,10 +409,12 @@ class ReferenceAggregateManager(object):
                 self.logger.info("Sliver %s not deleted because it is shutdown",
                                  slice_urn)
                 return self.errorResult(11, "Unavailable: Slice %s is unavailable." % (slice_urn))
+
+            for r in resources:
+                r.reset()
+
             self._agg.deallocate(slice_urn, None)
             self._agg.deallocate(user_urn, None)
-            for r in resources:
-                r.status = Resource.STATUS_UNKNOWN
             del self._slices[slice_urn]
             self.logger.info("Sliver %r deleted" % slice_urn)
             return self.successResult(True)

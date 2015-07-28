@@ -24,5 +24,6 @@ Past contributors have included:
  - Sarah Edwards, Raytheon BBN Technologies
  - Tom Mitchell, Raytheon BBN Technologies
  - Aaron Helsinger, Raytheon BBN Technologies
+ - Eduardo Miravalls Sierra, HPCN Lab of University UAM
 
 Thank you!
