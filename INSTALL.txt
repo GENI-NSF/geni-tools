@@ -103,7 +103,7 @@ installing dependencies on an Ubuntu host).
 
 If there are no instructions for you OS, look at the software dependencies at
 this file and install them manually. 
- Email [mailto:gcf-dev@geni.net] for help.
+ Email [mailto:gcf-developers@googlegroups.com] for help.
  NOTE: '''Windows users''', you might want to consider using Cygwin.
 
 If you want to take a look at the detailed list of software dependencies look 

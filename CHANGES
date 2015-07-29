@@ -53,6 +53,7 @@ gcf 2.10:
   * Update generated certificate key size and signature algorithm to more
     modern values (#851)
   * Update CentOS installation instructions (#853)
+  * Point people to gcf-developers@googlegroups.com instead of old list.
 
 gcf 2.9:
  * Add Markdown style README, CONTRIBUTING and CONTRIBUTORS files. (#551)
