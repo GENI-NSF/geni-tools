@@ -5,7 +5,7 @@ your contributions are critical. A big thank you to all our [contributors](CONTR
 
 ## Mailing Lists
  * Omni users may raise issues or get announcements on the general [GENI Users mailing list](https://groups.google.com/forum/#!forum/geni-users).
- * GCF / geni-tools developers can subscribe to gcf-dev@geni.net here: http://lists.geni.net/mailman/listinfo/gcf-dev.
+ * GCF / geni-tools developers can subscribe to gcf-developers@googlegroups.com here: https://groups.google.com/forum/#!forum/gcf-developers.
  * GENI developers discuss general GENI development on geni-developers@googlegroups.com. Subscribe here: https://groups.google.com/forum/#!forum/geni-developers.
 
 ## General Guidelines
