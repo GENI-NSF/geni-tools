@@ -164,6 +164,11 @@ Full details on options for each step are described below.
    supply a matching -V option to that script.
    Supply the --debug argument for more detailed logging.
 
+   You may replace the sample aggregate when using AM API v2 or v3 by extending
+   `ReferenceAggregateManager`, and then either supplying the `-D`/`--delegate`
+   argument to `gcf-am.py`, or supplying a `delegate` option in the
+   `aggregate_manager` section of the `gcf_config` file.
+
 4. Run the GCF installation testing client:
 
    $ python src/gcf-test.py

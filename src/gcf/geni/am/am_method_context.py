@@ -32,7 +32,7 @@ from ...sfa.trust.certificate import Certificate
 from ...sfa.trust.abac_credential import ABACCredential
 from ..util.speaksfor_util import determine_speaks_for
 from ..SecureThreadedXMLRPCServer import SecureThreadedXMLRPCRequestHandler
-
+from .api_error_exception import ApiErrorException
 
 # A class to support wrapping AM API calls from AggregateManager
 # to the delegate to check for authorization and perform speaks-for
@@ -151,8 +151,11 @@ class AMMethodContext:
     # type, value is the exception and traceback_object is the stack trace
     # Otherwise, these arguments are all none
     def __exit__(self, type, value, traceback_object):
-        if type:
-            self._logger.exception("Error in %s" % self._method_name)
+        if type is ApiErrorException:
+            self._logger.exception("AM API Error in %s" % self._method_name)
+            self._result=self._api_error(value);
+        elif type:
+            self._logger.error("Generic Error in %s" % self._method_name)
             self._handleError(value)
 
         self._logger.info("Result from %s: %s", self._method_name, 
@@ -160,13 +163,17 @@ class AMMethodContext:
 
     # Return a GENI_style error return for given exception/traceback
     def _errorReturn(self, e):
-        code_dict = {'am_type' : 'gcf2', 'geni_code' : -1, 'am_code' : -1}
+        if not self._is_v3:
+            code_dict = {'am_type' : 'gcf2', 'geni_code' : -1, 'am_code' : -1}
+        else:
+            code_dict = {'am_type' : 'gcf3', 'geni_code' : -1, 'am_code' : -1}
         return {'code' : code_dict, 'value' : '', 'output' : str(e) }
 
     def _handleError(self, e):
-        traceback.print_exc()
-        self._result = self._exception_result(e)
-        self._error = True
+        if not self._error:
+            traceback.print_exc()
+            self._result = self._exception_result(e)
+            self._error = True
 
     def _exception_result(self, exception):
         output = str(exception)
@@ -174,14 +181,14 @@ class AMMethodContext:
 
         # 2 = ERROR
         return dict(code=dict(geni_code=2,
-                              am_type="gcf",
-                              am_code=0),
+                              am_type="gcf"),
                     value="",
                     output=output)
 
     # Handle AM API error
     def _api_error(self, exception):
         self._logger.warning(exception)
+        self._error = True
         return dict(code=dict(geni_code=exception.code, am_type='gcf'), 
                     value="", 
                     output=exception.output)

@@ -150,7 +150,7 @@ class Keypair:
 
     def create(self):
         self.key = crypto.PKey()
-        self.key.generate_key(crypto.TYPE_RSA, 1024)
+        self.key.generate_key(crypto.TYPE_RSA, 2048)
 
     ##
     # Save the private key to a file
@@ -299,7 +299,7 @@ class Keypair:
 # whether to save the parent certificates as well.
 
 class Certificate:
-    digest = "md5"
+    digest = "sha256"
 
     cert = None
     issuerKey = None

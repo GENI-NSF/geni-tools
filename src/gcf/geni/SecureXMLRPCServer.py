@@ -56,8 +56,6 @@ class SecureXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
         self.server.der_cert = self.request.getpeercert(binary_form=True)
         # This last is what a GID is created from
         self.server.pem_cert = self.der_to_pem(self.server.der_cert)
-        self.requestline = "<requestline not set by XMLRPC server>"
-        self.log_request()
         if self.server.logRequests:
             self.log_message("Got call from client cert: %s", self.server.peercert)
 

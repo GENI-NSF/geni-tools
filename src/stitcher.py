@@ -144,6 +144,8 @@ def call(argv, options=None):
                       help="On failure or Ctrl-C do not delete any reservations completed at some aggregates (default %default).")
     parser.add_option("--noTransitAMs", default=False, action="store_true",
                       help="Do not reserve resources at intermediate / transit aggregates; allow experimenter to manually complete the circuit (default %default).")
+    parser.add_option("--noSCS", default=False, action="store_true",
+                      help="Do not call the SCS to expand or add a stitching extension. Use this only if supplying any needed stitching extension and the SCS would fail your request. (default %default).")
     parser.add_option("--fakeModeDir",
                       help="Developers only: If supplied, use canned server responses from this directory",
                       default=None)

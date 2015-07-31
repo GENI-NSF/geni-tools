@@ -14,6 +14,15 @@ gcf 2.10:
   * Catch expiration too great errors from PG AMs and quit. (#828)
   * Bug fix combining manifests involving a fixed endpoint. (#833)
   * Support detecting OESS AM using `geni_am_type`. (#835)
+  * Do not insist on 2 reciprocal properties on links, allowing more
+    flexibility perhaps. (#838)
+   * Allow links with more than 1 interface per AM, and start supporting
+     multiple AMs per link.
+  * Add option `--noSCS` to force skipping the SCS, for use when stitcher
+    calls the SCS but the SCS fails the request, and the request is
+    complete already. Or use this on the expanded request from a stitcher
+    call with `--noReservation`. Lack of a workflow may be a problem
+    in some cases. (#839)
   * AL2S supports speaks for. Don't exit if using speaksfor and AL2S. (#834)
 
  * gcf
@@ -31,6 +40,21 @@ gcf 2.10:
     (`HIGH:MEDIUM:!ADH:!SSLv2:!MD5:!RC4:@STRENGTH`) when using python2.7.
     This avoids some security issues, and allows older clients
     to connect to some updated servers. (#745)
+  * Rework the code in `am3.py` that calls the cred verifier to reduce code duplication and make 
+    implementations deriving from the !ReferenceAggregateManager easier to write. (#836)
+  * Allow aggregate deployments to specify the delegate to use in the
+    `gcf_config` file or on the command line, so as to be able to
+    write delegates without touching the main gcf code, thereby easing maintenance (#837).
+  * When delegates raise an `ApiErrorException`, catch it to send back
+    a proper return value indicating an error occured. (#841)
+  * Log the HTTP request line when `--debug`. (#842)
+  * Fix some typos in `Provision()` in `am3.py`. (#846)
+  * Add Debian and RPM packaging configuration (#849)
+  * Fix am2 not keeping resources' state updated when creating or deleting Slivers (#848)
+  * Update generated certificate key size and signature algorithm to more
+    modern values (#851)
+  * Update CentOS installation instructions (#853)
+  * Point people to gcf-developers@googlegroups.com instead of old list.
 
 gcf 2.9:
  * Add Markdown style README, CONTRIBUTING and CONTRIBUTORS files. (#551)
