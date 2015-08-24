@@ -1098,7 +1098,7 @@ class ReferenceAggregateManager(object):
                 self.logger.debug("Deleting empty slice %r", slyce.urn)
                 del self._slices[slyce.urn]
 
-    def decode_urns(self, urns):
+    def decode_urns(self, urns, **kwargs):
         """Several methods need to map URNs to slivers and/or deduce
         a slice based on the slivers specified.
 
