@@ -49,6 +49,12 @@ New in v2.10:
    (`HIGH:MEDIUM:!ADH:!SSLv2:!MD5:!RC4:@STRENGTH`) when using python2.7.
    This avoids some security issues, and allows Omni on older clients
    to connect to some updated servers. (#745)
+ * Use `False` instead of `'f'` for `SLICE_EXPIRED` and `PROJECT_EXPIRED` when 
+   using Common Federation API clearinghouses. (#856)
+  * Thanks to Umar Toseef for the bug report.
+ * Do not assume `PROJECT_MEMBER_UID` is returned when listing project members,
+   but allow it. (#857)
+  * Thanks to Umar Toseef for the bug report.
 
 New in v2.9:
  * If `sliverstatus` fails in a way that indicates there are no local resources,
@@ -1350,7 +1356,8 @@ clearinghouse. For each such user, the return includes:
  - `PROJECT_MEMBER`: URN identifier of the user
  - `EMAIL` address of the user
  - `PROJECT_ROLE` of the user in the project.
- - `PROJECT_MEMBER_UID`: Internal UID identifier of the member
+ - `PROJECT_MEMBER_UID`: Internal UID identifier of the member, if
+ returned by the clearingnouse and the user supplied `--debug`
 
 Output directing options:
  * `-o` Save result in a file

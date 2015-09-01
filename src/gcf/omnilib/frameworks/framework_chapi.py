@@ -1411,7 +1411,7 @@ class Framework(Framework_Base):
     def get_members_of_project(self, project_name):
         '''Look up members of the project with the given name.
         Return is a list of member dictionaries
-        containing PROJECT_MEMBER (URN), EMAIL, PROJECT_MEMBER_UID, and PROJECT_ROLE.
+        containing PROJECT_MEMBER (URN), EMAIL, [if found: PROJECT_MEMBER_UID], and PROJECT_ROLE.
         '''
         # Bail if projects not supported
         if not self.useProjects:
@@ -1446,14 +1446,15 @@ class Framework(Framework_Base):
         if logr == True:
             if res['value']:
                 for member_vals in res['value']:
-                    # Entries: PROJECT_MEMBER, PROJECT_ROLE, PROJECT_MEMBER_UID
+                    # Entries: PROJECT_MEMBER, PROJECT_ROLE, optional: PROJECT_MEMBER_UID
                     # self.logger.debug("Got member value: %s", member_vals)
                     member_urn = member_vals['PROJECT_MEMBER']
                     member_role = member_vals['PROJECT_ROLE']
                     member = {'PROJECT_MEMBER': member_urn}
                     member['EMAIL'] = self._get_member_email(member_urn)
                     member['PROJECT_ROLE'] = member_role
-                    member['PROJECT_MEMBER_UID'] = member_vals['PROJECT_MEMBER_UID']
+                    if member_vals.has_key('PROJECT_MEMBER_UID'):
+                        member['PROJECT_MEMBER_UID'] = member_vals['PROJECT_MEMBER_UID']
                     members.append(member)
         else:
             mess = logr

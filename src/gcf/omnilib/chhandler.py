@@ -871,7 +871,7 @@ class CHCallHandler(object):
         """List all the members of a project
         Args: projectname
         Return summary string and list of member dictionaries
-        containing PROJECT_MEMBER (URN), EMAIL, PROJECT_MEMBER_UID, and PROJECT_ROLE.
+        containing PROJECT_MEMBER (URN), EMAIL, [optional: PROJECT_MEMBER_UID], and PROJECT_ROLE.
 
         Output directing options:
         -o Save result in a file
@@ -907,7 +907,7 @@ class CHCallHandler(object):
                 prettyResult += '   Email = ' + str(member['EMAIL']) + '\n'
                 if member.has_key('PROJECT_ROLE'):
                     prettyResult += '   Role = ' + str(member['PROJECT_ROLE']) + '\n'
-                if self.opts.debug or self.opts.devmode:
+                if (self.opts.debug or self.opts.devmode) and member.has_key('PROJECT_MEMBER_UID'):
                     prettyResult += '   UID = ' + member['PROJECT_MEMBER_UID'] + '\n'
 
             header=None

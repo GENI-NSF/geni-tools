@@ -9,6 +9,12 @@ gcf 2.10:
     (`HIGH:MEDIUM:!ADH:!SSLv2:!MD5:!RC4:@STRENGTH`) when using python2.7.
     This avoids some security issues, and allows Omni on older clients
     to connect to some updated servers. (#745)
+  * Use `False` instead of `'f'` for `SLICE_EXPIRED` and `PROJECT_EXPIRED` when 
+    using Common Federation API clearinghouses. (#856)
+   * Thanks to Umar Toseef for the bug report.
+  * Do not assume `PROJECT_MEMBER_UID` is returned when listing project members,
+    but allow it. (#857)
+   * Thanks to Umar Toseef for the bug report.
 
  * Stitcher
   * Catch expiration too great errors from PG AMs and quit. (#828)
@@ -55,9 +61,6 @@ gcf 2.10:
     modern values (#851)
   * Update CentOS installation instructions (#853)
   * Point people to gcf-developers@googlegroups.com instead of old list.
-  * Use `False` instead of `'f'` for `SLICE_EXPIRED` and `PROJECT_EXPIRED` when 
-    using Common Federation API clearinghouses. (#856)
-   * Thanks to Umar Toseef for the bug report.
 
 gcf 2.9:
  * Add Markdown style README, CONTRIBUTING and CONTRIBUTORS files. (#551)
