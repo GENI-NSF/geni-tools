@@ -385,7 +385,7 @@ class Framework(Framework_Base):
         scred = []
         options = {'match': 
                    {'SLICE_URN': slice_urn,
-                    'SLICE_EXPIRED': 'f',
+                    'SLICE_EXPIRED': False,
                     }}
 
         # PG implementation needs a user cred
@@ -641,7 +641,7 @@ class Framework(Framework_Base):
             return None
 
         options['match'] = {'SLICE_URN': slice_urn,
-                            'SLICE_EXPIRED': 'f',
+                            'SLICE_EXPIRED': False,
                             }
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
@@ -734,7 +734,7 @@ class Framework(Framework_Base):
 
         options = {'match': 
                    {'SLICE_URN': slice_urn,
-                    'SLICE_EXPIRED': 'f',
+                    'SLICE_EXPIRED': False,
                     }}
         options['filter'] = ['SLICE_URN', 'SLICE_EXPIRATION']
         self.logger.debug("Submitting with options: %s", options)
@@ -836,7 +836,7 @@ class Framework(Framework_Base):
         userurn = self.member_name_to_urn(user)
 
         options = {'match': 
-                   {'SLICE_EXPIRED': 'f', # Seems to be ignored
+                   {'SLICE_EXPIRED': False, # Seems to be ignored
                         }}
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
@@ -1089,7 +1089,7 @@ class Framework(Framework_Base):
                 scred.append(uc)
         options = {'match': 
                    {'SLICE_URN': urn,
-                    'SLICE_EXPIRED': 'f',
+                    'SLICE_EXPIRED': False,
                     }}
         options['filter'] = ['SLICE_URN', 'SLICE_EXPIRATION', 'SLICE_EXPIRED']
         self.logger.debug("Submitting lookup_slices with options: %s", options)
@@ -1165,7 +1165,7 @@ class Framework(Framework_Base):
         self.logger.info('Requesting new slice expiration %r', expiration)
         options = {'fields':{'SLICE_EXPIRATION':expiration}}
         options['match'] = {'SLICE_URN': urn,
-                            'SLICE_EXPIRED': 'f',
+                            'SLICE_EXPIRED': False,
                             }
         res = None
 
@@ -1377,7 +1377,7 @@ class Framework(Framework_Base):
 
         options = {'match': 
                    {'SLICE_URN': slice_urn,
-                    'SLICE_EXPIRED': 'f',  # FIXME: This gets ignored
+                    'SLICE_EXPIRED': False,  # FIXME: This gets ignored
                     }}
 
         creds, options = self._add_credentials_and_speaksfor(creds, options)
@@ -1429,7 +1429,7 @@ class Framework(Framework_Base):
 
         options = {'match': 
                    {'PROJECT_URN': project_urn,
-                    'PROJECT_EXPIRED': 'f',  # FIXME: This gets ignored
+                    'PROJECT_EXPIRED': False,  # FIXME: This gets ignored
                     }}
 
         creds, options = self._add_credentials_and_speaksfor(creds, options)
@@ -1477,7 +1477,7 @@ class Framework(Framework_Base):
         options = {'members_to_add': [{'SLICE_MEMBER': member_urn,
                                        'SLICE_ROLE': role}]}
 #        options['match'] = {'SLICE_URN': slice_urn,
-#                            'SLICE_EXPIRED': 'f',
+#                            'SLICE_EXPIRED': False,
 #                            }
         creds, options = self._add_credentials_and_speaksfor(creds, options)
         if not self.speakV2:
@@ -1840,7 +1840,7 @@ class Framework(Framework_Base):
         options = {'filter': [],
                    'match': {'SLIVER_INFO_SLICE_URN': slice_urn,
                              "SLIVER_INFO_AGGREGATE_URN": aggregate_urn}}
-        # FIXME: Limit to SLICE_EXPIRED: 'f'?
+        # FIXME: Limit to SLICE_EXPIRED: False?
         creds, options = self._add_credentials_and_speaksfor(creds, options)
         if not self.speakV2:
             res, mess = _do_ssl(self, None, "Lookup slivers in %s%s at %s" % (slice_urn, expmess,aggregate_urn),
@@ -1990,7 +1990,7 @@ class Framework(Framework_Base):
 
         options = {"match" : {"SLIVER_INFO_SLICE_URN" : slice_urn}}
 
-        # FIXME: Limit to SLICE_EXPIRED: 'f'?
+        # FIXME: Limit to SLICE_EXPIRED: False?
         creds, options = self._add_credentials_and_speaksfor(creds, options)
         if not self.speakV2:
             res, mess = _do_ssl(self, None, "Find slivers for slice %s%s" % (slice_urn,expmess), \
