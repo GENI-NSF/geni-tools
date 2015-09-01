@@ -1102,6 +1102,12 @@ class ReferenceAggregateManager(object):
         """Several methods need to map URNs to slivers and/or deduce
         a slice based on the slivers specified.
 
+        When called from AMMethodContext, kwargs will have 2 keys
+        (credentials and options), with the same values as the credentials
+        and options parameters of the AMv3 API entry points. This can be 
+        usefull for delegates derived from the ReferenceAggregateManager, 
+        but is not used in this reference implementation.
+
         Returns a slice and a list of slivers.
         """
         slivers = list()
