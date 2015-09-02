@@ -32,6 +32,9 @@ gcf 2.10:
   * AL2S supports speaks for. Don't exit if using speaksfor and AL2S. (#834)
 
  * gcf
+  * Add new parameters to decode_urns so that derived delegates can 
+    decode urns using the credentials and options available in other 
+    calls (#858)
   * Add utility function to derive the effective user's client cert, after
     accounting for speaks-for. This allows an AM to know the "real" user's URN
     and email, for example (#831)
