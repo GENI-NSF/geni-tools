@@ -2135,7 +2135,7 @@ class Aggregate(object):
                                                                        "Not enough nodes with fast enough interfaces" in msg)):
                                 self.logger.debug("Fatal error (malformed req) from PG AM")
                                 isFatal = True
-                                fatalMsg = "Reservation request impossible at %s. Malformed request or insufficient resources: %s..." % (self, str(ae)[:120])
+                                fatalMsg = "Reservation request impossible at %s. Malformed request or insufficient resources available: %s..." % (self, str(ae)[:120])
                                 if 'Inconsistent ifacemap' in msg:
                                     fatalMsg = "Reservation request impossible at %s. Try using the --fixedEndpoint option. %s..." % (self, str(ae)[:120])
                             elif code == 6 and amcode == 6 and msg.startswith("Hostname > 63 char"):
@@ -2258,6 +2258,10 @@ class Aggregate(object):
                                 self.logger.debug("Fatal error from PG AM: %s", msg)
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Malformed request? %s..." % (self, str(ae)[:120])
+                            elif (code == 2 or code == 28) and amcode == 28 and "recheck fail" in str(val):
+                                self.logger.debug("Fatal mapper error from PG AM: %s", msg)
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s. Your topology could not be mapped to the available physical resources. Try fewer resources or a different aggregate. %s..." % (self, str(ae)[:120])
                             else:
                                 self.logger.debug("Some other PG error: Code=%d, amcode=%d, msg=%s, val=%s", code, amcode, msg, str(val))
                         elif self.isEG:
