@@ -370,7 +370,7 @@ In running stitcher, follow these various tips:
  in testing:
 {{{
 cd <omni install directory>
-export PYTHONPATH=$PYTHONPATH:.
+export PYTHONPATH=$PYTHONPATH:./src
 python src/gcf/omnilib/stitch/scs.py --listaggregates --key <path-to-key> --cert <path-to-cert>
 }}}
  - Stitching to fixed endpoints:
