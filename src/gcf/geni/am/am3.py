@@ -539,8 +539,8 @@ class ReferenceAggregateManager(object):
             sliver.setStartTime(start_time)
             sliver.setEndTime(end_time)
             sliver.setAllocationState(STATE_GENI_ALLOCATED)
-        self._agg.allocate(slice_urn, newslice.slivers())
-        self._agg.allocate(user_urn, newslice.slivers())
+        self._agg.allocate(slice_urn, newslice.resources())
+        self._agg.allocate(user_urn, newslice.resources())
         self._slices[slice_urn] = newslice
 
         # Log the allocation
@@ -648,9 +648,9 @@ class ReferenceAggregateManager(object):
             return self.errorResult(AM_API.UNAVAILABLE,
                                     ("Unavailable: Slice %s is unavailable."
                                      % (the_slice.urn)))
-
-        self._agg.deallocate(the_slice.urn, slivers)
-        self._agg.deallocate(user_urn, slivers)
+        resources = [sliver.resource() for sliver in slivers]
+        self._agg.deallocate(the_slice.urn, resources)
+        self._agg.deallocate(user_urn, resources)
         for sliver in slivers:
             slyce = sliver.slice()
             slyce.delete_sliver(sliver)

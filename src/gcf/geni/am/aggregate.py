@@ -29,7 +29,7 @@ class Aggregate(object):
 
     def __init__(self):
         self.resources = []
-        self.containers = {}
+        self.containers = {} # of resources, not slivers
 
     def add_resources(self, resources):
         self.resources.extend(resources)
