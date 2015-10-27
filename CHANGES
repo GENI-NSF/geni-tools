@@ -15,6 +15,9 @@ gcf 2.10:
   * Do not assume `PROJECT_MEMBER_UID` is returned when listing project members,
     but allow it. (#857)
    * Thanks to Umar Toseef for the bug report.
+  * Calling `getslicecred` while specifying a `slicecredfile` that exists
+    no longer means just return that file. Instead, that file will be
+    ignored and, if you specify `-o`, replaced. (#868)
 
  * Stitcher
   * Catch expiration too great errors from PG AMs and quit. (#828)
