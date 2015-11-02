@@ -55,6 +55,9 @@ New in v2.10:
  * Do not assume `PROJECT_MEMBER_UID` is returned when listing project members,
    but allow it. (#857)
   * Thanks to Umar Toseef for the bug report.
+ * Calling `getslicecred` while specifying a `slicecredfile` that exists
+   no longer means just return that file. Instead, that file will be
+   ignored and, if you specify `-o`, replaced. (#868)
 
 New in v2.9:
  * If `sliverstatus` fails in a way that indicates there are no local resources,
@@ -1102,10 +1105,10 @@ The filename is `<slicename>-cred.xml`
 But you can specify the filename using the `--slicecredfile` option or
 by defining the `GENI_SLICECRED` environment variable to the desired path.
 
-Additionally, if you specify the `--slicecredfile` option or define the
+NOTE: If you specify the `--slicecredfile` option or define the
 `GENI_SLICECRED` environment variable, and that
-references a file that is not empty, then we do not query the Slice
-Authority for this credential, but instead read it from this file.
+references a file that is not empty, then that file will be ignored,
+and replaced if you specify `-o`.
 
 Arg: slice name
 Slice name could be a full URN, but is usually just the slice name portion.

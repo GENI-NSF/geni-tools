@@ -681,9 +681,8 @@ class CHCallHandler(object):
         But if you specify the --slicecredfile option then that is the
         filename used.
 
-        Additionally, if you specify the --slicecredfile option and that
-        references a file that is not empty, then we do not query the Slice
-        Authority for this credential, but instead read it from this file.
+        NOTE: If you specify the --slicecredfile option and that
+        references a file that is not empty, then that file will be ignored, and replaced if you specify `-o`.
 
         e.g.:
           Get slice mytest credential from slice authority, save to a file:
@@ -713,11 +712,24 @@ class CHCallHandler(object):
 
         # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
+        retVal = ""
+        sf = None
+        if self.opts.slicecredfile and os.path.exists(self.opts.slicecredfile):
+            if self.opts.output:
+                scwarn = "Ignoring and replacing saved slice credential %s. " % (self.opts.slicecredfile)
+            else:
+                scwarn = "Ignoring saved slice credential %s. " % (self.opts.slicecredfile)
+            self.logger.info(scwarn)
+            retVal += scwarn +"\n"
+            sf = self.opts.slicecredfile
+            self.opts.slicecredfile = None
         (cred, message) = _get_slice_cred(self, urn)
 
         if cred is None:
             retVal = "No slice credential returned for slice %s: %s"%(urn, message)
             return retVal, None
+        if sf:
+            self.opts.slicecredfile = sf
 
         # Log if the slice expires soon
         _print_slice_expiration(self, urn, cred)
