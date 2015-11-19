@@ -93,7 +93,7 @@ class AMMethodContext:
 
             if new_caller_gid != caller_gid:
                 new_caller_urn = new_caller_gid.get_urn()
-                self._logger.info("Speaks-for invoation: %s for %s" % 
+                self._logger.info("Speaks-for invocation: %s for %s" %
                                   (self._caller_urn, new_caller_urn))
                 self._caller_cert = new_caller_gid.save_to_string()
                 self._caller_urn = new_caller_urn
