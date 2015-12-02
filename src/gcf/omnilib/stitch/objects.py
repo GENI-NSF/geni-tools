@@ -4931,16 +4931,21 @@ class HopLink(object):
 
         self.logger = logging.getLogger('stitch.HopLink')
 
-    def editChangesIntoDom(self, domNode, request=True):
+    def editChangesIntoDom(self, domNode, request=True, really=False):
         '''Edit any changes made in this element into the given DomNode'''
         # Note that the parent RSpec object's dom is not touched, unless this domNode is from that
         # Here we edit in the new vlan_range and vlan_available
         # If request is False, use the manifest values. Otherwise, use requested.
+        # If really is false (default), then if the given domNode (a hop link) doesn't have teh same ID as this object,
+        # then raise an error. If really is True
 
         # Incoming node should be the node for this hop
         nodeId = domNode.getAttribute(self.ID_TAG)
         if nodeId != self.urn:
-            raise StitchingError("Hop Link %s given Dom node with different Id: %s" % (self, nodeId))
+            if not really:
+                raise StitchingError("Hop Link %s given Dom node with different Id: %s" % (self, nodeId))
+            else:
+                self.logger.debug("Hop Link %s given Dom node with different Id: %s, but editing anyhow" % (self, nodeId))
 
         if request:
             newVlanRangeString = str(self.vlan_range_request).strip()
