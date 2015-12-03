@@ -1,5 +1,6 @@
 # Contents
 ## Source code & scripts:
+```
 acceptance_tests/AM_API: scripts for developers to test an aggregate's
 			 compliance with the GENI AM API
 src/: Put this directory on your PYTHONPATH
@@ -86,8 +87,9 @@ examples/: Some examples and useful scripts
   readyToLogin.py
   addMemberToSliceAndSlivers.py
   renewSliceAndSlivers.py
-
+```
 ## Various READMEs, some in GitHub markdown format, some in Trac wiki format:
+```
 doc/
 CHANGES
 CONTRIBUTING.md
@@ -97,32 +99,40 @@ LICENSE.txt
 README-*.txt
 README.md
 README.txt
+```
 
 ## Sample configuration files:
+```
 gcf_config.sample
 omni_config.sample
+```
 
 ## Files for building RPMs. See README-packaging.md:
+```
 Makefile.am
 autogen.sh
 configure.ac
 geni-tools.spec
 debian/
+```
 
 ## Test and config files for older modules:
+```
 stitcherTestFiles/
 gib-config-files/
 gib-rspec-examples/
+```
 
 ## Files for building binaries:
+```
 mac_install/
 windows_install/
 doc/CreatingBinaries.md
-
-## Mapping of Aggregate nicknames to URN and URL. Latest version
-is posted to the Omni wiki for automatic download by Omni, but version
+```
+## Mapping of Aggregate nicknames to URN and URL. 
+Latest version is posted to the Omni wiki for automatic download by Omni, but version
 controlled here.
-agg_nick_cache.base
+`agg_nick_cache.base`
 
 # Omni
 Omni is the command line tool for reserving resources from GENI
@@ -143,7 +153,7 @@ tools. Set PYTHONPATH to the `src` directory. To ease this, files use
 relative imports. See for example speaksfor_util.py which uses a
 try/except to use relative imports by preference, but allow for
 running this file's main directly with absolute imports. For similar
-reasons, Omni has all its main code in src/gcf/oscript.py
+reasons, Omni has all its main code in `src/gcf/oscript.py`
 rather than directly in omni.py. Stitcher should be refactored
 similarly, but has not been.
 
@@ -151,7 +161,7 @@ Omni calls are handled by a special "handler"; handler.py dispatches
 to chhandler or amhandler (and Stitcher uses a parallel stitchhandler
 for future smoother integration). The handler allows invoking any
 method in the handler classes (excluding private methods, indicated by
-a name that starts with "_"). Handlers do two kinds of operations:
+a name that starts with `_`). Handlers do two kinds of operations:
 Call a clearinghouse using a 'framework' (to create a slice or get a credential for
 example), and calls to an aggregate. Omni supports multiple
 clearinghouse APIs, whose differences are abstracted away with a
@@ -160,8 +170,7 @@ handles getting the user and slice credentials. Additionally, in AM
 APIv3 credentials are a struct that indicates the type and version of
 the actual credential. The framework handles wrapping and unwrapping
 the actual credential as needed. The specific framework to use is inferred dynamically based on the
-`omni_config` file. frameworks are named `framework_<framework
-'type'>.py`, using the `type` from the selected framework section of
+`omni_config` file. frameworks are named `framework_<framework'type'>.py`, using the `type` from the selected framework section of
 the `omni_config`. `framework_chapi` supports the Uniform Federation
 API v1 and v2. Currently it hard codes some assumptions that should be
 done dynamically using information from `GetVersion` (like whether the
@@ -211,14 +220,14 @@ looking up aggregates or nicknames in the aggregate nickname
 cache.
 
 Omni keeps a cache of aggregate nicknames, by default in
-~/.gcf/agg_nick_cache. This INI format file maps nicknames to
+`~/.gcf/agg_nick_cache`. This INI format file maps nicknames to
 aggregate URL and URN. Note that the same URN may have multiple URLs
 (different AM API versions typically), and the same URL could have
 multiple nicknames. The cache is maintained in git and posted on the
 Omni wiki. Omni downloads the cache once daily. Nicknames in the cache
 are ordered by convention with AM API agnostic nicknames before those
 specific to a version, and then by API version number. Nicknames are
-typically <site>-<type>[version#], e.g. "moxi-of1". For some purposes,
+typically `<site>-<type>[version#]`, e.g. "moxi-of1". For some purposes,
 Omni takes a nickname and looks up the aggregate URN and URL. For
 other purposes, Omni starts with a URL or URN and looks up the
 nickname for prettier log messages. When doing so, Omni uses some
@@ -229,17 +238,17 @@ that these heuristics are brittle, and hard code the possible strings
 to name an AM type. The only risk however is picking an uglier
 nickname. Note also that the agg_nick_cache must be kept
 up-to-date. In particular, when omni users use the
---useSliceAggregates option, it uses the sliver_info records at the
+`--useSliceAggregates` option, it uses the sliver_info records at the
 clearinghouse to get AM URNs that are registered as having resources
 on this slice. Then Omni must look up a URL for that URN, and uses the
 agg_nick_cache to do so. Therefore, any AM that is not listed in the
-agg_nick_cache will not be included in Omni operations that use --useSliceAggregates.
+agg_nick_cache will not be included in Omni operations that use `--useSliceAggregates`.
 
 handler_utils also provides the `_listaggregates` function for getting
 a list of aggregates to operate on. First, it handles the
---useSliceAggregates option. HOWEVER, this only makes sense if there
+`--useSliceAggregates` option. HOWEVER, this only makes sense if there
 is a slice to operate on and which will have existing sliver_info
-records. Therefore, in amhandler, the _handle function calls
+records. Therefore, in amhandler, the `_handle` function calls
 `_extractSliceArg(args)`, which extracts the slice name argument from
 the given commandline arguments. However, this function carefully
 excludes method calls that do not provides a slice name, or for which
@@ -247,7 +256,7 @@ there would not yet be sliver info records or the records would not be
 useful; when calling createsliver, you do not want to reserve
 resources at the AMs where there is already a reservation, as that
 will fail.
-Given the slice name, _listaggregates gets the AM URNs from teh
+Given the slice name, `_listaggregates` gets the AM URNs from teh
 sliver_info records at the clearinghouse, if possible (only at CHAPI
 compatible clearinghouses). Omni then retrieves the AM URL and
 nickname if possible, avoiding duplicate entries.
@@ -263,7 +272,7 @@ credentials. Omni can save a slice or user credential, or a speaks for
 credential, and then load it for use in AM or CH calls. `_load_cred`
 handles reading JSON (APIv3) or XML (APIv2 or v1)
 credentials. `_get_slice_cred` tries to read any saved credential in
-the file specified by --slicecredfile, otherwise it asks the
+the file specified by `--slicecredfile`, otherwise it asks the
 clearinghouse for the slice credential, wrapping or unwrapping the
 credential in JSON as needed. `_save_cred` writes the proper JSON or
 XML file.
