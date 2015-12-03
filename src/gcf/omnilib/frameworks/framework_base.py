@@ -221,6 +221,8 @@ class Framework_Base():
                                                  timeout=timeout,
                                                  allow_none=allow_none)
 
+    # See xmlrpc/client.py where this would be used to use M2Crypto for the SSL client
+    # supporting entering the password only once. But this had problems and is not used.
     def ssl_context(self, retries=2):
         """Returns an SSL Context or an exception is raised."""
         if hasattr(self, 'logger'):
