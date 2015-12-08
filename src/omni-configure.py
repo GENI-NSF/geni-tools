@@ -36,7 +36,7 @@ from base64 import b64encode
 import datetime
 import glob
 import string, re
-import sys, os, platform, shutil, binascii
+import sys, os, platform, shutil 
 import zipfile
 from subprocess import Popen, PIPE
 import ConfigParser
@@ -49,7 +49,7 @@ import tempfile
 
 logger = None
 
-SCRATCH_DIR = tempfile.mkdtemp('omni_bandle')
+SCRATCH_DIR = tempfile.mkdtemp('omni_bundle')
 DEFAULT_PRIVATE_CERT_KEY = {
                             'pg' : "~/.ssh/geni_cert_key_pg",
                             # 'pl' : "~/.ssh/geni_cert_key_pl",
@@ -1128,7 +1128,7 @@ use the '-z' option to\nspecify a custom location.\n")
               # we exit
               os.remove(opts.cert)
               os.remove(prkeyfname)
-              shutil.rmtree(SCRATCH_DIR + '/ssh')
+              shutil.rmtree(os.path.join(SCRATCH_DIR, 'ssh'))
               sys.exit("There is already a key named "+pubname+". Remove it first "+
                        "and then rerun the script")
 
@@ -1166,7 +1166,7 @@ use the '-z' option to\nspecify a custom location.\n")
             wrotefile(fdesc,xfullpath,False)
             pubkey_list.append(xfullpath)
 
-       shutil.rmtree(SCRATCH_DIR + '/ssh')
+       shutil.rmtree(os.path.join(SCRATCH_DIR, 'ssh'))
 
        return pubkey_list
 
@@ -1485,10 +1485,10 @@ def main():
             if oconfig._opts.configfile != os.path.normcase(os.path.abspath(os.path.expanduser(DEFAULT_OMNI_CONFIG))):
                 cloc = "-c %s " % oconfig._opts.configfile
             logger.info("To test your configuration, run: \n\tomni %s-a gpo-ig getversion \n"%cloc)
-            if oconfig._opts.framework is 'portal' :
-                shutil.rmtree(SCRATCH_DIR)
+            shutil.rmtree(SCRATCH_DIR)
     except KeyboardInterrupt:
         print "\n\nGoodbye.\n"
+        shutil.rmtree(SCRATCH_DIR)
         return
 
 if __name__ == "__main__":
