@@ -1124,7 +1124,7 @@ use the '-z' option to\nspecify a custom location.\n")
             # that does not match the private key
             if cmp(tmp, pubname) :
               # Remove the cert, the private key, and the
-              # /tmp/omni_bundle_<random>/ssh folder before
+              # /tmp/tmp<random>-omni_bundle/ssh folder before
               # we exit
               os.remove(opts.cert)
               os.remove(prkeyfname)
@@ -1262,7 +1262,7 @@ use the '-z' option to\nspecify a custom location.\n")
         """
         omnizip = zipfile.ZipFile(filename)
         # extract() can only take a directory as argument
-        # extract it at /tmp/omni_bundle_<rand_string> and then move it to the file
+        # extract it at /tmp/tmp<random>-omni_bundle and then move it to the file
         # we want
         omnizip.extract('geni_cert.pem', SCRATCH_DIR)
         omnizip.close()
