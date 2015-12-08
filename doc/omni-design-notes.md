@@ -152,6 +152,7 @@ For a user's guide to Omni, see README-omni.txt
 Multiple sample and useful scripts that use Omni are in the
 `examples/` directory. Otherwise all main code is under `src/`.
 
+## Use as Library
 geni-tools code is structured to make it easier to import it in other
 tools. Set PYTHONPATH to the `src` directory. To ease this, files use
 relative imports. See for example `speaksfor_util.py` which uses a
@@ -160,7 +161,9 @@ running this file's main directly with absolute imports. For similar
 reasons, Omni has all its main code in `src/gcf/oscript.py`
 rather than directly in omni.py. Stitcher should be refactored
 similarly, but has not been.
+See `README-omni`.
 
+## Overall Code Structure
 Omni calls are handled by a special "handler"; handler.py dispatches
 to chhandler or amhandler (and Stitcher uses a parallel stitchhandler
 for future smoother integration). The handler allows invoking any
@@ -180,6 +183,7 @@ API v1 and v2 (http://groups.geni.net/geni/wiki/CommonFederationAPIv2). Currentl
 done dynamically using information from `GetVersion` (like whether the
 CH supports projects).
 
+## `chhandler`
 `chhandler` supports calls to the clearinghouse: get a user or slice
 credential, create or renew a slice, list aggregates, list a user's
 slices or projects, etc. Each call parses the commandline arguments
@@ -187,6 +191,7 @@ slices or projects, etc. Each call parses the commandline arguments
 clearinghouse call are typically wrapped in `_do_ssl` to support
 automatic retry.
 
+## `amhandler`
 `amhandler` supports calls to aggregates, including all AM APIv2, v2,
 v3, and adopted v4 calls (http://groups.geni.net/geni/wiki/GAPI_AM_API). In addition, a number of aggregate specific
 calls are supported. Each call parses the arguments itself (e.g. to
@@ -216,6 +221,7 @@ UTC but do not have an explicit timezone (naive
 timestamps). Timestamps are converted to assure this remains
 true.
 
+## `handler_utils`
 Many common functions are handled by methods in
 handler_utils. handler_utils contains methods for loading and saving
 credentials, for saving command output to a file or printing it as
@@ -223,6 +229,7 @@ specified by the options, for getting the list of aggregates, and for
 looking up aggregates or nicknames in the aggregate nickname
 cache.
 
+## Aggregate nicknames
 Omni keeps a cache of aggregate nicknames, by default in
 `~/.gcf/agg_nick_cache`. This INI format file maps nicknames to
 aggregate URL and URN. Note that the same URN may have multiple URLs
@@ -249,6 +256,7 @@ agg_nick_cache to do so. Therefore, any AM that is not listed in the
 agg_nick_cache will not be included in Omni operations that use `--useSliceAggregates`. GENI operations must keep the `agg_nick_cache` up to date with the proper AM URLs and list the proper aggregates, to ensure sliver info reporting, availability of reasonable nicknames, and reasonable Omni printouts. Generally, any aggregate that conforms to the AM API and provides reservable resources could be listed in the cache, but GENI policy may require additional testing (reliability for example).
 Note that there are options for controlling where the cache is saved, and options to force not attempting to download a new cache at all.
 
+## `_listaggregates`
 handler_utils also provides the `_listaggregates` function for getting
 a list of aggregates to operate on. First, it handles the
 `--useSliceAggregates` option. HOWEVER, this only makes sense if there
@@ -272,6 +280,7 @@ aggregate nickname (or urn or url). Failing that, Omni uses the
 the clearinghouse for _all_ aggregates. Except for the explicit CH
 call to list all aggregates, this is usually the wrong thing.
 
+## Credential Manipulation
 handler_utils also provides functions for manipulating
 credentials. Omni can save a slice or user credential, or a speaks for
 credential, and then load it for use in AM or CH calls. `_load_cred`
@@ -282,6 +291,7 @@ clearinghouse for the slice credential, wrapping or unwrapping the
 credential in JSON as needed. `_save_cred` writes the proper JSON or
 XML file.
 
+## Saving results
 handler_utils also provides helpers for printing or saving call
 results, to STDOUT, the logger, a JSON file, or an XML file, as
 appropriate, based on the data type and the options. The main method for this is `_printResults`. That function
@@ -292,70 +302,71 @@ a filename for saving the rspec using `_construct_output_filename`, and then cal
 extract out the meaningful bits, remove bad characters, and then create a filename
 based on that name.
 
+## `amhandler` helpers and details
 amhandler includes a large number of helper functions to support its
 operations and simplify the individual methods. 
-* BadClientException
+### BadClientException
 This helper exception is used to signal that Omni called an AM that spoke the wrong version of the AM API, or
 is otherwise not callable (see `self._api_call`). Then the calling methods (e.g. `Describe`) can note
 the failure in the return message, bail if that's the only AM, or continue to the next aggregate.
 
-* GetVersion Cache
+### GetVersion Cache
 In order to call each AM with the proper API version (or call the right URL for an AM), Omni uses the return from GetVersion.
 Rather than call GetVersion on nearly every call, Omni caches the result of GetVersion for use between Omni invocations.
 There are multiple options for controlling how long the cache is good for, where it is, or whether to use it at all. `amhandler`
 has many helper functions for retrieving `GetVersion` values, using the cache if available, or otherwise actually
 calling GetVersion, and caching the result (including any error return). Note that Omni calls GetVersion twice when the user invokes GetVersion explicitly.
 
-* `self.clients`
+### `self.clients`
 A list of XMLRPC client objects, one per aggregate that the call should be run at. The entries are corrected to point to the right URL by `self._correctAPIVersion`. The veriable is filled in by self._getclients(). That method first calls `handler_utils._listaggregates`
 to get the right list of aggregates. Then an XMLRPC client is created for each. The client object is marked up with a
 nickname (using `handler_utils._lookupAggNick`) and a pretty string for printing out the contact.
 `self._getclients()` is called by each method.
 
-* `self._extractSliceArg`
+### `self._extractSliceArg`
 Get the slice name for use by `handler_utils._listaggregates` in finding the aggregates on which to operate.
 Called by the `_handle` function, get the the slice name out of the commandline arguments.
 This function knows which methods take a slice name (or URN), but also which are called on a slice that could conceivably
 have `sliver_info` records at the clearinghouse, and such could give a list of aggregates at the clearinghouse to operate on.
 The fact that this knows about the individual method calls is ugly / fragile.
 
-* `self._correctAPIVersion`
+### `self._correctAPIVersion`
 Omni users will often invoke Omni with a generic nickname (`gpo-ig`) or URL, disregarding which version of the AM API they are
 invoking. They may also easily forget to supply the `-V3` argument when that was intended. This function
 attempts to correct for these mistakes. This function first ensures that all clients are reachable, dropping
 those that are not. Then it figures out which AM API version most AMs talk. It then auto corrects which version of the AM API
 it uses. Later, Omni will change individual clients to use a different URL to match the desired AM API version as needed (see `_checkValidClient and how it is called from `_api_call`).
 
-* `self._api_call`
+### `self._api_call`
 This function wraps calls to the XMLRPC AM clients. First it ensures that the client exists and speaks the correct AM API version (raising a `BadClientException` if not). Then it makes the call (wrapped in `_do_ssl`).
 
-* `self._checkValidClient`
+### `self._checkValidClient`
 Check the `GetVersion` cache for this client, and ensure this client speaks the proper AM API version. Bail if there is a problem with the client. Try changing to a client at a different URL to match the desired AM API version if necessary.
 
-* `opts.devmode`
+### `opts.devmode`
 It's worth noting here the `devmode` option. This option allows developers to over-ride many of the argument/option error checks
 that Omni provides, forcing Omni to do something that looks wrong; perhaps to test the response of an aggregate to that
 input. For example, use `devmode` to foce Omni to speak AM API v3 to a v2 client.
 
-* `self._args_to_slicecred`
+### `self._args_to_slicecred`
 This function parses the commandline arguments and then loads/retrieves the proper slice credential. You specify the number of expected arguments for error checking. It gets a slice URN (using the framework translation function), uses `handler_utils._get_slice_cred` to load or retrieve the slice credential, unwraps the credential from JSON if needed, prints the slice expiration, and then
 returns the slice name, urn, credential, etc.
 
-* `self._build_options`
+### `self._build_options`
 Build the AM API `options` argument for this method call and the specified commandline Omni options.
 This includes `geni_end_time`, `geni_start_time`, `geni_best_effort`, `geni_speaking_For`, `geni_extend_alap`, and any arbitrary options specified in the `--optionsfile` JSON file of options. For an example of those options, see http://groups.geni.net/geni/wiki/HowTo/ShareALan or http://groups.geni.net/geni/wiki/GAPI_AM_API_DRAFT/Adopted#ChangeSetQ:Supportchangingusersandkeysonexistingcomputeslivers
 This method knows what options are relevant in what AM API methods. As such, it is brittle. `devmode` can be used to force passing options to additional method calls.
 
-* API API v2 vs v3 functions
+### API API v2 vs v3 functions
 Omni tries to stop you from calling an AM API v2 method at an AM API v3 AM. `devmode` allows you to do so anyhow. Note however the interaction with `_correctAPIVersion` which could cause unexpected results; in practice, this does this right thing.
 
-* `self._build_urns`
+### `self._build_urns`
 For use with AM API v3+, this function builds the urns argument to AM API calls. It includes the slice urn or the specified sliver URNs as needed.
 
-* `self._retrieve_value`
+### `self._retrieve_value`
 AM API methods return a triple (`code`, `output`, `value`), and Omni helps extract the real result from this, or a reasonable error message. This method considers also the SSL call return message, if any. This function also attempts to extract any PG based AMs log URL (a URL where full logs of teh call at the AM are available). Omni provides an option to raise an error (an `AMAPIError` with the the return triple) if there is an AM API error return code when using AM API v2: `--raise-error-on-v2-amapi-error`. Otherwise, this method returns an error string or the return value.
 
-* sliver_info records
+### sliver_info records
 The Uniform Federation API specifies a 'sliver info' mechanism, by which tools or aggregates can voluntarily provide sliver records to the clearinghouse. These records record which aggregates have resources reserved for what slices, and when they expire. This information is useful for inferring what aggregates to talk to when acting on a slice. Omni uses this information when you use the `--useSliceAggregates` option and the `framework_chapi` clearinghouse interface.
 When using the `framework_chapi`, Omni tries to report this information to the clearinghouse: new slivers reserved (`createsliver` or `provision`), slivers renewed (`renewsliver` or `renew`) or slivers deleted (`deletesliver`, `delete`). Additionally, Omni ensures the records are correct when you call `sliverstatus` or `status`. Since this is also used by the GENI Portal and GENI Desktop, most GENI reservations are properly reported to the GENI clearinghouse. (Reservations made using other clearinghouses will of course not be recorded.) Note that allocated slivers are not reported. Also note that Omni attempts to continue if there is an error with reporting, which could result in mis-matches.
 Omni tries to get the proper sliver expiration times. This logic may have errors (where sliver expiration is not reported correctly, or is missing as in some returns from `createsliver`). In such cases, Omni may correct this in a later call, or the expiration may be that of the slice, and therefore the resource may expire sooner than listed; generally this is not harmful.
@@ -363,14 +374,14 @@ Additionally, Omni needs a good sliver URN to report. At some AMs, this has been
 Users may disable sliver info reporting using `--noExtraCHCalls`.
 As noted elsewhere, to use these sliver info records, Omni must determine the URN of the aggregate. Omni tries to look up the aggregate URN if it is not available (using the aggregate nickname cache or the clearinghouse or the GetVersion cache), or to guess it from the sliver URN. None of these mechanisms is foolproof, and as such, some resource reservations may not be reported. In general, all aggregates should be listed in the `agg_nick_cache` to ensure the sliver info mechanism works.
 
-* amhandler sliver result parsing functions
+### amhandler sliver result parsing functions
 Starting with AM API v3, many functions return a struct or list of structs for teh slivers in the reservation at this AM. `amhandler` provides multiple helper methods for parsing and interpreting these. `_getSliverStatuses` summarizes the allocation/operational status of the slivers. `_didSliversFail` indicates what slivers if any had per sliver failures (as in when the user supplied `--bestEffort`). `_findMissingSlivers` reports on slivers which were in the list of slivers requested to act on but for which there is no result. `_getSliverExpirations` helps summarize when your slivers expire. `_getSliverAllocStates` gets a mapping of sliver to allocation state, optionally filtered to only slivers whose state is not as expected.
 
-* `do_ssl`
+## `do_ssl`
 As noted above, `dossl.py` provides the `_do_ssl` wrapper around SSL calls. This allows catching common SSL errors and retrying; for example, mis-typing your SSL key passphrase, or a server reporting an AM API error code indicating it is busy. The number of times to retry and time to pause between attempts is hard coded (4 times, 20 seconds). Other common SSL errors are interpreted to provide a more user friendly error message (such as your user certificate is expired or not trusted). This function also allows suppressing certain error codes - allowing this to look like an empty return with an error message, instead of logging a noisy error.
 The tuning of time to wait between busy retries and number of times to retry has been tuned to support the current slowest AMs (like ProtoGENI Utah). But this is brittle and could need future tuning.
 
-* logging
+## logging
 Omni uses python logging. Omni provides multiple options to tune and configure logging, attempting to be friendly to the use of Omni as a library in another application. Some user level documentation is available in `README-omni`.
 
 Some times, configuring logging as desired requires manually modifying the python handlers in the calling code. For example, stitcher does things like this:
@@ -434,23 +445,43 @@ Similar things suppress all but warnings on the console:
 A sample omni logging configuration file is at `src/omni_log_conf_sample.conf`.
 Another good example is how Stitcher configures logging. `src/stitcher.py` finds a python logging config file (in its case, `src/gcf/stitcher_logging.conf`). Then stitcher has omni configure logging: `omni.configure_logging(options)`.
 
-* Omni as a library
-See `README-omni`.
-
-* Saved user and slice creds
+## Saved user and slice creds
 Many CH operations require a user credential. Most AM API methods require a user credential or usually a slice credential. These credentials change very infrequently. So Omni can save these, letting you do many things faster.
 A future enhancement would automatically cache these.
 When you use the `-o` option with `getusercred` or `getslicecred`, you can save the credential. Then through use of `--slicecredfile` or `--usercredfile` you can have Omni load the credential from the saved file. `framework_base.init_user_cred` tries to read a saved user credential from a file. `handler_utils._maybe_save_slicecred` is used to save the slice credential to a file. `handler_utils._get_slice_cred` will call `_load_cred` to load the slice credential from a file if possible. Stitcher uses the saved slice credential so that the numerous individual Omni calls required for a single stich all use the same saved slice credential.
 `chhandler` has to be a little careful, particularly in calling `renewslice` and `getslicecred` when there is a saved slice credential.
 
-* m2crypto vs pyopenssl vs ?, managing ssl versions and ciphers,
-passing chained certs issues, the secure server/client classes
-* do_ssl (errors it wraps, retries, errors it suppresses)
-* AM method return struct (keeping it common)
-* output control options and their interaction
-* todo items (summarize tix, code cleanup, pure API call versions, ?)
-* show create sliver pseudo code to walk much of the sub systems
-* ?
+## Making SSL connections
+There are multiple ways of making SSL connections from python. geni-tools uses some M2Crypto and some PyOpenSSL.
+`secure_xmlrpc_client.py` and `xmlrpc/client.py` use PyOpenSSL. There was an attempt to use M2Crypto, particularly to support a callback for entering the SSL passphrase only once, but this had trouble. Unused code remains for future potential use.
+Note that managing the SSL version and the ciphers used in creating the SSL connection has been an issue in the past. There are notes on github issues. In particular, remember that Omni should work on Windows and Mac as well as Linux, and there are a wide variety of servers it must talk to.
+Also note that Omni wants to authenticate with a client certificate over SSL, which is unusual among python libraries. In addition, it must pass a full chain of certificates in general (an MA and a user cert). And do this with an XMLRPC connection. Ensuring the cert chain is passed, and that SSL timeouts are honored, has been an issue in the past.
+Additionally, Omni attempts to work with Python 2.6 and 2.7, including more recent 2.7.9. These various versions introduce differences that Omni must work around.
+
+Currently, by default Omni specified that it wants TLSv1. By default, Python would do SSLv23 (which secretly also allows SSLv3). This enures TLS is supported and that servers that have disabled both SSLV2 and v3 (as generally recommended) will work.
+Additionally, Omni by default uses a cipher list that tries to avoid most weak ciphers (though python2.6 ignores our requested cipher list).
+See `xmlrpc/client.make_client`.
+
+On the server side, the relevant file is `gcf.geni.SecureXMLRPCServer`. This is an XMLRPCServer where on each connection we get the peer (client) certificate, and we wrap the socket in an SSL connection. We specify that we accept SSLv23. Ideally we'd specify the ciphers too, but that doesn't (easily) work, and specifying SSL versions of TLSv1 risks locking out some clients.
+
+## AM method return struct
+All public methods return a list
+of 2 elements: a pretty string to describe the result, and an object
+that is the return value. The type of the return value depends on the
+specific method call.
+This common return simplifies tools that use Omni.
+The pretty string should be reasonably short for printing.
+Note that it might be nice to add the raw return tuple that the aggregate ret
+(keeping it common)
+
+## Output control
+options and their interaction
+
+## To Do items
+(summarize tix, code cleanup, pure API call versions, ?)
+
+## show create sliver pseudo code to walk much of the sub systems
+
 
 # stitcher
 * SCS
