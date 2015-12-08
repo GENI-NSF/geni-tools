@@ -49,7 +49,7 @@ import tempfile
 
 logger = None
 
-SCRATCH_DIR = tempfile.mkdtemp('omni_bundle')
+SCRATCH_DIR = tempfile.mkdtemp('-omni_bundle')
 DEFAULT_PRIVATE_CERT_KEY = {
                             'pg' : "~/.ssh/geni_cert_key_pg",
                             # 'pl' : "~/.ssh/geni_cert_key_pl",
