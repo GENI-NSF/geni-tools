@@ -25,7 +25,14 @@ bin_SCRIPTS = \
 
 dist_pkgdata_SCRIPTS = \
 	delegateSliceCred.py \
-	clear-passphrases.py
+	clear-passphrases.py \
+	gcf-am.py \
+	gcf-ch.py \
+	gcf-test.py \
+	gen-certs.py
+
+dist_pkgdata_DATA = \
+	omni_log_conf_sample.conf
 
 nobase_dist_python_DATA = \
 	gcf/gcf_version.py \
@@ -34,13 +41,16 @@ nobase_dist_python_DATA = \
 	gcf/geni/am/am2.py \
 	gcf/geni/am/am3.py \
 	gcf/geni/am/am_method_context.py \
+	gcf/geni/am/api_error_exception.py \
 	gcf/geni/am/fakevm.py \
 	gcf/geni/am/__init__.py \
 	gcf/geni/am/proxyam.py \
 	gcf/geni/am/resource.py \
+	gcf/geni/am/test_ams.py \
 	gcf/geni/auth/abac_authorizer.py \
 	gcf/geni/auth/abac_resource_manager.py \
 	gcf/geni/auth/argument_guard.py \
+	gcf/geni/auth/authorizer_client.py \
 	gcf/geni/auth/authorizer_server.py \
 	gcf/geni/auth/base_authorizer.py \
 	gcf/geni/auth/binders.py \
@@ -112,6 +122,7 @@ nobase_dist_python_DATA = \
 	gcf/omnilib/xmlrpc/__init__.py \
 	gcf/oscript.py \
 	gcf/sfa/__init__.py \
+	gcf/sfa/README.txt \
 	gcf/sfa/trust/abac_credential.py \
 	gcf/sfa/trust/certificate.py \
 	gcf/sfa/trust/credential_factory.py \
@@ -131,15 +142,4 @@ nobase_dist_python_DATA = \
 	gcf/stitcher_logging_deft.py
 
 EXTRA_DIST += \
-	gcf/geni/am/amapi2-request.xml \
-	gcf/sfa/README.txt \
-	gcf-am.py \
-	gcf-ch.py \
-	gcf-gch.py \
-	gcf-pgch.py \
-	gcf-proxy-test.py \
-	gcf-proxy.py \
-	gcf-test.py \
-	gen-certs.py \
-	omni_log_conf_sample.conf \
 	omni_unittest.py

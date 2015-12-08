@@ -2135,7 +2135,7 @@ class Aggregate(object):
                                                                        "Not enough nodes with fast enough interfaces" in msg)):
                                 self.logger.debug("Fatal error (malformed req) from PG AM")
                                 isFatal = True
-                                fatalMsg = "Reservation request impossible at %s. Malformed request or insufficient resources: %s..." % (self, str(ae)[:120])
+                                fatalMsg = "Reservation request impossible at %s. Malformed request or insufficient resources available: %s..." % (self, str(ae)[:120])
                                 if 'Inconsistent ifacemap' in msg:
                                     fatalMsg = "Reservation request impossible at %s. Try using the --fixedEndpoint option. %s..." % (self, str(ae)[:120])
                             elif code == 6 and amcode == 6 and msg.startswith("Hostname > 63 char"):
@@ -2258,6 +2258,10 @@ class Aggregate(object):
                                 self.logger.debug("Fatal error from PG AM: %s", msg)
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Malformed request? %s..." % (self, str(ae)[:120])
+                            elif (code == 2 or code == 28) and amcode == 28 and "recheck fail" in str(val):
+                                self.logger.debug("Fatal mapper error from PG AM: %s", msg)
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s. Your topology could not be mapped to the available physical resources. Try fewer resources or a different aggregate. %s..." % (self, str(ae)[:120])
                             else:
                                 self.logger.debug("Some other PG error: Code=%d, amcode=%d, msg=%s, val=%s", code, amcode, msg, str(val))
                         elif self.isEG:
@@ -4927,16 +4931,21 @@ class HopLink(object):
 
         self.logger = logging.getLogger('stitch.HopLink')
 
-    def editChangesIntoDom(self, domNode, request=True):
+    def editChangesIntoDom(self, domNode, request=True, really=False):
         '''Edit any changes made in this element into the given DomNode'''
         # Note that the parent RSpec object's dom is not touched, unless this domNode is from that
         # Here we edit in the new vlan_range and vlan_available
         # If request is False, use the manifest values. Otherwise, use requested.
+        # If really is false (default), then if the given domNode (a hop link) doesn't have teh same ID as this object,
+        # then raise an error. If really is True
 
         # Incoming node should be the node for this hop
         nodeId = domNode.getAttribute(self.ID_TAG)
         if nodeId != self.urn:
-            raise StitchingError("Hop Link %s given Dom node with different Id: %s" % (self, nodeId))
+            if not really:
+                raise StitchingError("Hop Link %s given Dom node with different Id: %s" % (self, nodeId))
+            else:
+                self.logger.debug("Hop Link %s given Dom node with different Id: %s, but editing anyhow" % (self, nodeId))
 
         if request:
             newVlanRangeString = str(self.vlan_range_request).strip()

@@ -539,8 +539,8 @@ class ReferenceAggregateManager(object):
             sliver.setStartTime(start_time)
             sliver.setEndTime(end_time)
             sliver.setAllocationState(STATE_GENI_ALLOCATED)
-        self._agg.allocate(slice_urn, newslice.slivers())
-        self._agg.allocate(user_urn, newslice.slivers())
+        self._agg.allocate(slice_urn, newslice.resources())
+        self._agg.allocate(user_urn, newslice.resources())
         self._slices[slice_urn] = newslice
 
         # Log the allocation
@@ -569,7 +569,7 @@ class ReferenceAggregateManager(object):
         # EG the 'info' privilege in a credential allows the operations
         # listslices, listnodes, policy
         privileges = (PROVISION_PRIV,)
-        creds = self.getverifiedcredentials(the_slice.urn, credentials, options, privileges)
+        creds = self.getVerifiedCredentials(the_slice.urn, credentials, options, privileges)
 
         if 'geni_rspec_version' not in options:
             # This is a required option, so error out with bad arguments.
@@ -617,7 +617,7 @@ class ReferenceAggregateManager(object):
                                       and options['geni_end_time']))
         for sliver in slivers:
             # Extend the lease and set to PROVISIONED
-            expiration = min(sliver.getEndTime(), max_expiration)
+            expiration = min(sliver.endTime(), max_expiration)
             sliver.setEndTime(expiration)
             sliver.setExpiration(expiration)
             sliver.setAllocationState(STATE_GENI_PROVISIONED)
@@ -648,9 +648,9 @@ class ReferenceAggregateManager(object):
             return self.errorResult(AM_API.UNAVAILABLE,
                                     ("Unavailable: Slice %s is unavailable."
                                      % (the_slice.urn)))
-
-        self._agg.deallocate(the_slice.urn, slivers)
-        self._agg.deallocate(user_urn, slivers)
+        resources = [sliver.resource() for sliver in slivers]
+        self._agg.deallocate(the_slice.urn, resources)
+        self._agg.deallocate(user_urn, resources)
         for sliver in slivers:
             slyce = sliver.slice()
             slyce.delete_sliver(sliver)
@@ -1098,9 +1098,15 @@ class ReferenceAggregateManager(object):
                 self.logger.debug("Deleting empty slice %r", slyce.urn)
                 del self._slices[slyce.urn]
 
-    def decode_urns(self, urns):
+    def decode_urns(self, urns, **kwargs):
         """Several methods need to map URNs to slivers and/or deduce
         a slice based on the slivers specified.
+
+        When called from AMMethodContext, kwargs will have 2 keys
+        (credentials and options), with the same values as the credentials
+        and options parameters of the AMv3 API entry points. This can be 
+        usefull for delegates derived from the ReferenceAggregateManager, 
+        but is not used in this reference implementation.
 
         Returns a slice and a list of slivers.
         """

@@ -321,7 +321,7 @@ def main(argv=None):
         return 1
 
 # To run this main, be sure to do:
-# export PYTHONPATH=$PYTHONPATH:/path/to/gcf
+# export PYTHONPATH=$PYTHONPATH:/path/to/gcf/src
 
 if __name__ == "__main__":
   sys.exit(main())

@@ -49,6 +49,15 @@ New in v2.10:
    (`HIGH:MEDIUM:!ADH:!SSLv2:!MD5:!RC4:@STRENGTH`) when using python2.7.
    This avoids some security issues, and allows Omni on older clients
    to connect to some updated servers. (#745)
+ * Use `False` instead of `'f'` for `SLICE_EXPIRED` and `PROJECT_EXPIRED` when 
+   using Common Federation API clearinghouses. (#856)
+  * Thanks to Umar Toseef for the bug report.
+ * Do not assume `PROJECT_MEMBER_UID` is returned when listing project members,
+   but allow it. (#857)
+  * Thanks to Umar Toseef for the bug report.
+ * Calling `getslicecred` while specifying a `slicecredfile` that exists
+   no longer means just return that file. Instead, that file will be
+   ignored and, if you specify `-o`, replaced. (#868)
 
 New in v2.9:
  * If `sliverstatus` fails in a way that indicates there are no local resources,
@@ -1096,10 +1105,10 @@ The filename is `<slicename>-cred.xml`
 But you can specify the filename using the `--slicecredfile` option or
 by defining the `GENI_SLICECRED` environment variable to the desired path.
 
-Additionally, if you specify the `--slicecredfile` option or define the
+NOTE: If you specify the `--slicecredfile` option or define the
 `GENI_SLICECRED` environment variable, and that
-references a file that is not empty, then we do not query the Slice
-Authority for this credential, but instead read it from this file.
+references a file that is not empty, then that file will be ignored,
+and replaced if you specify `-o`.
 
 Arg: slice name
 Slice name could be a full URN, but is usually just the slice name portion.
@@ -1350,7 +1359,8 @@ clearinghouse. For each such user, the return includes:
  - `PROJECT_MEMBER`: URN identifier of the user
  - `EMAIL` address of the user
  - `PROJECT_ROLE` of the user in the project.
- - `PROJECT_MEMBER_UID`: Internal UID identifier of the member
+ - `PROJECT_MEMBER_UID`: Internal UID identifier of the member, if
+ returned by the clearingnouse and the user supplied `--debug`
 
 Output directing options:
  * `-o` Save result in a file

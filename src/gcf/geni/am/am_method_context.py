@@ -93,7 +93,7 @@ class AMMethodContext:
 
             if new_caller_gid != caller_gid:
                 new_caller_urn = new_caller_gid.get_urn()
-                self._logger.info("Speaks-for invoation: %s for %s" % 
+                self._logger.info("Speaks-for invocation: %s for %s" %
                                   (self._caller_urn, new_caller_urn))
                 self._caller_cert = new_caller_gid.save_to_string()
                 self._caller_urn = new_caller_urn
@@ -103,13 +103,15 @@ class AMMethodContext:
                 self._aggregate_manager._delegate._my_urn
 
             if self._is_v3:
+                credentials = self._normalize_credentials(self._credentials)
                 if 'urns' in self._args: 
                     urns = self._args['urns']
                     the_slice, the_slivers = \
-                        self._aggregate_manager._delegate.decode_urns(urns)
+                        self._aggregate_manager._delegate.decode_urns(urns,
+                                                                      credentials=credentials,
+                                                                      options=self._options)
                     if the_slice and 'slice_urn' not in self._args:
                         self._args['slice_urn'] = the_slice.getURN()
-                credentials = self._normalize_credentials(self._credentials)
 
             if self._authorizer is not None:
                 requested_allocation_state = []
