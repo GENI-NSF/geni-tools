@@ -37,6 +37,9 @@ gcf 2.10:
   * AL2S supports speaks for. Don't exit if using speaksfor and AL2S. (#834)
   * Treat new generic ProtoGENI mapper error code (28) as fatal. (#861)
 
+ * omni-configure
+  * Modify omni-configure to support multi-user systems (#843)
+
  * gcf
   * Add new parameters to decode_urns so that derived delegates can 
     decode urns using the credentials and options available in other 
