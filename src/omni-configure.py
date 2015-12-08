@@ -45,10 +45,11 @@ import logging
 from gcf.sfa.trust.certificate import Certificate, Keypair
 from gcf.gcf_version import GCF_VERSION as OMNI_VERSION
 import M2Crypto
+import tempfile
 
 logger = None
 
-SCRATCH_DIR = "/tmp/omni_bundle_" + binascii.b2a_hex(os.urandom(15))
+SCRATCH_DIR = tempfile.mkdtemp('omni_bandle')
 DEFAULT_PRIVATE_CERT_KEY = {
                             'pg' : "~/.ssh/geni_cert_key_pg",
                             # 'pl' : "~/.ssh/geni_cert_key_pl",
