@@ -3,7 +3,7 @@
 gcf 2.10:
  * Changed references to trac.gpolab.bbn.com to point to Github.
    Although those pages mostly still reference trac, that is the future home.
-   These changes include changing where the agg_nick_cache lives. (#814)
+   These changes include changing where the `agg_nick_cache` lives. (#814)
 
  * Omni
   * Continue anyway if no aggregate nickname cache can be loaded. (#822)
@@ -41,6 +41,8 @@ gcf 2.10:
     in some cases. (#839)
   * AL2S supports speaks for. Don't exit if using speaksfor and AL2S. (#834)
   * Treat new generic ProtoGENI mapper error code (28) as fatal. (#861)
+  * Fix combining manifests where link is multi AM but not stitched. (#879)
+   * Thanks to Hussam Nasir
 
  * omni-configure
   * Modify omni-configure to support multi-user systems (#843)
