@@ -170,7 +170,10 @@ for future smoother integration). The handler allows invoking any
 method in the handler classes (excluding private methods, indicated by
 a name that starts with `_`). Handlers do two kinds of operations:
 Call a clearinghouse using a 'framework' (to create a slice or get a credential for
-example), and calls to an aggregate. Omni supports multiple
+example), and calls to an aggregate.
+
+## Frameworks and contacting clearinghouses
+Omni supports multiple
 clearinghouse APIs, whose differences are abstracted away with a
 'framework' whose API is defined in framework_base.py. The framework
 handles getting the user and slice credentials. Additionally, in AM
@@ -182,14 +185,15 @@ the `omni_config`. `framework_chapi` supports the Uniform Federation
 API v1 and v2 (http://groups.geni.net/geni/wiki/CommonFederationAPIv2). Currently it hard codes some assumptions that should be
 done dynamically using information from `GetVersion` (like whether the
 CH supports projects).
+Note that each 'framework' represents a different clearinghouse API. These differences are hidden by Omni behind `chhandler`. It would be nice if there were a way to directly call the individual framework APIs.
 
 ## `chhandler`
 `chhandler` supports calls to the clearinghouse: get a user or slice
 credential, create or renew a slice, list aggregates, list a user's
-slices or projects, etc. Each call parses the commandline arguments
+slices or projects, etc. The supported calls are necessarily a subset of the functionality that any given framework / clearinghouse API supports. Each call parses the commandline arguments
 (not options) itself. Calls to the proper framework to do the
 clearinghouse call are typically wrapped in `_do_ssl` to support
-automatic retry.
+automatic retry. 
 
 ## `amhandler`
 `amhandler` supports calls to aggregates, including all AM APIv2, v2,
@@ -235,7 +239,7 @@ Omni keeps a cache of aggregate nicknames, by default in
 aggregate URL and URN. Note that the same URN may have multiple URLs
 (different AM API versions typically), and the same URL could have
 multiple nicknames. The cache is maintained in git and posted on the
-Omni wiki (currently at http://trac.gpolab.bbn.com/gcf/raw-attachment/wiki/Omni/agg_nick_cache). Omni downloads the cache once daily (configurable). Nicknames in the cache
+Omni wiki (currently at https://raw.githubusercontent.com/wiki/ahelsing/geni-tools/agg_nick_cache). Omni downloads the cache once daily (configurable). Nicknames in the cache
 are ordered by convention with AM API agnostic nicknames before those
 specific to a version, and then by API version number. Nicknames are
 typically `<site>-<type>[version#]`, e.g. "moxi-of1". For some purposes,
@@ -255,6 +259,7 @@ on this slice. Then Omni must look up a URL for that URN, and uses the
 agg_nick_cache to do so. Therefore, any AM that is not listed in the
 agg_nick_cache will not be included in Omni operations that use `--useSliceAggregates`. GENI operations must keep the `agg_nick_cache` up to date with the proper AM URLs and list the proper aggregates, to ensure sliver info reporting, availability of reasonable nicknames, and reasonable Omni printouts. Generally, any aggregate that conforms to the AM API and provides reservable resources could be listed in the cache, but GENI policy may require additional testing (reliability for example).
 Note that there are options for controlling where the cache is saved, and options to force not attempting to download a new cache at all.
+Also note that much of the information in the `agg_nick_cache` is duplicated in the GENI Clearinghouse' service registry. It might be nice if this data could be retrieved from that registry or some similar database, reducing the number of sources of such information.
 
 ## `_listaggregates`
 handler_utils also provides the `_listaggregates` function for getting
@@ -471,14 +476,39 @@ that is the return value. The type of the return value depends on the
 specific method call.
 This common return simplifies tools that use Omni.
 The pretty string should be reasonably short for printing.
-Note that it might be nice to add the raw return tuple that the aggregate ret
-(keeping it common)
+Note that it might be nice to add the raw return tuple that the aggregate returns (code, value, output), perhaps as a 3rd item in the triple that the methods return. But this would cause multiple changes, so be careful.
+
 
 ## Output control
-options and their interaction
+Omni provides multiple options for controlling its output. The primary output is the python logger, which logs to STDERR (console) by default. With the `-o` option (and related options), primary output (like rspecs and credentials) can be sent to a file. With the `--tostdout` option that output goes to STDOUT instead. Supply your own python logging config file to further control Omni output (use `--logconfig`) or tell Omni not to configure logging at all (because the caller tool has already done so - use `--noLoggingConfiguration`).
+For some purposes, it might be nice if Omni sent everything to STDOUT instead of STDERR (e.g. to pipe the output to `grep`). The output control functions are in `handler_utils`; see above.
 
 ## To Do items
-(summarize tix, code cleanup, pure API call versions, ?)
+The open issues in Github cover many of the outstanding tasks and wishlist items for Omni. To highlight a few:
+- #854: SFA code has been updated. There is a branch on a fork to update to the latest SFA, to make future integration easier
+- #814: There remain some references to GPO lab servers, which will go away or change names before too long
+- #829: There is code duplication between the omni `client.py` and the GCF `secure_xmlrrpc_client.py`
+- #820: What should the dependency of GCF on Omni or Omni on GCF be? Could they be independent? Currently GCF `am3.py` depends on `omnilib` (see related #819)
+- #773: It would help tools using Omni if exceptions were more specific
+- #592: Add library functions that are raw AM API calls, for use by tools
+- #427: Provide a way to get the full return triple from AM calls
+- #766: `rspec_util` uses XML parsers but does very little with that, and the parsers don't handle everything an XML document could have smoothly
+- #752: Does Omni properly return a non 0 exit code when there is an AM API error?
+- #656: Omni could infer the AMs to reserve resources at from your (bound) RSpec, similar to how stitcher does
+- #655: Many stitcher utilities could be part of Omni
+- #652: Calling `poa geni_update_keys` when using a PG clearinghouse causes existing SSH keys on nodes to be removed
+- #525: The code for looking up nicknames / URNs is ugly. Refactor it
+- #524: The code for handling `--useSliceAggregates` includes some ugly hacks. Refactor it.
+- #520: When searching for a URL or nickname, consider the desired AM API version
+- #494: The CHAPI clearinghouse framework should use the `get_version` return to decide which functions to call, which services are supported
+- #457: Find a way to ask for the SSL passphrase only once
+- #430: Omni does not handle an HTTP redirect
+
+Overall, it has been a couple years since Omni was refactored. It is time. When doing so, consider ways to split up Omni to better support the multiple audiences:
+- Omni for newbie experimenters
+- Omni for expert experimenters
+- Omni for developers
+- Omni as a library for other tools
 
 ## show create sliver pseudo code to walk much of the sub systems
 
