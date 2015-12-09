@@ -7,13 +7,13 @@ experimentation, research and classroom use.
 
 The [GENI Aggregate Manager API](http://groups.geni.net/geni/wiki/GeniApi) defines the interface for software that resource owners run to manage access to their resources.
 
-For download and installation instructions, see our [Trac site](http://trac.gpolab.bbn.com/gcf).
+For download and installation instructions, see our [wiki](https://github.com/GENI-NSF/geni-tools/wiki).
 
 geni-tools is a community developed package. Please [contribute](CONTRIBUTING.md)!
 
-For further information on Omni, see the [Omni wiki](http://trac.gpolab.bbn.com/gcf)
+For further information on Omni, see the [Omni wiki](https://github.com/GENI-NSF/geni-tools/wiki)
 and [Omni README](README-omni.txt).
 
-For further information on the GCF aggregate, also see <http://trac.gpolab.bbn.com/gcf> and the [GCF README](README.txt).
+For further information on the GCF aggregate, also see <https://github.com/GENI-NSF/geni-tools/wiki> and the [GCF README](README.txt).
 
 geni-tools is released under the terms of the [GENI Public License](LICENSE.txt).

@@ -76,7 +76,7 @@ The installer setup file is `package_builder.iss`. It was created using http://s
 * Test installation.
  * Inno Setup will likely run the setup tool itself automatically.
   * Check the menu items all open the proper files: Disclaimer opens License, 2 web links, and the uninstall tool
- * Follow the rest of the install instructions starting with step 2 [here](http://trac.gpolab.bbn.com/gcf/wiki/Windows#Install)
+ * Follow the rest of the install instructions starting with step 2 [here](https://github.com/GENI-NSF/geni-tools/wiki/Windows#install)
   * Put the Omni tools on your path
  * Open a new command window, and test that all the executables run
 
@@ -205,7 +205,7 @@ Lots of stuff will print out.
 * Test dmg
  * Open the dmg
  * Test doing the install by dragging `OmniTools` to `Applications`
- * Follow the [install instructions](http://trac.gpolab.bbn.com/gcf/wiki/MacOS#Install) and confirm that `stitcher -h` works at the very least
+ * Follow the [install instructions](https://github.com/GENI-NSF/geni-tools/wiki/MacOS#install) and confirm that `stitcher -h` works at the very least
 * Un-install
  * In finder, drag `omniTools` to the trash
 * Eject the `omniTools` dmg

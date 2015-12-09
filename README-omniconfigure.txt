@@ -131,14 +131,14 @@ Embedded comments describe the meaning of each field.
 (Note that keys for the GCF framework are stored in ~/.gcf by default.)
 
 For step-by-step instructions about how to configure Omni, please look at:
-http://trac.gpolab.bbn.com/gcf/wiki/OmniConfigure/Automatic
+https://github.com/GENI-NSF/geni-tools/wiki/Omni-Configuration-Automatically
 
 == Certificate passphrase ==
 While executing Omni, you will be prompted for the passphrase of your
 certificate multiple times per call. You should keep a passphrase on 
 your certificate for security best practices. If you just want a way 
 to type your passphrase only once per session look at:
-http://trac.gpolab.bbn.com/gcf/wiki/OmniTroubleShoot#Q.WhydoesOmnipromptformyPEMpassphrasesomanytimesCantOmnipromptonlyonce
+https://github.com/GENI-NSF/geni-tools/wiki/Omni-Troubleshooting#q-why-does-omni-prompt-for-my-pem-passphrase-so-many-times-cant-omni-prompt-only-once
 
 Also there is a script that will help removing the passphrase from the
 certificate. Look at README-clearpassphrases.txt. 

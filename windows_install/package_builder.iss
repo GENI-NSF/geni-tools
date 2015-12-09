@@ -13,8 +13,8 @@ UsePreviousAppDir=false
 [Run]
 Filename: {app}\install.vbs; Flags: shellexec
 [Icons]
-Name: {group}\Documentation; Filename: http://trac.gpolab.bbn.com/gcf/wiki; Comment: omni wiki
-Name: {group}\How To Configure omniTools-2.10; Filename: http://trac.gpolab.bbn.com/gcf/wiki/Windows; Comment: Instructions for configuring omniTools-2.10
+Name: {group}\Documentation; Filename: https://github.com/GENI-NSF/geni-tools/wiki; Comment: omni wiki
+Name: {group}\How To Configure omniTools-2.10; Filename: https://github.com/GENI-NSF/geni-tools/wiki/Windows; Comment: Instructions for configuring omniTools-2.10
 Name: {group}\Disclaimer; Filename: {app}\LICENSE.TXT
 Name: {group}\{cm:UninstallProgram, omniTools-2.10}; Filename: {uninstallexe}
 [Files]

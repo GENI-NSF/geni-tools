@@ -166,9 +166,9 @@ See EG: https://github.com/GENI-NSF/geni-tools/commit/f757f53e20451194438b1b7d32
 * `agg_nick_cache.base`: This should reference the just-released version# and date
 
 # Update wiki pages
-Update the geni-tools wiki pages to describe the new release, and point to the new release for downloads.
+Update the geni-tools wiki pages to describe the new release, and point to the new release for downloads. These instructions reference the old trac wiki pages. New pages are at https://github.com/GENI-NSF/geni-tools/wiki and should be similarly named and edited.
 
-Docs are currently at http://trac.gpolab.bbn.com/gcf/
+(Old) Docs are at http://trac.gpolab.bbn.com/gcf/
 
 * Home page: Update release number and date, and the browse source link, and links to downloading the release
 * `GettingGcf`: Update 2 links for downloading the release
@@ -181,7 +181,10 @@ Docs are currently at http://trac.gpolab.bbn.com/gcf/
 * `GcfQuickStart`: Update with `README-gcf.txt
 * `Windows`: Update version numbers, download links
 * `MacOS`: Update version numbers, download links
-* `agg_nick_cache`: Update with latest `agg_nick_cache.base` from the develop branch, where you updated the release date for this release
+* `agg_nick_cache`: This file lives on Github only (see https://raw.githubusercontent.com/wiki/GENI-NSF/geni-tools/agg_nick_cache). Update with latest `agg_nick_cache.base` from the develop branch, where you updated the release date for this release
+ * To edit this on Github:
+  * Check out the geni-tools wiki on your machine.
+  * Edit the file and commit it to git, pushing to origin/master as usual.
 * Close existing milestone
 * Create new milestone
 * Re target any remaining issues that were not be fixed for this release to the next release.

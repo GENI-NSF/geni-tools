@@ -287,8 +287,8 @@ credentials and certificates, and the GENI AM API.
 
 See http://groups.geni.net/geni/wiki/GeniApi
 
-Omni tutorials and further documentation are on the GCF Wiki:
-http://trac.gpolab.bbn.com/gcf. GCF and Omni source, and all
+Omni tutorials and further documentation are available on the wiki:
+https://github.com/GENI-NSF/geni-tools/wiki. GCF and Omni source, and all
 known issues in this package, are availble on Github:
 https://github.com/GENI-NSF/geni-tools.
 
