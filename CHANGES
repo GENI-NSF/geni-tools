@@ -1,6 +1,10 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
 gcf 2.10:
+ * Changed references to trac.gpolab.bbn.com to point to Github.
+   Although those pages mostly still reference trac, that is the future home.
+   These changes include changing where the agg_nick_cache lives. (#814)
+
  * Omni
   * Continue anyway if no aggregate nickname cache can be loaded. (#822)
    * Sliver info reporting and operations on AMs by nickname will likely fail.
@@ -18,6 +22,7 @@ gcf 2.10:
   * Calling `getslicecred` while specifying a `slicecredfile` that exists
     no longer means just return that file. Instead, that file will be
     ignored and, if you specify `-o`, replaced. (#868)
+  * Moved canonical `agg_nick_cache` location to Github. (#814)
 
  * Stitcher
   * Catch expiration too great errors from PG AMs and quit. (#828)
