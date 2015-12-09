@@ -2,7 +2,7 @@ Troubleshooting Guide for GCF and Omni
 ======================================
 
 More documentation is on the GCF and Omni Wiki.
-http://trac.gpolab.bbn.com/gcf
+https://github.com/GENI-NSF/geni-tools/wiki
 
 For troubleshooting and tips, see:
-http://trac.gpolab.bbn.com/gcf/wiki/OmniTroubleShoot
+https://github.com/GENI-NSF/geni-tools/wiki/Omni-Troubleshooting

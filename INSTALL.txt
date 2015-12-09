@@ -7,7 +7,7 @@ README-omni.txt for details on Omni.
 
 Omni users should follow these install instructions to ensure software dependencies are met.
 Omni users using Mac OS X or Windows might consider the pre-built binaries available
-from https://trac.gpolab.bbn.com/gcf.
+from https://github.com/GENI-NSF/geni-tools/wiki.
 
 Upgrading? For upgrading instructions look at the end of this file.
 

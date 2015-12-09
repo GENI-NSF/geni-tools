@@ -1045,7 +1045,7 @@ def getParser():
  \t\t\t nicknames \n\
  \t\t\t print_sliver_expirations <slicename> \n\
 \n\t See README-omni.txt for details.\n\
-\t And see the Omni website at http://trac.gpolab.bbn.com/gcf"
+\t And see the Omni website at https://github.com/GENI-NSF/geni-tools/wiki."
 
     parser = optparse.OptionParser(usage=usage, version="%prog: " + getOmniVersion())
 
@@ -1186,7 +1186,7 @@ def getParser():
                       default="~/.gcf/agg_nick_cache",
                       help="File where AggNick info will be cached, default is %default")
     angroup.add_option("--AggNickDefinitiveLocation", dest='aggNickDefinitiveLocation',
-                      default="http://trac.gpolab.bbn.com/gcf/raw-attachment/wiki/Omni/agg_nick_cache",
+                      default="https://raw.githubusercontent.com/wiki/GENI-NSF/geni-tools/agg_nick_cache",
                       help="Website with latest agg_nick_cache, default is %default. To force Omni to read this cache, delete your local AggNickCache or use --NoAggNickCache.")
     parser.add_option_group( angroup )
 

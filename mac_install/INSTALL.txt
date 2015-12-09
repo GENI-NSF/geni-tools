@@ -23,4 +23,4 @@ UNINSTALLING OMNI TOOLS
 
 
 READMEs and associated documentation are installed in
-/Applications/omniTools-2.10, or available online: http://trac.gpolab.bbn.com/gcf
+/Applications/omniTools-2.10, or available online: https://github.com/GENI-NSF/geni-tools/wiki
