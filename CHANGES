@@ -3,7 +3,7 @@
 gcf 2.10:
  * Changed references to trac.gpolab.bbn.com to point to Github.
    Although those pages mostly still reference trac, that is the future home.
-   These changes include changing where the agg_nick_cache lives. (#814)
+   These changes include changing where the `agg_nick_cache` lives. (#814)
 
  * Omni
   * Continue anyway if no aggregate nickname cache can be loaded. (#822)
