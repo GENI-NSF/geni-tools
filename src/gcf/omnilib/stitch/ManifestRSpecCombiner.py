@@ -552,8 +552,8 @@ class ManifestRSpecCombiner:
                             break
                         # Get the link with a sliverid and the right client_id
                         if str(link2.getAttribute(CLIENT_ID)) == client_id and \
-                                link2.hasAttribute(VLANTAG):
-                            self.logger.debug("Found AM %s link '%s' that has vlantag '%s'", agg.urn, client_id, link2.getAttribute('vlantag'))
+                           (link2.hasAttribute(VLANTAG) or link2.hasAttribute(SLIVER_ID)):
+                            self.logger.debug("Found AM %s link '%s' that has sliverid '%s' and possibly a vlantag '%s'", agg.urn, client_id,link2.hasAttribute(SLIVER_ID), link2.getAttribute(VLANTAG))
                             if needSwap:
                                 self.logger.debug("Will swap link in template with this element")
                                 link2Clone = link2.cloneNode(True)

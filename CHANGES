@@ -41,6 +41,8 @@ gcf 2.10:
     in some cases. (#839)
   * AL2S supports speaks for. Don't exit if using speaksfor and AL2S. (#834)
   * Treat new generic ProtoGENI mapper error code (28) as fatal. (#861)
+  * Fix combining manifests where link is multi AM but not stitched. (#879)
+   * Thanks to Hussam Nasir
 
  * omni-configure
   * Modify omni-configure to support multi-user systems (#843)
