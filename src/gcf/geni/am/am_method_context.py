@@ -157,7 +157,7 @@ class AMMethodContext:
             self._logger.exception("AM API Error in %s" % self._method_name)
             self._result=self._api_error(value);
         elif type:
-            self._logger.error("Generic Error in %s" % self._method_name)
+            self._logger.error("Generic Error of type %s in %s" % (str(type),self._method_name))
             self._handleError(value)
 
         self._logger.info("Result from %s: %s", self._method_name, 
