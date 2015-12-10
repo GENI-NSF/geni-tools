@@ -487,18 +487,18 @@ For some purposes, it might be nice if Omni sent everything to STDOUT instead of
 The open issues in Github cover many of the outstanding tasks and wishlist items for Omni. To highlight a few:
 - #854: SFA code has been updated. There is a branch on a fork to update to the latest SFA, to make future integration easier
 - #814: There remain some references to GPO lab servers, which will go away or change names before too long
+- #427: Provide a way to get the full return triple from AM calls
 - #829: There is code duplication between the omni `client.py` and the GCF `secure_xmlrrpc_client.py`
 - #820: What should the dependency of GCF on Omni or Omni on GCF be? Could they be independent? Currently GCF `am3.py` depends on `omnilib` (see related #819)
 - #773: It would help tools using Omni if exceptions were more specific
 - #592: Add library functions that are raw AM API calls, for use by tools
-- #427: Provide a way to get the full return triple from AM calls
+- #525: The code for looking up nicknames / URNs is ugly. Refactor it
+- #524: The code for handling `--useSliceAggregates` includes some ugly hacks. Refactor it.
 - #766: `rspec_util` uses XML parsers but does very little with that, and the parsers don't handle everything an XML document could have smoothly
 - #752: Does Omni properly return a non 0 exit code when there is an AM API error?
 - #656: Omni could infer the AMs to reserve resources at from your (bound) RSpec, similar to how stitcher does
 - #655: Many stitcher utilities could be part of Omni
 - #652: Calling `poa geni_update_keys` when using a PG clearinghouse causes existing SSH keys on nodes to be removed
-- #525: The code for looking up nicknames / URNs is ugly. Refactor it
-- #524: The code for handling `--useSliceAggregates` includes some ugly hacks. Refactor it.
 - #520: When searching for a URL or nickname, consider the desired AM API version
 - #494: The CHAPI clearinghouse framework should use the `get_version` return to decide which functions to call, which services are supported
 - #457: Find a way to ask for the SSL passphrase only once
@@ -510,10 +510,47 @@ Overall, it has been a couple years since Omni was refactored. It is time. When 
 - Omni for developers
 - Omni as a library for other tools
 
+Other possible improvements are noted inline above.
+
 ## show create sliver pseudo code to walk much of the sub systems
 
 
 # stitcher
+Stitcher is a tool that uses Omni to coordinate reservations among multiple aggregates. For usage information, see README-stitching.txt.
+Stitcher uses the Omni option parser and logging configuration, and then does multiple instances of `omni.call()` to invoke numerous AM API calls.
+
+## Stitching Overview
+GENI stitching breaks up the reservation of coordinated slices into individual reservations at multiple aggregates. Each aggregate simply reserves what is requested of it. It is the responsibility of the tool to coordinate those reservations as necessary. For example, the tool may reserve a link at Aggregate A, and Aggregate A will provide that link. It is up to the tool to reserve the other end of that link at Aggregate B. If the tool does not do so, nothing useful will happen on that link, but Aggregate A does not care. However, a good tool would look at the specific link allocated by Aggregate A, and ensure it reserves the matching link at Aggregate B; for example, using the same VLAN tag number.
+In general, there could be multiple reasons why the reservation at a second aggregate depends on what is reserved at the first aggregate. The Stitcher tool handles the case of using the same VLAN tag at multiple aggregates.
+GENI provides multiple mechanisms for creating links between resources at multiple aggregates: GRE and EGRE links, specialized aggregates like VTS, and VLAN circuits. Stitcher focuses primarily on VLAN circuits, and that is what we refer to when we speak of GENI Stitched links.
+GENI provides experimenters a private custom topology by using VLAN tags across the GENI network. Experimenters can then modify anything within their layer 2 network. Stitching works because GENI operators pre-negotiate a range of VLANs across campus, regionals, and backbone providers to be dedicated to GENI and the ports connecting GENI resources. These pools of VLANs are then managed by GENI aggregates. GENI stitching then involves the coordinated reservation of those VLAN tags across a circuit of aggregates/resources.
+One variation on GENI stitching, is the creation of Openflow controlled stitcher circuits. In this variation, the aggregates give the slice a VLAN on the switch, but also connect a designated Openflow controller to that VLAN circuit, allowing the experimenter to control traffic on their VLAN using their Openflow controller. Experimenters can do this using the normal stitching mechanism, but specifying an Openflow controller within the main body `<link>`. More properly, experimenters would use version 2 of the stitching RSpec extension which allows specifying the Openflow controller as part of the stitching request.
+
+## Stitcher workflow
+Fundamentally, stitcher does a series of reservations at aggregates using Omni. Stitcher figures out the dependency among aggregates, and then makes a sequence of reservations. Stitcher reserves a VLAN at the first aggregate, reads out the VLAN tag that was assigned, and then requests the same VLAN tag at the next aggregate in the circuit. In the end, the slice has reservations at multiple aggregates with consistent VLAN tags. Stitcher then collects and integrates the manifest RSpecs from the multiple aggregates, and reports the result to the experimenter as a single manifest RSpec.
+
+This process is made more complex by error handling. Any given reservation may fail, due perhaps to a problem in the request, unavailability of compute resources, or unavailability of the requested VLAN tag. Stitcher works hard to determine whether the request is fatally flawed, or whether some part of the reservation can be productively deleted and retried automatically. A number of other factors complicate stitching:
+* Some aggregates can translate VLAN tags (using 1 VLAN tag on the way in, and another on the way out), and some cannot
+* Some aggregate prefer to select the VLAN tag (producers), and some want to be told what VLAN tag to use (consumers)
+* Stitched links request a given bandwidth (typically just a best effort bookkeeping reservation) that must be satisfied
+* A given slice may use multiple stitched links, and may use multiple inter aggregate link types
+* No GENI aggregates currently support multi point circuits, so slices must be made of multiple circuits
+
+
+## Stitching Links
+Some links for learning more about stitching in general and GENI stitching:
+* GENI Stitching and links to SCS code and the stitching extension: https://wiki.maxgigapop.net/twiki/bin/view/GENI/NetworkStitchingOverview
+* SCS code on Github: https://github.com/xi-yang/MXTCE-GENI-SCS
+* Some sample stitching RSpecs: http://groups.geni.net/geni/browser/trunk/stitch-examples
+* A stitching tutorial: http://groups.geni.net/geni/wiki/GENIExperimenter/Tutorials/StitchingTutorial
+* Stitching RSpec extension v2 (mostly unused): https://www.geni.net/resources/rspec/ext/stitch/2/stitch-schema.xsd
+* Tested stitching sites: http://groups.geni.net/geni/wiki/GeniNetworkStitchingSites
+* Slides describing stitching to experimenters: http://groups.geni.net/geni/attachment/wiki/GEC20Agenda/InterAggExpts/GEC20-InterAggregate.pdf
+* Most recent developer stitching slides: http://groups.geni.net/geni/attachment/wiki/GEC16Agenda/DevelopersGrabBag/geni-gec16-stitching.pdf
+* Old out of date page on GENI stitching: http://groups.geni.net/geni/wiki/GeniNetworkStitching
+* PG stitching: http://www.protogeni.net/ProtoGeni/wiki/Stitching
+* Orca stitching: https://geni-orca.renci.org/trac/wiki/Stitching
+
 * SCS
  * where to find docs and code, who runs it (contact), who maintains
  it (contact)
