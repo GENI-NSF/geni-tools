@@ -59,6 +59,8 @@ New in v2.10:
    no longer means just return that file. Instead, that file will be
    ignored and, if you specify `-o`, replaced. (#868)
  * Moved canonical `agg_nick_cache` location to Github. (#814)
+ * Use `urllib2.urlopen` instead of `urllib.urlretrieve` to avoid bad
+   interaction with M2Crypto. (#881)
 
 New in v2.9:
  * If `sliverstatus` fails in a way that indicates there are no local resources,
@@ -852,9 +854,9 @@ Options:
                         ~/.gcf/agg_nick_cache
     --AggNickDefinitiveLocation=AGGNICKDEFINITIVELOCATION
                         Website with latest agg_nick_cache, default is
-                        https://raw.githubusercontent.com/wiki/GENI-NSF/geni-
-                        tools/agg_nick_cache. To force Omni to read this
-                        cache, delete your local AggNickCache or use
+                        https://raw.githubusercontent.com/GENI-NSF/geni-
+                        tools/master/agg_nick_cache.base. To force Omni to
+                        read this cache, delete your local AggNickCache or use
                         --NoAggNickCache.
 
   For Developers / Advanced Users:

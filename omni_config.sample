@@ -79,7 +79,7 @@ default_cf = my_gcf
 
 #------AM nicknames
 # Omni defines a standard set of aggregate nicknames. These are retrieved periodically
-# from https://raw.githubusercontent.com/wiki/GENI-NSF/geni-tools/agg_nick_cache
+# from https://raw.githubusercontent.com/GENI-NSF/geni-tools/master/agg_nick_cache.base
 # Put your custom aggregate nicknames here. 
 # To see all available nicknames try: omni.py nicknames
 #

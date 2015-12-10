@@ -1,5 +1,6 @@
 ### DO NOT MODIFY THIS FILE BY HAND ###
-# This file lives at: https://raw.githubusercontent.com/wiki/GENI-NSF/geni-tools/agg_nick_cache
+# This file lives at: https://raw.githubusercontent.com/GENI-NSF/geni-tools/master/agg_nick_cache.base
+# - the master branch of the geni-tools Github repository
 # Last updated on December 9, 2015
 
 [omni_defaults]
