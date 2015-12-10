@@ -854,7 +854,7 @@ Options:
                         ~/.gcf/agg_nick_cache
     --AggNickDefinitiveLocation=AGGNICKDEFINITIVELOCATION
                         Website with latest agg_nick_cache, default is
-                        https://raw.githubusercontent.com/wiki/GENI-NSF/geni-
+                        https://raw.githubusercontent.com/GENI-NSF/geni-
                         tools/master/agg_nick_cache.base. To force Omni to
                         read this cache, delete your local AggNickCache or use
                         --NoAggNickCache.
