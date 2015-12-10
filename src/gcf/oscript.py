@@ -486,6 +486,7 @@ def update_agg_nick_cache( opts, logger ):
         directory = os.path.dirname(opts.aggNickCacheName)
         if not os.path.exists( directory ):
             os.makedirs( directory )
+        logger.debug("Attempting to refresh agg_nick_cache from %s...", opts.aggNickDefinitiveLocation)
         urllib.urlretrieve( opts.aggNickDefinitiveLocation, tmpcache )
         good = False
         if os.path.exists(tmpcache) and os.path.getsize(tmpcache) > 0:
