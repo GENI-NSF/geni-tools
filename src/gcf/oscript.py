@@ -115,7 +115,7 @@ import optparse
 import os
 import shutil
 import sys
-import urllib
+import urllib2
 
 from .omnilib.util import OmniError, AMAPIError
 from .omnilib.handler import CallHandler
@@ -487,7 +487,15 @@ def update_agg_nick_cache( opts, logger ):
         if not os.path.exists( directory ):
             os.makedirs( directory )
         logger.debug("Attempting to refresh agg_nick_cache from %s...", opts.aggNickDefinitiveLocation)
-        urllib.urlretrieve( opts.aggNickDefinitiveLocation, tmpcache )
+        # Do not use urllib here, because urllib interacts badly with M2Crypto
+        # which overrites the URLopener.open_https method in a way that makes opening https
+        # connections take 60 seconds where they should take 5.
+        # (we've imported M2Crypto here indirectly via sfa.trust.gid)
+        # See http://nostacktrace.com/dev/2011/2/4/no-love-for-the-monkey-patch.html
+        # urllib.urlretrieve( opts.aggNickDefinitiveLocation, tmpcache )
+        handle = urllib2.urlopen(opts.aggNickDefinitiveLocation)
+        with open (tmpcache, "w") as f:
+            f.write(handle.read())
         good = False
         if os.path.exists(tmpcache) and os.path.getsize(tmpcache) > 0:
             if os.path.exists(opts.aggNickCacheName) and os.path.getsize(opts.aggNickCacheName) > 0:
