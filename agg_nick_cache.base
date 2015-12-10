@@ -1,6 +1,7 @@
 ### DO NOT MODIFY THIS FILE BY HAND ###
-# This file lives at: http://trac.gpolab.bbn.com/gcf/raw-attachment/wiki/Omni/agg_nick_cache
-# Last updated on May 19, 2015
+# This file lives at: https://raw.githubusercontent.com/GENI-NSF/geni-tools/master/agg_nick_cache.base
+# - the master branch of the geni-tools Github repository
+# Last updated on December 9, 2015
 
 [omni_defaults]
 # This section is for updating Omni defaults without updating Omni.
@@ -26,7 +27,7 @@ scs_url=https://geni-scs.net.internet2.edu:8443/geni/xmlrpc
 # Specify the latest version of Omni released, and a message
 # Expected format is "#,Message" EG: "2.8,Omni 2.8 was release 2/1/2015". No commas in the message.
 # If a newer version is available, Omni will log a message at INFO level.
-latest_omni_version=2.8.1,Omni 2.8.1 was released 5/1/2015. See http://trac.gpolab.bbn.com/gcf
+latest_omni_version=2.9,Omni 2.9 was released 5/27/2015. See https://github.com/GENI-NSF/geni-tools/wiki
 
 #------AM nicknames
 # Format :
@@ -594,6 +595,10 @@ wall2=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilab
 wall2-1=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/1.0
 wall2-2=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
 wall2-3=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/3.0
+im-vw2=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
+im-vw2-1=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/1.0
+im-vw2-2=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
+im-vw2-3=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/3.0
 
 # ====
 # NICTA ExoGENI
@@ -687,3 +692,32 @@ utah-stitch1=urn:publicid:IDN+stitch.geniracks.net+authority+cm,https://boss.sti
 utah-stitch2=urn:publicid:IDN+stitch.geniracks.net+authority+cm,https://boss.stitch.geniracks.net:12369/protogeni/xmlrpc/am/2.0
 utah-stitch3=urn:publicid:IDN+stitch.geniracks.net+authority+cm,https://boss.stitch.geniracks.net:12369/protogeni/xmlrpc/am/3.0
 
+# ====
+# iMinds Virtual Wall 1
+# ====
+wall1=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
+wall1-1=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/1.0
+wall1-2=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
+wall1-3=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/3.0
+im-vw1=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
+im-vw1-1=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/1.0
+im-vw1-2=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
+im-vw1-3=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/3.0
+
+# ====
+# iMinds iLab.t Wireless lab
+# ====
+im-wilab=urn:publicid:IDN+wilab2.ilabt.iminds.be+authority+cm,https://www.wilab2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
+im-wilab1=urn:publicid:IDN+wilab2.ilabt.iminds.be+authority+cm,https://www.wilab2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/1.0
+im-wilab2=urn:publicid:IDN+wilab2.ilabt.iminds.be+authority+cm,https://www.wilab2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
+im-wilab3=urn:publicid:IDN+wilab2.ilabt.iminds.be+authority+cm,https://www.wilab2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/3.0
+
+# ======
+# Kaiserslautern (UKL) OpenGENI
+# ======
+ukl-og=urn:publicid:IDN+glab077.e4.ukl.german-lab.de:gcf+authority+am,https://glab077.e4.ukl.german-lab.de:5002
+ukl-og2=urn:publicid:IDN+glab077.e4.ukl.german-lab.de:gcf+authority+am,https://glab077.e4.ukl.german-lab.de:5002
+ukl-og3=urn:publicid:IDN+glab077.e4.ukl.german-lab.de:gcf+authority+am,https://glab077.e4.ukl.german-lab.de:5001
+kaiserslautern-og=urn:publicid:IDN+glab077.e4.ukl.german-lab.de:gcf+authority+am,https://glab077.e4.ukl.german-lab.de:5002
+kaiserslautern-og2=urn:publicid:IDN+glab077.e4.ukl.german-lab.de:gcf+authority+am,https://glab077.e4.ukl.german-lab.de:5002
+kaiserslautern-og3=urn:publicid:IDN+glab077.e4.ukl.german-lab.de:gcf+authority+am,https://glab077.e4.ukl.german-lab.de:5001
