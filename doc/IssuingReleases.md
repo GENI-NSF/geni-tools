@@ -181,10 +181,7 @@ Update the geni-tools wiki pages to describe the new release, and point to the n
 * `GcfQuickStart`: Update with `README-gcf.txt
 * `Windows`: Update version numbers, download links
 * `MacOS`: Update version numbers, download links
-* `agg_nick_cache`: This file lives on Github only (see https://raw.githubusercontent.com/wiki/GENI-NSF/geni-tools/agg_nick_cache). Update with latest `agg_nick_cache.base` from the develop branch, where you updated the release date for this release
- * To edit this on Github:
-  * Check out the geni-tools wiki on your machine.
-  * Edit the file and commit it to git, pushing to origin/master as usual.
+* `agg_nick_cache`: This file lives on Github now (see https://raw.githubusercontent.com/GENI-NSF/geni-tools/master/agg_nick_cache.base). After the release, update the version on the master branch in git to list the current Omni version / release date.
 * Close existing milestone
 * Create new milestone
 * Re target any remaining issues that were not be fixed for this release to the next release.

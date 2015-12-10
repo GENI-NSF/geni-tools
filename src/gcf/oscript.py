@@ -1186,7 +1186,7 @@ def getParser():
                       default="~/.gcf/agg_nick_cache",
                       help="File where AggNick info will be cached, default is %default")
     angroup.add_option("--AggNickDefinitiveLocation", dest='aggNickDefinitiveLocation',
-                      default="https://raw.githubusercontent.com/wiki/GENI-NSF/geni-tools/agg_nick_cache",
+                      default="https://raw.githubusercontent.com/GENI-NSF/geni-tools/master/agg_nick_cache.base",
                       help="Website with latest agg_nick_cache, default is %default. To force Omni to read this cache, delete your local AggNickCache or use --NoAggNickCache.")
     parser.add_option_group( angroup )
 
