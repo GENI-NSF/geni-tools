@@ -342,7 +342,7 @@ has many helper functions for retrieving `GetVersion` values, using the cache if
 calling GetVersion, and caching the result (including any error return). Note that Omni calls GetVersion twice when the user invokes GetVersion explicitly.
 
 ### `self.clients`
-A list of XMLRPC client objects, one per aggregate that the call should be run at. The entries are corrected to point to the right URL by `self._correctAPIVersion`. The veriable is filled in by self._getclients(). That method first calls `handler_utils._listaggregates`
+A list of XMLRPC client objects, one per aggregate that the call should be run at. The entries are corrected to point to the right URL by `self._correctAPIVersion`. The variable is filled in by `self._getclients()`. That method first calls `handler_utils._listaggregates`
 to get the right list of aggregates. Then an XMLRPC client is created for each. The client object is marked up with a
 nickname (using `handler_utils._lookupAggNick`) and a pretty string for printing out the contact.
 `self._getclients()` is called by each method.
