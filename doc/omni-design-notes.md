@@ -359,7 +359,7 @@ Omni users will often invoke Omni with a generic nickname (`gpo-ig`) or URL, dis
 invoking. They may also easily forget to supply the `-V3` argument when that was intended. This function
 attempts to correct for these mistakes. This function first ensures that all clients are reachable, dropping
 those that are not. Then it figures out which AM API version most AMs talk. It then auto corrects which version of the AM API
-it uses. Later, Omni will change individual clients to use a different URL to match the desired AM API version as needed (see `_checkValidClient and how it is called from `_api_call`).
+it uses. Later, Omni will change individual clients to use a different URL to match the desired AM API version as needed (see `_checkValidClient` and how it is called from `_api_call`).
 
 ### `self._api_call`
 This function wraps calls to the XMLRPC AM clients. First it ensures that the client exists and speaks the correct AM API version (raising a `BadClientException` if not). Then it makes the call (wrapped in `_do_ssl`).
