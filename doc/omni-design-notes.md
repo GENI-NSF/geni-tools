@@ -1,5 +1,6 @@
 This file contains some notes on the design and implementation of Omni. Many details are in the issues or the source code. This document may serve as a pointer, or explanation for the code you are reading.
 
+'''NOTE''': This is a work in progress.
 This document has many holes and needs polishing.
 
 # Directory Contents
@@ -53,6 +54,17 @@ src/: Put this directory on your PYTHONPATH
 	framework_pg.py: Talk natively to ProtoGENI
 	framework_sfa.py: Talk to SFA Slice Authority
       stitch/: Support code for Stitcher
+        objects.py: Define the Aggregate class which has the key allocate method,
+	           plus classes representing parts of the RSpec. Much of stitcher is here.
+	ManifestRspecCombiner.py: Combine multiple manifests in a single rspec
+	RSpecParser.py: For parsing the request from the SCS
+	VLANRange.py: Utilities for parsing & printing ranges of VLANs (a set)
+	launcher.py: A loop over aggregates whose dependencies are satisfied, to call them in
+	            turn to be allocated
+	scs.py: Utilities to call functions at the SCS
+	workflow.py: Parse the workflow from the SCS and calculated dependencies among aggregates
+	            and path hops
+	GENIObject.py and gmoc.py: Some aborted work to use GMOC code for modeling
       util/:
         credparsing.py: Utilities to parse credentials and distinguish
           between XML credentials and JSON wrapped credentials (wrapped
@@ -79,7 +91,8 @@ src/: Put this directory on your PYTHONPATH
         a handler. This is the base class.
       amhandler.py: Handle all AM API calls (like createsliver)
       chhandler.py: Handle calls to a clearinghouse (like createslice)
-      stitchhandler.py: Handle stitching calls
+      stitchhandler.py: Handle stitching calls, calling launcher and
+           the objects.py Aggregate classes as needed.
     sfa/: Code imported from SFA. Defines Certificates and Credentials
       and how to validate them.
     gcf_version.py: Define the current Omni version
@@ -531,11 +544,10 @@ Fundamentally, stitcher does a series of reservations at aggregates using Omni. 
 
 This process is made more complex by error handling. Any given reservation may fail, due perhaps to a problem in the request, unavailability of compute resources, or unavailability of the requested VLAN tag. Stitcher works hard to determine whether the request is fatally flawed, or whether some part of the reservation can be productively deleted and retried automatically. A number of other factors complicate stitching:
 * Some aggregates can translate VLAN tags (using 1 VLAN tag on the way in, and another on the way out), and some cannot
-* Some aggregate prefer to select the VLAN tag (producers), and some want to be told what VLAN tag to use (consumers)
+* Some aggregates prefer to select the VLAN tag (producers), and some want to be told what VLAN tag to use (consumers)
 * Stitched links request a given bandwidth (typically just a best effort bookkeeping reservation) that must be satisfied
 * A given slice may use multiple stitched links, and may use multiple inter aggregate link types
 * No GENI aggregates currently support multi point circuits, so slices must be made of multiple circuits
-
 
 ## Stitching Links
 Some links for learning more about stitching in general and GENI stitching:
@@ -551,21 +563,58 @@ Some links for learning more about stitching in general and GENI stitching:
 * PG stitching: http://www.protogeni.net/ProtoGeni/wiki/Stitching
 * Orca stitching: https://geni-orca.renci.org/trac/wiki/Stitching
 
+## Stitcher todo items
+Stitcher has never been refactored, and the code needs to be cleaned up.
+Arguably stitcher could be refactored to support considering and using arbitrary dependencies among aggregates.
+Stitcher hard codes a lot of knowledge of how aggregates work, making it brittle. Some pieces of this could be at least factored into config / data files.
+* Error codes and messages from aggregates and what they mean
+* Default sliver expiration times
+* Whether an aggregate produces a good manifest immediately, or only after the sliver becomes ready (like EG, DCN)
+* Whether an aggregate's manifest is cumulated (an edited request), or is new / limited (like EG).
+* Whether an aggregate supports changing the suggested VLAN tag to `any`
+
+Stitching schema v2 is not used by aggregates. While stitcher claims to support this, there are likely lurking issues.
+
+The open issues cover most things that could/should be done. Some highlights:
+* Allow specifying a VLAN to use on a link (#872)
+* Fix up handling of stitching to a fixed endpoint (#840)
+* Support resuming a partial reservation (#810)
+* Check available bandwidth first (#809)
+* Allow 2 hops with the same interface on a single hop (like a loop) (#784)
+* Put more AM specifices in `omni_defaults` (#762)
+* Reconcile the use of `any` and the SCS selected VLANs (#650)
+* Refactor `stitcher.call` into `stitchhandler` for better library use (#649)
+* Move some stitcher utilities and options into base Omni (#627, #655)
+* Support full VLAN negotiation (#567)
+* Clean up overlapping use of stitcher `amlist` and `--useSliceAggregates` (#585)
+* Check status of Orca reservations (#318)
+* Multithread where reasonable (#260)
+
 * SCS
- * where to find docs and code, who runs it (contact), who maintains
- it (contact)
- * running scs.py
- * avail commands and their returns
- * what is in the SCS and who controls
- * error modes
- * how stitcher uses it
- * options/inputs that control when/how it is used
+The Stitching Computation Service (SCS) is documented in README-stitching, and is an optional service to find paths across GENI. It was written by Tom Lehman and Xi Yang of MAX and U Maryland. It is operated by Internet2. See links above for design documents and source code. For issues with the running instance, contact the GMOC / Internet2. Interactions with the SCS are mediated by `scs.py`. That file contains a `main`, allowing direct testing of the SCS (be sure the set your `PYTHONPATH=<geni-tools-dir>/src`). Functions at the SCS include `ComputePath` (the main function stitcher uses) and `ListAggregates` (list the aggregate known to the SCS). `GetVersion` is a simple check if the server is up and what code version it is. Comments in the `main` list URLs for different SCS instances, and running `scs.py -h` will show usage of its `main()`.
+The aggregate loaded in a given instance of the SCS will vary. It should include aggregates known to work with GENI stitching. As such, the list will be constrained by GENI Operations testing for the official Internet2 SCS instance; testing SCS instances may include additional aggregates.
+The SCS operates by parsing aggregate advertisements and constructing topologies from that information. As such, it must be kept up to date with the latest ad RSpec, and errors in those RSpecs will cause problems.
+
+Note also that the SCS, by design, does not consider current VLAN tag availability - only advertised ranges. Therefore it will report a possible VLAN range and suggested tag that may not currently work. Stitcher considers availability (where known) to filter or change that suggested information itself.
+
+At runtime, stitcher calls the SCS when it determines that 1 or more links require using GENI stitching. The SCS then adds a stitching extension to the request RSpec, specifying the hops (switch and port) in sequence that define the circuit, along with suggested VLAN tags to request. In addition, the SCS calculates which aggregate should be asked to pick the VLAN tag, and which aggregates should be told the VLAN tag selected by the previous aggregate. This workflow information is used to drive stitcher.
+When stitcher requests a path from SCS for which there is no configuration, or there is no overlap in VLAN tags configured, then the SCS returns a path not found error.
+
+The SCS is optional, in that a tool could use some other mechanism for finding a path and possible VLAN tags, but the SCS is the mechanism stitcher uses.
+
+Several stitcher options control the use of the SCS.
+* `--excludehop` allows the experimenter to request that a given interface (switch-port), by URN, not be used on any path/circuit. By appending `=<VLANTAGRANGE>` you can exclude a specific VLAN tag or range of VLAN tags. Use this to avoid some hop or VLAN that you know has problems, or to effectively force the use of some other tag.
+* `--includehop`: Include this hop on EVERY path
+* `--includehoponpath`: Include the specified hop on the specified path (link `client_id`)
+* `--scsURL`: URL of the SCS. Used to specify a non default (say, testing) SCS
+* `--noSCS`: Do not call the SCS. Use this if supplying a request that already has a stitching extension and the SCS would fail the request
+* `--useSCSSugg`: Use the SCS suggested VLAN tag, and do not change the request to `any` at supported aggregates
 
 * AL2S
- * What it is and how it is used
- * who runs/maintains (contact)
- * where to find code
- * OESS
+The GENI network uses the AL2S (OESS) backbone from Internet2 to connect most GENI aggregates. This network supports dynamic circuits, uses Openflow under the covers, and gives GENI dedicated VLANs for each experimenter request. Contact Internet2 / GMOC with any operational problems with AL2S. Internet2 operates a GENI aggregate manager for reserving circuits across AL2S.
+The AL2S aggregate is based on FOAM (https://bitbucket.org/barnstorm/foam). The base code is roughly that at: 
+https://bitbucket.org/ahelsing/foam-0.12-with-speaks-for
+It was written by Luke Fowler of Indiana University / Internet2.
 
 * stitchhandler, launcher, objects.py
 * pseudo code control flow
@@ -582,37 +631,77 @@ Some links for learning more about stitching in general and GENI stitching:
  * refactoring for managability / maintainability
  
 
-# tools
+# Tools
+There are multiple support script included with geni-tools under `src` and `examples`.
+## readyToLogin
+Use `sliverstatus` and the manifest to determine when compute resources are ready for use, and report the proper SSH commandline. See github for open issues.
+## omni-configure
+Run this on the Omni configuration bundle downloaded from the GENI portal to set up SSH and SSL keys and the omni.config file needed to run Omni.
+## clear-passpharses
+Remove the passphrase from an SSL key
+## deleteSliceCred
+Slice credentials can be delegated. A delegated slice credential may be a subset of the permissions in theory, though in practice all credentials allow doing anything. When using a delegated credential, the actor appears to be the owner of the resources and is responsible, as opposed to speaks for, where the original user retains responsibility. This script allows generating a delegated slice credential.
+## addMemberToSliceAndSlivers
+Update slice membership at the CH (not supported by all CHs) and then use the slice membership to install SSH keys (as listed by the CH) on the slivers, using the `poa` command. Note supported at all aggregates.
+## experiationofmyslices
+Essentially `print_sliver_expiration` on all slices listed at the CH
+## remote-execute
+Essentially using SSH to execute a command on multiple nodes
+## renewSliceAndSlivers
+Use this for instance in a cron job to auto renew a long lived slice. This script does not do a good job at checking error returns or reporting on script results.
 
 # gcf
-* What it is
-* m2crypto vs pyopenssl
-* following the AM API (shortcomings)
- * gram
-* doesn't follow the federation API but should
-* gcf-test
-* using with omni
-* cred_utils and speaks for
- * how it is used, what it does, what it doesn't do
+GCF refers to the gcf sample aggregate and clearinghouse. The sample clearinghouse (run using `gcf-ch`) is extremely trivial, providing no persistence and only basic functionality. It does not run the Uniform Federation API - this would be a good improvement.
+The sample aggregate (run using `gcf-am`) implements the GENI AM API. There are versions for each AM API version. This aggregate has no persistence and no real resources. However, there are multiple efforts to use this as the basis of real aggregates. The primary benefit of this foundation is the definition of the AM API functions and the authorization support. For one example based on the GCM AM, see https://github.com/GENI-NSF/gram
+Note that there are limits to the AM API support of this GCF AM, such as some of the newer APIv4 changes.
 
-authorization engine
-* point to readme
-* docs on why
+You can do basic tests that the GCF AM/CH are working using `gcf-test`. Omni can talk to the GCF CH, and of course to the AM as it is just another aggregate; use `type=gcf` in your `omni_config`.
 
-scheduling support
-* point to readme
+`gen-certs.py` can be used to generate some testing certificates for the GCF CH and AM, and a test user or 2.
 
-acceptance
-* what it is, where it is, pointers to using it
-* incomplete
-* doesn't do v3
+The GCF code sits under `src/gcf/geni`.
+
+## Credential utilities
+`src/gcf/geni/util/cred_util.py` contains utilities for validating credentials and determining if a credential provides the needed rights for the caller to invoke a method. The `CredentialVerifier` reads the list of trust roots, and provides the `verify_from_strings` method that the gcf-am uses. This function also handles speaks for. This same file also provides a utility for creating a credential.
+
+## Speaks For
+Also included within the GCF code directory is support for Speaks For. For more information on Speaks For, see
+* http://groups.geni.net/geni/wiki/GAPI_AM_API_DRAFT/Adopted#ChangeSetP:SupportproxyclientsthatSpeakForanexperimenter
+* http://groups.geni.net/geni/wiki/TIEDABACCredential
+* http://abac.deterlab.net/
+Speaks for allows a tools to act on behalf of an experimenter, while the experimenter retains responsibility for the actions. It is conferred using a special credential that contains an ABAC statement.
+geni-tools provides utilities for creating and validating speaks for credentials in `src/gcf/geni/utils/speaksfor_util.py`. That file provides a `main()` (be sure to set `PYTHONPATH=geni-tools-dir/src`) whose `-h` message provides more usage information. Runtime callers use `determine_speaks_for` which returns a certificate: either that of caller of the XMLRPC method if this was not a valid speaks-for call, or the certificate of the real user instead of the caller/tool, if this was a valid speaks-for invocation.
+
+## Authorization engine
+See README-authorization.txt
+
+
+## Scheduling support
+See README-schedulting.txt
+
+
+# Acceptance tests
+geni-tools comes with some basic tests for checking that an aggregate complies with the GENI AM API. See `acceptance_tests/AM_API/README-accept-AMAPI.txt`.
+These tests are not complete and have not been updated for recent additions / modifications to the AM API.
+They are however a good start for aggregate developers.
 
 # SFA
-- we use some of their files. See src/gcf/sfa.
-Thierry Parmentelat <thierry.parmentelat@inria.fr>
-Tony Mack <tmack@CS.Princeton.EDU>
-- Start at merging latest is here: https://github.com/ahelsing/geni-tools/tree/tkt854-newsfa
-- credential.xsd really should be posted by geni.net, but
-isn't. Unclear what the trust/verification effect would be of a
-change. Note that it would require changing the namespace.
-http://git.planet-lab.org/?p=sfa.git
+For validating and generating certificates and credentials, geni-tools uses code from the PlanetLab Slice Federation Architecture (SFA). See http://git.planet-lab.org/?p=sfa.git
+For details on what is used, the license, and how it is used, see `src/gcf/sfa`.
+Our contacts at SFA are:
+* Thierry Parmentelat <thierry.parmentelat@inria.fr>
+* Tony Mack <tmack@CS.Princeton.EDU>
+The latest SFA code has not been integrated. See ticket #854, and a start at this integration at : https://github.com/ahelsing/geni-tools/tree/tkt854-newsfa
+
+Credentials follow a schema. GENI uses a schema that is at http://www.planet-lab.org/resources/sfa/credential.xsd
+Note that ProtoGENI has a version of this (same content, different namespace.
+Ideally, GENI would use a version that is hosted at geni.net, but it is unclear what issues with verification / trust this would cause. Note that the namespace in such a schema would need to be changed.
+
+GENI also uses the SFA mechanism for assigning rights. In practice, all useful rights are included in any credential, but a possible future enhancement would be to change to more reasonable rights - ones that better map to actual operations, allowing giving different rights in different credentials.
+
+SFA makes use of M2Crypto, PyOpenSSL, and xmlsec. As a result, Omni depends on all these. xmlsec is used to sign and validate XML digital signatures.
+* https://www.aleksey.com/xmlsec/
+* https://gitlab.com/m2crypto/m2crypto
+
+M2Crypto is old an has issues, and the use of both M2Crypto and PyOpenSSL is unfortunate. It would be nice to eliminate some of this.
+
