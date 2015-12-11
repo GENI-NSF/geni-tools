@@ -563,6 +563,8 @@ This process is made more complex by error handling. Any given reservation may f
 * A given slice may use multiple stitched links, and may use multiple inter aggregate link types
 * No GENI aggregates currently support multi point circuits, so slices must be made of multiple circuits
 
+Stitcher is written so that it handles any Omni calls that it can, and redirects to Omni for anything it cannot handle.
+
 ## Stitching Links
 Some links for learning more about stitching in general and GENI stitching:
 * GENI Stitching and links to SCS code and the stitching extension: https://wiki.maxgigapop.net/twiki/bin/view/GENI/NetworkStitchingOverview
@@ -630,6 +632,49 @@ The GENI network uses the AL2S (OESS) backbone from Internet2 to connect most GE
 The AL2S aggregate is based on FOAM (https://bitbucket.org/barnstorm/foam). The base code is roughly that at: 
 https://bitbucket.org/ahelsing/foam-0.12-with-speaks-for
 It was written by Luke Fowler of Indiana University / Internet2.
+
+## Workflow
+1. Configure logging and set up options
+* Find `stitcher_logging.conf`, which is more complicated due to windows binaries
+* Create needed directories and set up logging output
+* Rotate `stitcher.log` so we keep up to 5 old log files
+* Configure logging using Omni
+* Suppress anything but WARN messages on the console while we load the omni config file, by editing the level on the console log handler. Note this is sensitive to the setup of the logging configuration file.
+* Merge use of the omni `-p` option the the stitcher `--fileDir` option
+* Call stitchhandler
+2. Set up Stitch Handler
+* Initilize the Omni framework. Suppress all but WARN console messages when doing so
+* Set the `timeoutTime` to track when Stitcher should give up
+3. Parse arguments
+* Select functions by name that stitcher can handler that aren't allocations, like `describe` and `delete`
+ * Construct the aggregates to act on for those methods
+  * Use the stitcher saved AM list first
+  * If that gives none, use `--useSliceAggregates`
+  * If there is just one aggregate, pass this to Omni
+ * If this is `describe`, do `rebuildManifest` (see below)
+ * Otherse, `doDelete()` (see below)
+* If this is not `allocate` or `createsliver`, then pass this to Omni (adding aggregates from the amlist file)
+4. Parse the RSpec (see `RSpecParser`)
+5. Check the kind of request this is
+* `mustCallSCS`
+ * Make sure all links explicitly list the aggregates implied, by searching through the nodes for the interfaces on the link
+ * If the link has more than 1 aggregate, is the `vlan` type, and doesn't use a shared VLAN, it is stitching. Note that this heuristic is brittle.
+ * Check by aggregate URN if the aggregates on this link are all ExoGENI. If so, we could just use ExoGENI stitching (no SCS needed). But if the users said `--noEGStitching` in some form or `--noExoSM`, then we choose to use the SCS anyhow
+* `hasGRELink`
+ * If there is a link of type `gre` or `egre` with 2 aggregates / 2 interfaces, then it is a GRE link
+* Check for any unbound nodes and ensure the list of aggregates to process includes all aggregates hosting nodes
+* If this is not a fully bound multi aggregate request, pass the call to Omni
+6. Set up other singletons
+* Get the slice credential: We get it once for re-use later
+* Create the SCS interface
+7. Call the main stitching loop (see below) to reserve the resources - see `mainStitchingLoop`
+8. Create and save the combined manifest: `getAndSaveCombinedManifest`
+9. Get pretty messages about when resources expire: `getExpirationMessage`
+10. Save the list of aggregates used in this slice in a file for later use by stitcher
+11. Clean up temporary files
+12. Construct a return message and return
+
+FIXME FIXME.....
 
 ## Sections to add
 * stitchhandler, launcher, objects.py
