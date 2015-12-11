@@ -1,6 +1,6 @@
 This file contains some notes on the design and implementation of Omni. Many details are in the issues or the source code. This document may serve as a pointer, or explanation for the code you are reading.
 
-'''NOTE''': This is a work in progress.
+**NOTE**: This is a work in progress.
 This document has many holes and needs polishing.
 
 # Directory Contents
@@ -251,11 +251,12 @@ Omni keeps a cache of aggregate nicknames, by default in
 `~/.gcf/agg_nick_cache`. This INI format file maps nicknames to
 aggregate URL and URN. Note that the same URN may have multiple URLs
 (different AM API versions typically), and the same URL could have
-multiple nicknames. The cache is maintained in git and posted on the
-Omni wiki (currently at https://raw.githubusercontent.com/wiki/ahelsing/geni-tools/agg_nick_cache). Omni downloads the cache once daily (configurable). Nicknames in the cache
+multiple nicknames. The cache is maintained in git and available at https://raw.githubusercontent.com/GENI-NSF/geni-tools/master/agg_nick_cache.base. Omni downloads the cache once daily (configurable). Nicknames in the cache
 are ordered by convention with AM API agnostic nicknames before those
 specific to a version, and then by API version number. Nicknames are
-typically `<site>-<type>[version#]`, e.g. "moxi-of1". For some purposes,
+typically `<site>-<type>[version#]`, e.g. "moxi-of1".
+
+For some purposes,
 Omni takes a nickname and looks up the aggregate URN and URL. For
 other purposes, Omni starts with a URL or URN and looks up the
 nickname for prettier log messages. When doing so, Omni uses some
@@ -270,7 +271,9 @@ up-to-date. In particular, when omni users use the
 clearinghouse to get AM URNs that are registered as having resources
 on this slice. Then Omni must look up a URL for that URN, and uses the
 agg_nick_cache to do so. Therefore, any AM that is not listed in the
-agg_nick_cache will not be included in Omni operations that use `--useSliceAggregates`. GENI operations must keep the `agg_nick_cache` up to date with the proper AM URLs and list the proper aggregates, to ensure sliver info reporting, availability of reasonable nicknames, and reasonable Omni printouts. Generally, any aggregate that conforms to the AM API and provides reservable resources could be listed in the cache, but GENI policy may require additional testing (reliability for example).
+agg_nick_cache will not be included in Omni operations that use `--useSliceAggregates`.
+
+GENI operations must keep the `agg_nick_cache` up to date with the proper AM URLs and list the proper aggregates, to ensure sliver info reporting, availability of reasonable nicknames, and reasonable Omni printouts. Generally, any aggregate that conforms to the AM API and provides reservable resources could be listed in the cache, but GENI policy may require additional testing (reliability for example).
 Note that there are options for controlling where the cache is saved, and options to force not attempting to download a new cache at all.
 Also note that much of the information in the `agg_nick_cache` is duplicated in the GENI Clearinghouse' service registry. It might be nice if this data could be retrieved from that registry or some similar database, reducing the number of sources of such information.
 
@@ -287,10 +290,12 @@ there would not yet be sliver info records or the records would not be
 useful; when calling createsliver, you do not want to reserve
 resources at the AMs where there is already a reservation, as that
 will fail.
+
 Given the slice name, `_listaggregates` gets the AM URNs from the
 sliver_info records at the clearinghouse, if possible (only at CHAPI
 compatible clearinghouses). Omni then retrieves the AM URL and
 nickname if possible, avoiding duplicate entries.
+
 If the options do not require using the sliver_info records, then Omni
 considers the `-a` options, again looking up the url and urn for the
 aggregate nickname (or urn or url). Failing that, Omni uses the
@@ -323,7 +328,8 @@ based on that name.
 ## `amhandler` helpers and details
 amhandler includes a large number of helper functions to support its
 operations and simplify the individual methods. 
-### BadClientException
+
+### `BadClientException`
 This helper exception is used to signal that Omni called an AM that spoke the wrong version of the AM API, or
 is otherwise not callable (see `self._api_call`). Then the calling methods (e.g. `Describe`) can note
 the failure in the return message, bail if that's the only AM, or continue to the next aggregate.
@@ -375,7 +381,7 @@ Build the AM API `options` argument for this method call and the specified comma
 This includes `geni_end_time`, `geni_start_time`, `geni_best_effort`, `geni_speaking_For`, `geni_extend_alap`, and any arbitrary options specified in the `--optionsfile` JSON file of options. For an example of those options, see http://groups.geni.net/geni/wiki/HowTo/ShareALan or http://groups.geni.net/geni/wiki/GAPI_AM_API_DRAFT/Adopted#ChangeSetQ:Supportchangingusersandkeysonexistingcomputeslivers
 This method knows what options are relevant in what AM API methods. As such, it is brittle. `devmode` can be used to force passing options to additional method calls.
 
-### API API v2 vs v3 functions
+### AM API v2 vs v3 functions
 Omni tries to stop you from calling an AM API v2 method at an AM API v3 AM. `devmode` allows you to do so anyhow. Note however the interaction with `_correctAPIVersion` which could cause unexpected results; in practice, this does this right thing.
 
 ### `self._build_urns`
@@ -384,12 +390,16 @@ For use with AM API v3+, this function builds the urns argument to AM API calls.
 ### `self._retrieve_value`
 AM API methods return a triple (`code`, `output`, `value`), and Omni helps extract the real result from this, or a reasonable error message. This method considers also the SSL call return message, if any. This function also attempts to extract any PG based AMs log URL (a URL where full logs of teh call at the AM are available). Omni provides an option to raise an error (an `AMAPIError` with the the return triple) if there is an AM API error return code when using AM API v2: `--raise-error-on-v2-amapi-error`. Otherwise, this method returns an error string or the return value.
 
-### sliver_info records
+### `sliver_info` records
 The Uniform Federation API specifies a 'sliver info' mechanism, by which tools or aggregates can voluntarily provide sliver records to the clearinghouse. These records record which aggregates have resources reserved for what slices, and when they expire. This information is useful for inferring what aggregates to talk to when acting on a slice. Omni uses this information when you use the `--useSliceAggregates` option and the `framework_chapi` clearinghouse interface.
+
 When using the `framework_chapi`, Omni tries to report this information to the clearinghouse: new slivers reserved (`createsliver` or `provision`), slivers renewed (`renewsliver` or `renew`) or slivers deleted (`deletesliver`, `delete`). Additionally, Omni ensures the records are correct when you call `sliverstatus` or `status`. Since this is also used by the GENI Portal and GENI Desktop, most GENI reservations are properly reported to the GENI clearinghouse. (Reservations made using other clearinghouses will of course not be recorded.) Note that allocated slivers are not reported. Also note that Omni attempts to continue if there is an error with reporting, which could result in mis-matches.
+
 Omni tries to get the proper sliver expiration times. This logic may have errors (where sliver expiration is not reported correctly, or is missing as in some returns from `createsliver`). In such cases, Omni may correct this in a later call, or the expiration may be that of the slice, and therefore the resource may expire sooner than listed; generally this is not harmful.
+
 Additionally, Omni needs a good sliver URN to report. At some AMs, this has been problematic in the past. Omni includes heuristics to determine or generate a sliver URN, and to try to match such generated URNs with later reported URNs. This too could cause problems.
 Users may disable sliver info reporting using `--noExtraCHCalls`.
+
 As noted elsewhere, to use these sliver info records, Omni must determine the URN of the aggregate. Omni tries to look up the aggregate URN if it is not available (using the aggregate nickname cache or the clearinghouse or the GetVersion cache), or to guess it from the sliver URN. None of these mechanisms is foolproof, and as such, some resource reservations may not be reported. In general, all aggregates should be listed in the `agg_nick_cache` to ensure the sliver info mechanism works.
 
 ### amhandler sliver result parsing functions
@@ -397,13 +407,14 @@ Starting with AM API v3, many functions return a struct or list of structs for t
 
 ## `do_ssl`
 As noted above, `dossl.py` provides the `_do_ssl` wrapper around SSL calls. This allows catching common SSL errors and retrying; for example, mis-typing your SSL key passphrase, or a server reporting an AM API error code indicating it is busy. The number of times to retry and time to pause between attempts is hard coded (4 times, 20 seconds). Other common SSL errors are interpreted to provide a more user friendly error message (such as your user certificate is expired or not trusted). This function also allows suppressing certain error codes - allowing this to look like an empty return with an error message, instead of logging a noisy error.
+
 The tuning of time to wait between busy retries and number of times to retry has been tuned to support the current slowest AMs (like ProtoGENI Utah). But this is brittle and could need future tuning.
 
-## logging
+## Logging
 Omni uses python logging. Omni provides multiple options to tune and configure logging, attempting to be friendly to the use of Omni as a library in another application. Some user level documentation is available in `README-omni`.
 
 Some times, configuring logging as desired requires manually modifying the python handlers in the calling code. For example, stitcher does things like this:
-```
+```python
         ot = self.opts.output
         if not self.opts.tostdout:
             self.opts.output = True
@@ -434,7 +445,7 @@ Some times, configuring logging as desired requires manually modifying the pytho
 ```
 
 Similar things suppress all but warnings on the console:
-```
+```python
             if not self.opts.debug:
                 # Suppress all but WARN on console here
                 lvl = self.logger.getEffectiveLevel()
@@ -466,12 +477,14 @@ Another good example is how Stitcher configures logging. `src/stitcher.py` finds
 ## Saved user and slice creds
 Many CH operations require a user credential. Most AM API methods require a user credential or usually a slice credential. These credentials change very infrequently. So Omni can save these, letting you do many things faster.
 A future enhancement would automatically cache these.
+
 When you use the `-o` option with `getusercred` or `getslicecred`, you can save the credential. Then through use of `--slicecredfile` or `--usercredfile` you can have Omni load the credential from the saved file. `framework_base.init_user_cred` tries to read a saved user credential from a file. `handler_utils._maybe_save_slicecred` is used to save the slice credential to a file. `handler_utils._get_slice_cred` will call `_load_cred` to load the slice credential from a file if possible. Stitcher uses the saved slice credential so that the numerous individual Omni calls required for a single stich all use the same saved slice credential.
 `chhandler` has to be a little careful, particularly in calling `renewslice` and `getslicecred` when there is a saved slice credential.
 
 ## Making SSL connections
 There are multiple ways of making SSL connections from python. geni-tools uses some M2Crypto and some PyOpenSSL.
 `secure_xmlrpc_client.py` and `xmlrpc/client.py` use PyOpenSSL. There was an attempt to use M2Crypto, particularly to support a callback for entering the SSL passphrase only once, but this had trouble. Unused code remains for future potential use.
+
 Note that managing the SSL version and the ciphers used in creating the SSL connection has been an issue in the past. There are notes on github issues. In particular, remember that Omni should work on Windows and Mac as well as Linux, and there are a wide variety of servers it must talk to.
 Also note that Omni wants to authenticate with a client certificate over SSL, which is unusual among python libraries. In addition, it must pass a full chain of certificates in general (an MA and a user cert). And do this with an XMLRPC connection. Ensuring the cert chain is passed, and that SSL timeouts are honored, has been an issue in the past.
 Additionally, Omni attempts to work with Python 2.6 and 2.7, including more recent 2.7.9. These various versions introduce differences that Omni must work around.
@@ -525,17 +538,18 @@ Overall, it has been a couple years since Omni was refactored. It is time. When 
 
 Other possible improvements are noted inline above.
 
-## show create sliver pseudo code to walk much of the sub systems
+FIXME: show create sliver pseudo code to walk much of the sub systems?
 
-
-# stitcher
+# Stitcher
 Stitcher is a tool that uses Omni to coordinate reservations among multiple aggregates. For usage information, see README-stitching.txt.
 Stitcher uses the Omni option parser and logging configuration, and then does multiple instances of `omni.call()` to invoke numerous AM API calls.
 
 ## Stitching Overview
 GENI stitching breaks up the reservation of coordinated slices into individual reservations at multiple aggregates. Each aggregate simply reserves what is requested of it. It is the responsibility of the tool to coordinate those reservations as necessary. For example, the tool may reserve a link at Aggregate A, and Aggregate A will provide that link. It is up to the tool to reserve the other end of that link at Aggregate B. If the tool does not do so, nothing useful will happen on that link, but Aggregate A does not care. However, a good tool would look at the specific link allocated by Aggregate A, and ensure it reserves the matching link at Aggregate B; for example, using the same VLAN tag number.
+
 In general, there could be multiple reasons why the reservation at a second aggregate depends on what is reserved at the first aggregate. The Stitcher tool handles the case of using the same VLAN tag at multiple aggregates.
 GENI provides multiple mechanisms for creating links between resources at multiple aggregates: GRE and EGRE links, specialized aggregates like VTS, and VLAN circuits. Stitcher focuses primarily on VLAN circuits, and that is what we refer to when we speak of GENI Stitched links.
+
 GENI provides experimenters a private custom topology by using VLAN tags across the GENI network. Experimenters can then modify anything within their layer 2 network. Stitching works because GENI operators pre-negotiate a range of VLANs across campus, regionals, and backbone providers to be dedicated to GENI and the ports connecting GENI resources. These pools of VLANs are then managed by GENI aggregates. GENI stitching then involves the coordinated reservation of those VLAN tags across a circuit of aggregates/resources.
 One variation on GENI stitching, is the creation of Openflow controlled stitcher circuits. In this variation, the aggregates give the slice a VLAN on the switch, but also connect a designated Openflow controller to that VLAN circuit, allowing the experimenter to control traffic on their VLAN using their Openflow controller. Experimenters can do this using the normal stitching mechanism, but specifying an Openflow controller within the main body `<link>`. More properly, experimenters would use version 2 of the stitching RSpec extension which allows specifying the Openflow controller as part of the stitching request.
 
@@ -590,9 +604,10 @@ The open issues cover most things that could/should be done. Some highlights:
 * Check status of Orca reservations (#318)
 * Multithread where reasonable (#260)
 
-* SCS
+## SCS
 The Stitching Computation Service (SCS) is documented in README-stitching, and is an optional service to find paths across GENI. It was written by Tom Lehman and Xi Yang of MAX and U Maryland. It is operated by Internet2. See links above for design documents and source code. For issues with the running instance, contact the GMOC / Internet2. Interactions with the SCS are mediated by `scs.py`. That file contains a `main`, allowing direct testing of the SCS (be sure the set your `PYTHONPATH=<geni-tools-dir>/src`). Functions at the SCS include `ComputePath` (the main function stitcher uses) and `ListAggregates` (list the aggregate known to the SCS). `GetVersion` is a simple check if the server is up and what code version it is. Comments in the `main` list URLs for different SCS instances, and running `scs.py -h` will show usage of its `main()`.
-The aggregate loaded in a given instance of the SCS will vary. It should include aggregates known to work with GENI stitching. As such, the list will be constrained by GENI Operations testing for the official Internet2 SCS instance; testing SCS instances may include additional aggregates.
+
+The aggregates loaded in a given instance of the SCS will vary. It should include aggregates known to work with GENI stitching. As such, the list will be constrained by GENI Operations testing for the official Internet2 SCS instance; testing SCS instances may include additional aggregates.
 The SCS operates by parsing aggregate advertisements and constructing topologies from that information. As such, it must be kept up to date with the latest ad RSpec, and errors in those RSpecs will cause problems.
 
 Note also that the SCS, by design, does not consider current VLAN tag availability - only advertised ranges. Therefore it will report a possible VLAN range and suggested tag that may not currently work. Stitcher considers availability (where known) to filter or change that suggested information itself.
@@ -610,12 +625,13 @@ Several stitcher options control the use of the SCS.
 * `--noSCS`: Do not call the SCS. Use this if supplying a request that already has a stitching extension and the SCS would fail the request
 * `--useSCSSugg`: Use the SCS suggested VLAN tag, and do not change the request to `any` at supported aggregates
 
-* AL2S
+## AL2S
 The GENI network uses the AL2S (OESS) backbone from Internet2 to connect most GENI aggregates. This network supports dynamic circuits, uses Openflow under the covers, and gives GENI dedicated VLANs for each experimenter request. Contact Internet2 / GMOC with any operational problems with AL2S. Internet2 operates a GENI aggregate manager for reserving circuits across AL2S.
 The AL2S aggregate is based on FOAM (https://bitbucket.org/barnstorm/foam). The base code is roughly that at: 
 https://bitbucket.org/ahelsing/foam-0.12-with-speaks-for
 It was written by Luke Fowler of Indiana University / Internet2.
 
+## Sections to add
 * stitchhandler, launcher, objects.py
 * pseudo code control flow
 * logging
@@ -623,34 +639,36 @@ It was written by Luke Fowler of Indiana University / Internet2.
  * alternatives with more direct calls
  * funniness messing with loggers to suppress some calls
 * workflow parsing and how workflow is calculated/used
-* developer options
-* to do items
- * factor so can use as library
- * factor so can add other things to workflow, other dependencies
- * extract out AM specifics more
- * refactoring for managability / maintainability
- 
+* developer options 
 
 # Tools
 There are multiple support script included with geni-tools under `src` and `examples`.
+
 ## readyToLogin
 Use `sliverstatus` and the manifest to determine when compute resources are ready for use, and report the proper SSH commandline. See github for open issues.
+
 ## omni-configure
 Run this on the Omni configuration bundle downloaded from the GENI portal to set up SSH and SSL keys and the omni.config file needed to run Omni.
+
 ## clear-passpharses
 Remove the passphrase from an SSL key
+
 ## deleteSliceCred
 Slice credentials can be delegated. A delegated slice credential may be a subset of the permissions in theory, though in practice all credentials allow doing anything. When using a delegated credential, the actor appears to be the owner of the resources and is responsible, as opposed to speaks for, where the original user retains responsibility. This script allows generating a delegated slice credential.
+
 ## addMemberToSliceAndSlivers
 Update slice membership at the CH (not supported by all CHs) and then use the slice membership to install SSH keys (as listed by the CH) on the slivers, using the `poa` command. Note supported at all aggregates.
+
 ## experiationofmyslices
 Essentially `print_sliver_expiration` on all slices listed at the CH
+
 ## remote-execute
 Essentially using SSH to execute a command on multiple nodes
+
 ## renewSliceAndSlivers
 Use this for instance in a cron job to auto renew a long lived slice. This script does not do a good job at checking error returns or reporting on script results.
 
-# gcf
+# GCF
 GCF refers to the gcf sample aggregate and clearinghouse. The sample clearinghouse (run using `gcf-ch`) is extremely trivial, providing no persistence and only basic functionality. It does not run the Uniform Federation API - this would be a good improvement.
 The sample aggregate (run using `gcf-am`) implements the GENI AM API. There are versions for each AM API version. This aggregate has no persistence and no real resources. However, there are multiple efforts to use this as the basis of real aggregates. The primary benefit of this foundation is the definition of the AM API functions and the authorization support. For one example based on the GCM AM, see https://github.com/GENI-NSF/gram
 Note that there are limits to the AM API support of this GCF AM, such as some of the newer APIv4 changes.
@@ -669,6 +687,7 @@ Also included within the GCF code directory is support for Speaks For. For more 
 * http://groups.geni.net/geni/wiki/GAPI_AM_API_DRAFT/Adopted#ChangeSetP:SupportproxyclientsthatSpeakForanexperimenter
 * http://groups.geni.net/geni/wiki/TIEDABACCredential
 * http://abac.deterlab.net/
+
 Speaks for allows a tools to act on behalf of an experimenter, while the experimenter retains responsibility for the actions. It is conferred using a special credential that contains an ABAC statement.
 geni-tools provides utilities for creating and validating speaks for credentials in `src/gcf/geni/utils/speaksfor_util.py`. That file provides a `main()` (be sure to set `PYTHONPATH=geni-tools-dir/src`) whose `-h` message provides more usage information. Runtime callers use `determine_speaks_for` which returns a certificate: either that of caller of the XMLRPC method if this was not a valid speaks-for call, or the certificate of the real user instead of the caller/tool, if this was a valid speaks-for invocation.
 
@@ -677,7 +696,7 @@ See README-authorization.txt
 
 
 ## Scheduling support
-See README-schedulting.txt
+See README-scheduling.txt
 
 
 # Acceptance tests
@@ -691,6 +710,7 @@ For details on what is used, the license, and how it is used, see `src/gcf/sfa`.
 Our contacts at SFA are:
 * Thierry Parmentelat <thierry.parmentelat@inria.fr>
 * Tony Mack <tmack@CS.Princeton.EDU>
+
 The latest SFA code has not been integrated. See ticket #854, and a start at this integration at : https://github.com/ahelsing/geni-tools/tree/tkt854-newsfa
 
 Credentials follow a schema. GENI uses a schema that is at http://www.planet-lab.org/resources/sfa/credential.xsd
@@ -703,5 +723,5 @@ SFA makes use of M2Crypto, PyOpenSSL, and xmlsec. As a result, Omni depends on a
 * https://www.aleksey.com/xmlsec/
 * https://gitlab.com/m2crypto/m2crypto
 
-M2Crypto is old an has issues, and the use of both M2Crypto and PyOpenSSL is unfortunate. It would be nice to eliminate some of this.
+M2Crypto is old and has issues, and the use of both M2Crypto and PyOpenSSL is unfortunate. It would be nice to eliminate some of this.
 
