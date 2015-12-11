@@ -633,13 +633,31 @@ It was written by Luke Fowler of Indiana University / Internet2.
 
 ## Sections to add
 * stitchhandler, launcher, objects.py
-* pseudo code control flow
-* logging
-* use of omni via omni.call
+* Pseudo code control flow
+* Logging
+Stitcher uses a complicated Pythong logging config file to force all log messages (including debug) to a file (`stitcher.log`) while the console has a much more limited set of log messages. Doing this requires to messy handler manipulation and clever use of Omni logging configuration. Stitcher also does its own per-invocation log file rotation. Stitcher has an option to push all output files into a named directory (supporting multiple invocations on the same server). FIXME.
+* Calling Omni
+Stitcher makes multiple omni method calls. It does so by constructing strings or lists of strings for Omni to parse, and invoking `omni.call`. That's inefficient, and refactoring some things in Omni would make this cleaner.
  * alternatives with more direct calls
  * funniness messing with loggers to suppress some calls
 * workflow parsing and how workflow is calculated/used
-* developer options 
+* Stitcher decides if the request is a stitching request based on some heuristics about link types and number of aggregates on a link. That determines if it calls the SCS.
+* Developer options
+* AM error codes
+To add a new error code / message that stitcher should handle, see objects.py around line 2067. The key questions are whether you mark it `isFatal` (don't bother retrying locally) or `isVlanAvailableIssue` (try to look for another VLAN) or nothing, and what error message is printed.
+
+## `objects.py`
+This file defines a number of basic objects. The primary one is the `Aggregate` class that represents an aggregate. This has the key method `allocate`. An Aggregate instance stores things like the type of AM, the AM API version to speak, the URN and URL, the paths it is on, the hops it provides, its dependencies, whether there is a reservation, the request and manifest DOM instances, etc.
+
+* See `Aggregate.supportsAny` which hard codes which AM types can take a suggested vlan tag of `any`
+* `Aggregate.getExpiresForRequest` knows about the different AM types that have different expirations and uses the `defs.py` which in turn checks `omni_defaults` in the `omni_config` to find out when slivers will initially expire.
+* `Aggregate.editEGRequest` edits ExoGENI URNs so that EG AMs don't have errors trying to process parts of the request for them that are really for another EG AM.
+* `Aggregate.doAvail` knows which AM types provide valid VLAN tag availability information from `listresources` when called with the `--available` option
+* `Aggregate.urn_syns_helper` knows about the multiple URN forms that can refer to the same AM (like `+cm` vs `+am` or `vmsite` vs `net`).
+* `Aggregate` has multiple constants, like the number of times to retry
+* This file is in serious need of refactoring.
+
+FIXME: Say more about the key methods and data structures
 
 # Tools
 There are multiple support script included with geni-tools under `src` and `examples`.
