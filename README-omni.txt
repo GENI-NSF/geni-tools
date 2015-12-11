@@ -57,8 +57,8 @@ New in v2.10:
   * Thanks to Umar Toseef for the bug report.
  * Calling `getslicecred` while specifying a `slicecredfile` that exists
    no longer means just return that file. Instead, that file will be
-   ignored and, if you specify `-o`, replaced. (#868)
- * Moved canonical `agg_nick_cache` location to Github. (#814)
+   ignored and, if you specify `-o`, replaced. (#868, #869)
+ * Moved canonical `agg_nick_cache` location to Github. (#814, #882)
  * Use `urllib2.urlopen` instead of `urllib.urlretrieve` to avoid bad
    interaction with M2Crypto. (#881)
 
