@@ -30,7 +30,8 @@ multi-aggregate topologies, see README-stitching.txt.
 
 The currently supported CFs (clearinghouses) are the GENI Portal,
 ProtoGENI,  SFA (!PlanetLab), and GCF. Omni works with any GENI AM API compliant AM.
-These include InstaGENI and ExoGENI racks, ProtoGENI, !OpenFlow, SFA, AL2S, FOAM and GCF.
+These include InstaGENI and ExoGENI racks, ProtoGENI, !OpenFlow, SFA,
+AL2S, FOAM, GRAM, !CloudLab and GCF.
 
 Omni performs the following functions:
  * Talks to each CF in its native API
@@ -391,7 +392,7 @@ sa=https://ch.geni.net/SA
    Windows and Mac binaries. (#542)
  - Fix wording and licenses for Windows and Mac binaries (#541)
 
-
+Stitcher and other tool changes are listed in the CHANGES file.
 Older changes are listed in the CHANGES file.
 
 == Handling Omni Output ==
@@ -1078,7 +1079,7 @@ Sample Usage:
 }}}
 
 Slice name could be a full URN, but is usually just the slice name portion.
-Note that PLC Web UI lists slices as <site name>_<slice name>
+Note that PLC Web UI lists slices as `<site name>_<slice name>`
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Note that Slice Authorities typically limit this call to
@@ -1117,7 +1118,7 @@ and replaced if you specify `-o`.
 
 Arg: slice name
 Slice name could be a full URN, but is usually just the slice name portion.
-Note that PLC Web UI lists slices as <site name>_<slice name>
+Note that PLC Web UI lists slices as `<site name>_<slice name>`
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 ==== renewslice ====
@@ -1130,7 +1131,7 @@ Format:  `omni.py renewslice <slice-name> <new expiration date-time>`
 Sample Usage: `omni.py renewslice myslice 20100928T15:00:00Z`
 
 Slice name could be a full URN, but is usually just the slice name portion.
-Note that PLC Web UI lists slices as <site name>_<slice name>
+Note that PLC Web UI lists slices as `<site name>_<slice name>`
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 The date-time argument takes a standard form such as "MM/DD/YYYY
@@ -1150,7 +1151,7 @@ Format:  `omni.py deleteslice <slice-name>`
 Sample Usage: `omni.py deleteslice myslice`
 
 Slice name could be a full URN, but is usually just the slice name portion.
-Note that PLC Web UI lists slices as <site name>_<slice name>
+Note that PLC Web UI lists slices as `<site name>_<slice name>`
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Delete all your slivers first! Deleting your slice does not free up resources at
@@ -1296,7 +1297,7 @@ Sample Usage: `omni.py print_slice_expiration my_slice`
 
 Arg: slice name
 Slice name could be a full URN, but is usually just the slice name portion.
-Note that PLC Web UI lists slices as <site name>_<slice name>
+Note that PLC Web UI lists slices as `<site name>_<slice name>`
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 With the `--slicecredfile` option the slice's credential is read from
@@ -1487,7 +1488,7 @@ Aggregates queried:
 
 Output options:
  - `-o`: Save result (JSON format) in per-aggregate files
- - `-p <prefix>`: Prefix for resulting version information files (used with -o)
+ - `-p <prefix>`: Prefix for resulting version information files (used with `-o`)
   - `--outputfile <filename>`: If supplied, use this output file name: substitute the AM for any %a
  - If not saving results to a file, they are logged.
  - If use `--tostdout` option, then instead of logging, print to STDOUT.
@@ -1495,7 +1496,7 @@ Output options:
 Omni caches getversion results for use elsewhere. This method skips the local cache.
  - `--ForceUseGetVersionCache` will force it to look at the cache if possible
  - `--GetVersionCacheAge <#>` specifies the # of days old a cache entry can be, before Omni re-queries the AM, default is 7
- - `--GetVersionCacheName <path>` is the path to the !GetVersion cache, default is ~/.gcf/get_version_cache.json
+ - `--GetVersionCacheName <path>` is the path to the !GetVersion cache, default is `~/.gcf/get_version_cache.json`
 
 Options:
  - `--api-version #` or `-V #` or `-V#`: AM API Version # (default: 2)
@@ -1570,7 +1571,7 @@ Aggregates queried:
 
 Output options:
  - `-o`: Save result in per-aggregate files
- - `-p <prefix>`: Prefix for resulting rspec files (used with -o)
+ - `-p <prefix>`: Prefix for resulting rspec files (used with `-o`)
  - `--outputfile <filename>`: If supplied, use this output file name: substitute the
  AM for any %a, the slice name for any %s.
  - If not saving results to a file, they are logged.
@@ -1726,7 +1727,7 @@ omni will try to read 'myrspec' by interpreting it in the following order:
 2. an RSpec nickname specified in the omni_config
 3. a file in a location (file or url) defined as: 
    `<default_rspec_server>/<rspec_nickname>.<default_rspec_extension>` 
-where <default_rspec_server> and <default_rspec_extension> are defined in the omni_config.
+where `<default_rspec_server>` and `<default_rspec_extension>` are defined in the omni_config.
 
 For help creating GENI RSpecs, see
           http://www.protogeni.net/trac/protogeni/wiki/RSpec.
@@ -1746,7 +1747,7 @@ named something like:
    `myPrefix-mySlice-manifest-rspec-AggregateServerName.xml`
 
 Slice name could be a full URN, but is usually just the slice name portion.
-Note that PLC Web UI lists slices as <site name>_<slice name>
+Note that PLC Web UI lists slices as `<site name>_<slice name>`
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Options:
@@ -1775,7 +1776,7 @@ section. Thus any member of your slice _plus_ anyone using the
 specific SSH keys you specify will be able to log in via SSH into reserved
 compute resources.
 2 command-line options control this:
- - `--ignoreConfiguUsers': When supplied, ignore the omni_config
+ - `--ignoreConfiguUsers`: When supplied, ignore the omni_config
  `users` and do not install any keys listed there.
  - `--noSliceMembers`: When supplied, over-ride the default 
  and do NOT contact the clearinghouse to retrieve slice members.
@@ -1821,7 +1822,7 @@ Clients must `renew` or `provision` slivers before the expiration time
 (given in the struct returned from `allocate`), or the aggregate will automatically delete them.
 
 Slice name could be a full URN, but is usually just the slice name portion.
-Note that the PLC Web UI lists slices as <site name>_<slice name>
+Note that the PLC Web UI lists slices as `<site name>_<slice name>`
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Slice credential is usually retrieved from the Slice Authority. But
@@ -1905,7 +1906,7 @@ Clients must `renew` or use slivers before the expiration time
 (given in the return struct), or the aggregate will automatically delete them.
 
 Slice name could be a full URN, but is usually just the slice name portion.
-Note that PLC Web UI lists slices as <site name>_<slice name>
+Note that PLC Web UI lists slices as `<site name>_<slice name>`
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 The slice credential is usually retrieved from the Slice Authority. But
@@ -2037,7 +2038,7 @@ Options:
 
 Slice name could be a full URN, but is usually just the slice name
 portion.
-Note that PLC Web UI lists slices as <site name>_<slice name>
+Note that PLC Web UI lists slices as `<site name>_<slice name>`
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Aggregates queried:
@@ -2100,7 +2101,7 @@ available to the slice (see `print_slice_expiration` and
 should be quoted if they contain spaces or forward slashes.
 
 Slice name could be a full URN, but is usually just the slice name portion.
-Note that PLC Web UI lists slices as <site name>_<slice name>
+Note that PLC Web UI lists slices as `<site name>_<slice name>`
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Slice credential is usually retrieved from the Slice Authority. But
@@ -2137,8 +2138,7 @@ offset-naive and offset-aware date times"` you should add the
 "--no-tz" flag to the omni renewsliver command line.
 
 ==== renew ====
-AM API Renew <slicename> <new expiration time in UTC
-or with a timezone>
+AM API Renew (Args: `<slicename> <new expiration time in UTC or with a timezone>`)
 For use with AM API v3+. For AM API v1 & v2, see `renewsliver`.
 
 Sample usage:
@@ -2164,7 +2164,7 @@ available to the slice (see `print_slice_expiration` and
 should be quoted if they contain spaces or forward slashes.
 
 Slice name could be a full URN, but is usually just the slice name portion.
-Note that PLC Web UI lists slices as <site name>_<slice name>
+Note that PLC Web UI lists slices as `<site name>_<slice name>`
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Slice credential is usually retrieved from the Slice Authority. But
@@ -2192,7 +2192,7 @@ whole operation fails. To request that your reservation be extended as
 long as possible, supply the `--alap` option. Default is `False`. This
 option is not supported at all aggregates.
 
- - `--sliver-urn <urn>` / -u option: each specifies a sliver URN to renew. If specified,
+ - `--sliver-urn <urn>` / `-u` option: each specifies a sliver URN to renew. If specified,
    only the listed slivers will be renewed. Otherwise, all slivers in the slice will be renewed.
  - `--best-effort`: If supplied, slivers that can be renewed, will be; some slivers
    may not be renewed, in which case check the `geni_error` return for that sliver.
@@ -2209,11 +2209,11 @@ time, per the `geni_single_allocation` field returned by `getversion`.
 
 Output directing options:
  - `-o`: Save result in per-aggregate files
- - `-p <prefix>` (used with -o): Prefix for resulting files
+ - `-p <prefix>` (used with `-o`): Prefix for resulting files
  - `--outputfile <path>`: If supplied, use this output file name: substitute the AM for any `%a`, and slicename for any `%s`
  - If not saving results to a file, they are logged.
  - If `--tostdout` option, then instead of logging, print to STDOUT.
- - When using `-o and not `--outputfile`, file names will indicate the
+ - When using `-o` and not `--outputfile`, file names will indicate the
    slice name, file format, and which aggregate is represented.
    e.g.: `myprefix-myslice-renew-localhost-8001.json`
 
@@ -2228,7 +2228,7 @@ Options for development and testing:
 ==== sliverstatus ====
 GENI AM API !SliverStatus function
 
-Format: omni.py [-a AM_URL_or_nickname] sliverstatus <slice-name>`
+Format: `omni.py [-a AM_URL_or_nickname] sliverstatus <slice-name>`
 
 Sample Usage:
  * Run `sliverstatus` on all slivers in slice, myslice, at all aggregates 
@@ -2245,7 +2245,7 @@ status of the specified slice. This can include expiration time,
 whether the resource is ready for use, and the SFA node login name.
 
 Slice name could be a full URN, but is usually just the slice name portion.
-Note that PLC Web UI lists slices as <site name>_<slice name>
+Note that PLC Web UI lists slices as `<site name>_<slice name>`
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Slice credential is usually retrieved from the Slice Authority. But
@@ -2263,12 +2263,12 @@ Aggregates queried:
 Options:
  - `--api-version #` or `-V #` or `-V#`: AM API Version # (default: 2)
  - `-o` Save result in per-aggregate files
- - `-p <prefix>` Prefix for resulting files (used with -o)
+ - `-p <prefix>` Prefix for resulting files (used with `-o`)
  - If not saving results to a file, they are logged.
  - If `--tostdout` option, then instead of logging, print to STDOUT.
 
 ==== status ====
-AM API Status <slice name>.  For use in AM API v3+. 
+AM API Status (slice name).  For use in AM API v3+. 
 
 See `sliverstatus` for the AM API v1 and v2 equivalent.
 
@@ -2283,7 +2283,7 @@ Sample usage:
 }}}
 
 Slice name could be a full URN, but is usually just the slice name portion.
-Note that PLC Web UI lists slices as <site name>_<slice name>
+Note that PLC Web UI lists slices as `<site name>_<slice name>`
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Slice credential is usually retrieved from the Slice Authority. But
@@ -2339,7 +2339,7 @@ Sample Usage:
     `omni.py -a myLocalAM deletesliver myslice`
 
 Slice name could be a full URN, but is usually just the slice name portion.
-Note that PLC Web UI lists slices as <site name>_<slice name>
+Note that PLC Web UI lists slices as `<site name>_<slice name>`
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Slice credential is usually retrieved from the Slice Authority. But
@@ -2352,7 +2352,7 @@ Aggregates acted on:
  - List of URNs and URLs provided by the selected clearinghouse
 
 ==== delete ====
-AM API Delete <slicename>. For use in AM API v3+. 
+AM API Delete (slicename). For use in AM API v3+. 
 For AM API v1 and v2, see `deletesliver`.
 
 Delete the named slivers, making them `geni_unallocated`. Resources are stopped
@@ -2373,7 +2373,7 @@ Sample usage:
 }}}
 
 Slice name could be a full URN, but is usually just the slice name portion.
-Note that PLC Web UI lists slices as <site name>_<slice name>
+Note that PLC Web UI lists slices as `<site name>_<slice name>`
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Slice credential is usually retrieved from the Slice Authority. But
@@ -2434,7 +2434,7 @@ Sample Usage:
     `omni.py -a myLocalAM shutdown myslice`
 
 Slice name could be a full URN, but is usually just the slice name portion.
-Note that PLC Web UI lists slices as <site name>_<slice name>
+Note that PLC Web UI lists slices as `<site name>_<slice name>`
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Slice credential is usually retrieved from the Slice Authority. But
@@ -2450,7 +2450,7 @@ Aggregates queried:
  - List of URNs and URLs provided by the selected clearinghouse
 
 ==== update ====
-Call GENI AM API Update <slice name> <rspec file name>
+Call GENI AM API Update (Args: `<slice name> <rspec file name>`)
 
 For use with AM API v3+ only, and only at some AMs. 
 Technically adopted for AM API v4, but may be implemented by v3 AMs. 
@@ -2483,7 +2483,7 @@ but only after calling `Provision`.
 Slivers that were `geni_allocated` or `geni_updating` are immediately changed.
 
 Slice name could be a full URN, but is usually just the slice name portion.
-Note that PLC Web UI lists slices as <site name>_<slice name>
+Note that PLC Web UI lists slices as `<site name>_<slice name>`
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Slice credential is usually retrieved from the Slice Authority. But
@@ -2537,7 +2537,7 @@ Options for development and testing:
  - `--devmode`: Continue on error if possible
 
 ==== cancel ====
-Call GENI AM API Cancel <slice name>
+Call GENI AM API Cancel (slice name)
 
 For use with AM API v3+ only, and only at some AMs. 
 Technically adopted for AM API v4, but may be implemented by v3 AMs. 
@@ -2562,7 +2562,7 @@ Sample usage:
    `omni.py -V3 -a http://myaggregate/url -a http://myother/aggregate -o --outputfile myslice-manifest-%a.json --slicecredfile mysaved-myslice-slicecred.xml cancel myslice`
 
 Slice name could be a full URN, but is usually just the slice name portion.
-Note that PLC Web UI lists slices as <site name>_<slice name>
+Note that PLC Web UI lists slices as `<site name>_<slice name>`
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Slice credential is usually retrieved from the Slice Authority. But
@@ -2614,7 +2614,7 @@ ProtoGENI AMs.
 
 See http://www.protogeni.net/trac/protogeni/wiki/ImageHowTo
 
-Format: omni.py createimage SLICENAME IMAGENAME [false] -u <SLIVER URN>
+Format: `omni.py createimage SLICENAME IMAGENAME [false] -u <SLIVER URN>`
 
 By default, images are public. To make the image private, supply the
 optional 3rd argument 'false'.
@@ -2629,7 +2629,7 @@ later when it is done. In the interval, don't change anything.
 Note that if you re-use the image name, you replace earlier content.
 
 Slice name could be a full URN, but is usually just the slice name portion.
-Note that PLC Web UI lists slices as <site name>_<slice name>
+Note that PLC Web UI lists slices as `<site name>_<slice name>`
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Slice credential is usually retrieved from the Slice Authority. But
@@ -2757,7 +2757,7 @@ Resources in slice ahtest at AM utahddc-ig expire at 2014-05-21T00:00:00 UTC.
 }}}
 
 Slice name could be a full URN, but is usually just the slice name portion.
-Note that PLC Web UI lists slices as <site name>_<slice name>
+Note that PLC Web UI lists slices as `<site name>_<slice name>`
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Slice credential is usually retrieved from the Slice Authority. But
