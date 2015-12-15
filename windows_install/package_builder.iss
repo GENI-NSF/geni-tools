@@ -1,22 +1,22 @@
 [Setup]
 OutputDir=C:\Users\local_user\gcf\executables
-OutputBaseFilename=omniTools-2.10-win-setup
+OutputBaseFilename=omniTools-2.11-win-setup
 AppCopyright=2010-2015
-AppName=omniTools-2.10
-AppVerName=omniTools-2.10
+AppName=omniTools-2.11
+AppVerName=omniTools-2.11
 InfoAfterFile=C:\Users\local_user\gcf\windows_install\infoAfterFile.rtf
 LicenseFile=C:\Users\local_user\gcf\windows_install\LICENSE.TXT
-DefaultDirName={pf}\omniTools-2.10
-DefaultGroupName=omniTools-2.10
+DefaultDirName={pf}\omniTools-2.11
+DefaultGroupName=omniTools-2.11
 ShowLanguageDialog=no
 UsePreviousAppDir=false
 [Run]
 Filename: {app}\install.vbs; Flags: shellexec
 [Icons]
 Name: {group}\Documentation; Filename: https://github.com/GENI-NSF/geni-tools/wiki; Comment: omni wiki
-Name: {group}\How To Configure omniTools-2.10; Filename: https://github.com/GENI-NSF/geni-tools/wiki/Windows; Comment: Instructions for configuring omniTools-2.10
+Name: {group}\How To Configure omniTools-2.11; Filename: https://github.com/GENI-NSF/geni-tools/wiki/Windows; Comment: Instructions for configuring omniTools-2.11
 Name: {group}\Disclaimer; Filename: {app}\LICENSE.TXT
-Name: {group}\{cm:UninstallProgram, omniTools-2.10}; Filename: {uninstallexe}
+Name: {group}\{cm:UninstallProgram, omniTools-2.11}; Filename: {uninstallexe}
 [Files]
 Source: LICENSE.TXT; DestDir: {app}
 Source: ..\README-omni.txt; DestDir: {app}

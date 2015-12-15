@@ -41,6 +41,8 @@ tips, see the Omni Wiki: https://github.com/GENI-NSF/geni-tools/wiki/Omni
 
 == Release Notes ==
 
+New in v2.11:
+
 New in v2.10:
  * Continue anyway if no aggregate nickname cache can be loaded. (#822)
   * Sliver info reporting and operations on AMs by nickname will likely fail.
@@ -642,7 +644,7 @@ Omni supports the following command-line options.
 {{{
 $ ~/gcf/src/omni.py -h                            
 Usage: 
-GENI Omni Command Line Aggregate Manager Tool Version 2.10
+GENI Omni Command Line Aggregate Manager Tool Version 2.11
 Copyright (c) 2011-2015 Raytheon BBN Technologies
 
 omni.py [options] [--project <proj_name>] <command and arguments> 
