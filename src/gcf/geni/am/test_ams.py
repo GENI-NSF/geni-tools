@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2015 Raytheon BBN Technologies
+# Copyright (c) 2015 Inria by David Margery
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -20,6 +20,17 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
+"""
+An aggregate manager delegate that raises an APIErrorException to test
+behavior in gcf.geni.am.am3.AggregateManager when calling a delagate
+that raises an exception.
+"""
 
-# The current version of GCF and Omni. Update this with each new release
-GCF_VERSION="2.10"
+import gcf.geni.am.am3 as am3
+
+class ExceptionRaiserDelegate(am3.ReferenceAggregateManager):
+    def __init__(self, root_cert, urn_authority, url, **kwargs):
+        super(ExceptionRaiserDelegate,self).__init__(root_cert,urn_authority,url,**kwargs)
+
+    def Shutdown(self, slice_urn, credentials, options):
+        raise am3.ApiErrorException(am3.AM_API.REFUSED, "test exception")

@@ -1,9 +1,96 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 2.10:
+ * Changed references to trac.gpolab.bbn.com to point to Github.
+   Although those pages mostly still reference trac, that is the future home.
+   These changes include changing where the `agg_nick_cache` lives. (#814)
+ * Add some omni design notes (work in progress). (#883)
+ * Document how to create a release. (#871)
+ * Add Debian and RPM packaging configuration (#849)
+ * Update CentOS installation instructions (#853)
+
+ * Omni
+  * Continue anyway if no aggregate nickname cache can be loaded. (#822)
+   * Sliver info reporting and operations on AMs by nickname will likely fail.
+  * For connections to servers, use TLSv1 if possible (falling back to SSLv3
+    in the usual OpenSSL way), plus a restricted set of ciphers
+    (`HIGH:MEDIUM:!ADH:!SSLv2:!MD5:!RC4:@STRENGTH`) when using python2.7.
+    This avoids some security issues, and allows Omni on older clients
+    to connect to some updated servers. (#745)
+  * Use `False` instead of `'f'` for `SLICE_EXPIRED` and `PROJECT_EXPIRED` when 
+    using Common Federation API clearinghouses. (#856)
+   * Thanks to Umar Toseef for the bug report.
+  * Do not assume `PROJECT_MEMBER_UID` is returned when listing project members,
+    but allow it. (#857)
+   * Thanks to Umar Toseef for the bug report.
+  * Calling `getslicecred` while specifying a `slicecredfile` that exists
+    no longer means just return that file. Instead, that file will be
+    ignored and, if you specify `-o`, replaced. (#868, #869)
+  * Moved canonical `agg_nick_cache` location to Github. (#814, #882)
+  * Use `urllib2.urlopen` instead of `urllib.urlretrieve` to avoid bad
+    interaction with M2Crypto. (#881)
+
+ * Stitcher
+  * Catch expiration too great errors from PG AMs and quit. (#828)
+  * Bug fix combining manifests involving a fixed endpoint. (#833)
+  * Fix up combining manifests using ExoGENI, to ensure the stitching
+    hops list the actual reserved VLAN tags. (#873, #876)
+  * Support detecting OESS AM using `geni_am_type`. (#835)
+  * Do not insist on 2 reciprocal properties on links, allowing more
+    flexibility perhaps. (#838)
+   * Allow links with more than 1 interface per AM, and start supporting
+     multiple AMs per link.
+  * Add option `--noSCS` to force skipping the SCS, for use when stitcher
+    calls the SCS but the SCS fails the request, and the request is
+    complete already. Or use this on the expanded request from a stitcher
+    call with `--noReservation`. Lack of a workflow may be a problem
+    in some cases. (#839)
+  * AL2S supports speaks for. Don't exit if using speaksfor and AL2S. (#834)
+  * Treat new generic ProtoGENI mapper error code (28) as fatal. (#861)
+  * Fix combining manifests where link is multi AM but not stitched. (#879)
+   * Thanks to Hussam Nasir
+
+ * omni-configure
+  * Modify omni-configure to support multi-user systems (#843, #877)
+
+ * gcf
+  * Add new parameters to decode_urns so that derived delegates can 
+    decode urns using the credentials and options available in other 
+    calls (#858)
+  * Add utility function to derive the effective user's client cert, after
+    accounting for speaks-for. This allows an AM to know the "real" user's URN
+    and email, for example (#831)
+  * Speaks for attempts to validate the tool cert by taking the issuer from the user
+    GID (signer of the speaks for credential), in cases where the tool cert didn't
+    validate on its own and has the same issuer as the user cert. This helps where
+    tool certs and user certs are issued by the same intermediate CA (as with those
+    from the GENI Clearinghosue), when used on webservers that don't pass the full
+    client certificate chain (like nginx). (#832)
+  * For connections to servers, use TLSv1 if possible (falling back to SSLv3
+    in the usual OpenSSL way), plus a restricted set of ciphers
+    (`HIGH:MEDIUM:!ADH:!SSLv2:!MD5:!RC4:@STRENGTH`) when using python2.7.
+    This avoids some security issues, and allows older clients
+    to connect to some updated servers. (#745)
+  * Rework the code in `am3.py` that calls the cred verifier to reduce code duplication and make 
+    implementations deriving from the !ReferenceAggregateManager easier to write. (#836)
+  * Allow aggregate deployments to specify the delegate to use in the
+    `gcf_config` file or on the command line, so as to be able to
+    write delegates without touching the main gcf code, thereby easing maintenance (#837).
+  * When delegates raise an `ApiErrorException`, catch it to send back
+    a proper return value indicating an error occured. (#841)
+  * Log the HTTP request line when `--debug`. (#842)
+  * Fix some typos in `Provision()` in `am3.py`. (#846)
+  * Fix am2 not keeping resources' state updated when creating or deleting Slivers (#848, #850)
+  * Update generated certificate key size and signature algorithm to more
+    modern values (#851, #852)
+  * Point people to gcf-developers@googlegroups.com instead of old list.
+  * In AM3, fix exception on expire_slivers. Aggregate stores resources, not slivers. (#863)
+
 gcf 2.9:
  * Add Markdown style README, CONTRIBUTING and CONTRIBUTORS files. (#551)
   * Source code is now available from Github: https://github.com/GENI-NSF/geni-tools.
     All issues are now reported on geni-tools as well. (#814)
+    Issues after #820 are ''only'' on Github.
  * Remove references to the omni-users mailing list. (#813)
   * Use the [https://groups.google.com/forum/#!forum/geni-users GENI Users mailing list].
  * Add autoconf/automake support

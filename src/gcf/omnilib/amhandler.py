@@ -6179,7 +6179,7 @@ class AMCallHandler(object):
                     self.logger.warn("Got geni_end_time for method %s but using anyhow", op)
                 time = datetime.datetime.max
                 try:
-                    # noSec=True so that fractional seconds are dropped
+                    # noSec=True so that fractional seconds are dropped (which can break at PG AMs, or could)
                     (time, time_with_tz, time_string) = self._datetimeFromString(self.opts.geni_end_time, name=slicename, noSec=True)
                     options["geni_end_time"] = time_string
                 except Exception, exc:

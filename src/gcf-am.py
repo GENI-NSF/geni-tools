@@ -70,6 +70,8 @@ def parse_args(argv):
                        help="enable debugging output")
     parser.add_option("-V", "--api-version", type=int,
                       help="AM API Version", default=2)
+    parser.add_option("-D", "--delegate", metavar="DELEGATE",
+                      help="Classname of aggregate delegate to instantiate (if none, reference implementation is used)")
     return parser.parse_args()
 
 def getAbsPath(path):
@@ -151,14 +153,28 @@ def main(argv=None):
         resource_manager = \
             getInstanceFromClassname(opts.authorizer_resource_manager)
 
-    # rootcadir is  dir of multiple certificates
-    delegate = geni.ReferenceAggregateManager(getAbsPath(opts.rootcadir))
+    delegate=None
+    if hasattr(opts, 'delegate') and opts.delegate is not None and str(opts.delegate).strip() != "":
+        try:
+            delegate = getInstanceFromClassname(opts.delegate, 
+                                                getAbsPath(opts.rootcadir), 
+                                                config['global']['base_name'],
+                                                "https://%s:%d/" % (opts.host, int(opts.port)),
+                                                **vars(opts)
+                                            )
+        except AttributeError, e:
+            msg = "Could not create delegate from name '%s': probably not a valid python class name. " % opts.delegate
+            msg += e.message
+            logging.getLogger('gcf-am').error(msg)
+            sys.exit(msg)
 
     # here rootcadir is supposed to be a single file with multiple
     # certs possibly concatenated together
     comboCertsFile = geni.CredentialVerifier.getCAsFileFromDir(getAbsPath(opts.rootcadir))
 
     if opts.api_version == 1:
+        # rootcadir is dir of multiple certificates
+        delegate = geni.ReferenceAggregateManager(getAbsPath(opts.rootcadir))
         ams = geni.AggregateManagerServer((opts.host, int(opts.port)),
                                           delegate=delegate,
                                           keyfile=keyfile,
@@ -173,7 +189,8 @@ def main(argv=None):
                                                      ca_certs=comboCertsFile,
                                                      base_name=config['global']['base_name'], 
                                                      authorizer=authorizer,
-                                                     resource_manager=resource_manager)
+                                                     resource_manager=resource_manager,
+                                                     delegate=delegate)
     elif opts.api_version == 3:
         ams = gcf.geni.am.am3.AggregateManagerServer((opts.host, int(opts.port)),
                                                      keyfile=keyfile,
@@ -182,7 +199,8 @@ def main(argv=None):
                                                      ca_certs=comboCertsFile,
                                                      base_name=config['global']['base_name'],
                                                      authorizer=authorizer,
-                                                     resource_manager=resource_manager)
+                                                     resource_manager=resource_manager,
+                                                     delegate=delegate)
     else:
         msg = "Unknown API version: %d. Valid choices are \"1\", \"2\", or \"3\""
         sys.exit(msg % (opts.api_version))

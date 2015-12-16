@@ -36,7 +36,7 @@
 # Specify the latest version of Omni released, and a message
 # Expected format is "#,Message" EG: "2.8,Omni 2.8 was release 2/1/2015". No commas in the message.
 # If a newer version is available, Omni will log a message at INFO level.
-# latest_omni_version=2.7,Omni 2.7 was released 1/14/2014. See http://trac.gpolab.bbn.com/gcf
+# latest_omni_version=2.7,Omni 2.7 was released 1/14/2014. See https://github.com/GENI-NSF/geni-tools/wiki
 
 [omni]
 # The default control framework for omni to use.
@@ -79,7 +79,7 @@ default_cf = my_gcf
 
 #------AM nicknames
 # Omni defines a standard set of aggregate nicknames. These are retrieved periodically
-# from http://trac.gpolab.bbn.com/gcf/raw-attachment/wiki/Omni/agg_nick_cache
+# from https://raw.githubusercontent.com/GENI-NSF/geni-tools/master/agg_nick_cache.base
 # Put your custom aggregate nicknames here. 
 # To see all available nicknames try: omni.py nicknames
 #

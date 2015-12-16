@@ -1,8 +1,8 @@
 [[PageOutline]]
 {{{
 #!comment
-This is formatted as a wiki page:
-README-gcf.txt -> http://trac.gpolab.bbn.com/gcf/wiki/GcfQuickStart
+This is formatted as a wiki page, currently for trac:
+README-gcf.txt -> https://github.com/GENI-NSF/geni-tools/wiki/GCF-Quick-Start
 }}}
 
 = gcf Configuration and Test Run =

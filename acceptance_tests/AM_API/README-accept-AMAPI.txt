@@ -71,7 +71,7 @@ Test verifies:
 
 Requires:
  * Omni and the acceptance tests which are distributed as part of the
-   [http://trac.gpolab.bbn.com/gcf/wiki gcf] package
+   [https://github.com/GENI-NSF/geni-tools/wiki gcf] package
  * (optional)
    [http://www.protogeni.net/trac/protogeni/wiki/RSpecDebugging rspeclint]
 
@@ -592,8 +592,8 @@ Options:
                         ~/.gcf/agg_nick_cache
     --AggNickDefinitiveLocation=AGGNICKDEFINITIVELOCATION
                         Website with latest agg_nick_cache, default is
-                        http://trac.gpolab.bbn.com/gcf/raw-
-                        attachment/wiki/Omni/agg_nick_cache. To force Omni to
+                        https://raw.githubusercontent.com/GENI-NSF/geni-
+                        tools/master/agg_nick_cache.base. To force Omni to
                         read this cache, delete your local AggNickCache or use
                         --NoAggNickCache.
 
@@ -758,7 +758,7 @@ they are supposed to expire - including freeing resources.
  2. AM API v2 change set A documentation: http://groups.geni.net/geni/wiki/GAPI_AM_API_V2_DELTAS#ChangeSetA
  3. AM API v2 documentation: http://groups.geni.net/geni/wiki/GAPI_AM_API_V2
  3. AM API v3 documentation: http://groups.geni.net/geni/wiki/GAPI_AM_API_V3
- 4. gcf and Omni documentation: http://trac.gpolab.bbn.com/gcf/wiki
+ 4. gcf and Omni documentation: https://github.com/GENI-NSF/geni-tools/wiki
  5. rspeclint code: http://www.protogeni.net/resources/rspeclint
  6. rspeclint documentation: http://www.protogeni.net/trac/protogeni/wiki/RSpecDebugging
 

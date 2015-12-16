@@ -552,8 +552,8 @@ class ManifestRSpecCombiner:
                             break
                         # Get the link with a sliverid and the right client_id
                         if str(link2.getAttribute(CLIENT_ID)) == client_id and \
-                                link2.hasAttribute(VLANTAG):
-                            self.logger.debug("Found AM %s link '%s' that has vlantag '%s'", agg.urn, client_id, link2.getAttribute('vlantag'))
+                           (link2.hasAttribute(VLANTAG) or link2.hasAttribute(SLIVER_ID)):
+                            self.logger.debug("Found AM %s link '%s' that has sliverid '%s' and possibly a vlantag '%s'", agg.urn, client_id,link2.hasAttribute(SLIVER_ID), link2.getAttribute(VLANTAG))
                             if needSwap:
                                 self.logger.debug("Will swap link in template with this element")
                                 link2Clone = link2.cloneNode(True)
@@ -918,7 +918,7 @@ class ManifestRSpecCombiner:
             # FIXME: Should this be am._hops or is am.hops OK as is?
             # In my testing, everything in _hops is in .hops
             for hop in am.hops:
-                self.logger.debug("computeHops: replacing hop %s from %s.hops", hop, am)
+                self.logger.debug("computeHops: replacing hop from AM for that in template. AM had hop %s from %s.hops", hop, am)
                 hop_id = hop._id
                 path_id = hop.path.id
                 if hop_id is None:
@@ -949,7 +949,74 @@ class ManifestRSpecCombiner:
                 else:
                     self.logger.debug("Had EG AM in combineHops: %s", am)
                     link_id = hop._hop_link.urn
-                    self.replaceHopLinkElement(template_path, amStitch, hop_id, path_id, link_id)
+                    # FIXME: the hop_id, link_id and path_id are from the AM manifest. Is that right?
+                    # And for EG is the manifest the new one, after getting a sliverstatus? Is that needed?
+                    if not self.replaceHopLinkElement(template_path, amStitch, hop_id, path_id, link_id):
+                        # failed to find the hop in the am to replace the element in the template. So instead, edit the element in the template
+                        # to have the proper updated avail/suggested values
+                        # If am.hops only has 1 hop on this path and it isn't in the template at all, then this is a case where I want to do the edit
+                        self.logger.debug("Failed to swap hop in template")
+                        count = 0
+                        for hop2 in am.hops:
+                            if hop2 == hop:
+                                # This is the single hop we were looking at
+                                count += 1
+                            elif hop2.path.id == hop.path.id:
+                                self.logger.debug("%s is same path as %s", hop2, hop)
+                                count += 1
+                        if count > 1:
+                            self.logger.debug("AM had %d hops on this path - not the EG listresources manifest case", count)
+                            # Treat thsi as the initial createsliver case, where the object and template agree on the hops,
+                            # the template has wrong VLAN tags, and the EG manifest has a different hop and wrong VLAN tags
+                            didSwap = False
+                            for child in template_path.childNodes:
+                                if child.nodeType == Node.ELEMENT_NODE and \
+                                   child.localName == HOP and \
+                                   child.getAttribute(HOP_ID) == hop._id:
+                                    for child2 in child.childNodes:
+                                        if child2.nodeType == Node.ELEMENT_NODE and \
+                                           child2.localName == LINK and \
+                                           child2.getAttribute(LINK_ID) == hop._hop_link.urn:
+                                            self.logger.debug("Editing template link '%s'", hop._hop_link.urn)
+                                            hop._hop_link.editChangesIntoDom(child2, request=False, really=True)
+                                            # self.logger.debug("After editing VLAN tags for that hop for AM %s, stitching extension is: %s", am, stripBlankLines(template_stitching.toprettyxml(encoding="utf-8")))
+                                            # Continue to next hop in am
+                                            didSwap = True
+                                            break
+                                    if didSwap:
+                                        #self.logger.debug("Break out of loop over hops"
+                                        break
+                            if didSwap:
+                                # continue to next hop on original am object
+                                continue
+
+                        self.logger.debug("%s has only 1 hop in manifest for path %s, but it isn't in the template. Fix the template to have the actual VLAN range/suggested on the original hops", am, hop.path)
+                        for child in template_path.childNodes:
+                            if child.nodeType == Node.ELEMENT_NODE and \
+                               child.localName == HOP:
+                                for child2 in child.childNodes:
+                                    if child2.nodeType == Node.ELEMENT_NODE and \
+                                       child2.localName == LINK:
+                                        thisTemplateLink = child2
+                                        # Pull out the URN
+                                        thisTemplateLinkID = thisTemplateLink.getAttribute(LINK_ID)
+                                        # Extract the am / auth
+                                        tmplPlusInd = thisTemplateLinkID.find('+')
+                                        tmplPlusInd2 = thisTemplateLinkID.find('+', tmplPlusInd+1)
+                                        auth = thisTemplateLinkID[tmplPlusInd+1:(tmplPlusInd2 if tmplPlusInd2 > -1 else len(thisTemplateLinkID))]
+                                        for syn in am.urn_syns:
+                                            synPlusInd = syn.find('+')
+                                            synPlusInd2 = syn.find('+', synPlusInd+1)
+                                            amAuth = syn[synPlusInd+1:(synPlusInd2 if synPlusInd2 > -1 else len(syn))]
+                                            if auth == amAuth:
+                                                self.logger.debug("Editing template link '%s'", thisTemplateLinkID)
+                                                # Edit the vlan suggested and vlan avail on thisTemplateLink
+                                                hop._hop_link.editChangesIntoDom(thisTemplateLink, request=False, really=True)
+                                                # self.logger.debug("After editing VLAN tags for that hop for AM %s, stitching extension is: %s", am, stripBlankLines(template_stitching.toprettyxml(encoding="utf-8")))
+                                                break
+                                            # else:
+                                            #     self.logger.debug("Not editing not matching %s", thisTemplateLinkID)
+
 #            self.logger.debug("After swapping hops for %s, stitching extension is %s", am, stripBlankLines(template_stitching.toprettyxml(encoding="utf-8")))
 
     # Add details about allocations to each aggregate in a 
@@ -1017,6 +1084,8 @@ class ManifestRSpecCombiner:
             # Collect the AMs that hops at this AM immediately import from (excluding self)
             nextDep = []
             for hop in am.hops:
+                if hop.import_vlans_from is None:
+                    continue
                 if hop.import_vlans_from.aggregate == am:
                     continue
                 if hop.import_vlans_from.aggregate in nextDep:
@@ -1089,6 +1158,7 @@ class ManifestRSpecCombiner:
     # Replace the hop link element in the template DOM with the hop link element 
     # from the aggregate DOM that has the given HOP LINK ID
     # For use with EG AMs
+    # Return true if it did a replace, else False
     def replaceHopLinkElement(self, template_path, am_stitching, template_hop_id, path_id, link_id):
         template_link = None
         template_hop = None
@@ -1104,12 +1174,13 @@ class ManifestRSpecCombiner:
                         template_link = child2
                         break
                 if template_link is None:
-                    self.logger.warn("Did not find stitching hop %s's link in template manifest RSpec for path %s", template_hop_id, path_id)
+                    self.logger.warn("Did not find stitching hop %s's link in template manifest RSpec for path '%s'", template_hop_id, path_id)
                     return
                 break
         if template_hop is None:
             if "exogeni.net" in link_id:
-                self.logger.debug("Failed to find hop %s on path %s in template; hop_link is exogeni (%s)", template_hop_id, path_id, link_id)
+                self.logger.debug("Failed to find hop in template by hop_id '%s' on path '%s' in template; hop_link is exogeni (%s)", template_hop_id, path_id, link_id)
+                # Didn't find the hop in the template by hop_id, so now look by link_id
                 template_hop = None
                 template_link = None
                 found_hop_id = None
@@ -1128,15 +1199,16 @@ class ManifestRSpecCombiner:
                         if template_link is not None:
                             break
                 if template_hop is not None and template_link is not None:
-                    self.logger.debug("Found path %s EG hop_link %s on hop %s (went looking for hop ID %s)", path_id, link_id, found_hop_id, template_hop_id)
+                    self.logger.debug("Found path '%s' EG hop_link '%s' on hop '%s' (went looking for hop ID '%s')", path_id, link_id, found_hop_id, template_hop_id)
                 else:
+                    # Also didn't find it by link_id
                     # Failing to find an EG hop happens sometimes. I think this is OK...
-                    self.logger.debug("Did not find path %s EG hop_link %s hop ID %s. I think this is OK...", path_id, link_id, template_hop_id)
-                    return
+                    self.logger.debug("Did not find path '%s' EG hop_link '%s' by link ID either (hop ID '%s'). I think this is OK...", path_id, link_id, template_hop_id)
+                    return False
             else:
                 # Failed and not an EG link
-                self.logger.warn("Did not find stitching hop %s in template manifest RSpec for path %s", template_hop_id, path_id)
-                return
+                self.logger.warn("Did not find stitching hop '%s' in template manifest RSpec for path '%s'", template_hop_id, path_id)
+                return False
 
         # Find the path for the given path_id (there may be more than one)
         am_path = self.findPathByID(am_stitching, path_id)
@@ -1153,18 +1225,19 @@ class ManifestRSpecCombiner:
                             am_link = child2
                             break
             if am_link is None:
-                self.logger.debug("Did not find HopLink %s in AM's Man RSpec, though found AM's path %s (usually harmless; happens 2+ times for ExoGENI aggregates)", link_id, path_id)
-                return
+                self.logger.debug("Did not find HopLink '%s' in AM's Man RSpec, though found AM's path '%s' (usually harmless; happens 2+ times for ExoGENI aggregates)", link_id, path_id)
+                return False
         else:
-            self.logger.warn("Did not find path %s in AM's Man RSpec to replace HopLink %s", path_id, link_id)
+            self.logger.warn("Did not find path '%s' in AM's Man RSpec to replace HopLink '%s'", path_id, link_id)
 
         if am_link is not None and template_link is not None and template_hop is not None:
 #            self.logger.debug("Replacing " + template_link.toxml(encoding="utf-8") + " with " + am_link.toxml(encoding="utf-8"))
             template_hop.replaceChild(am_link.cloneNode(True), template_link)
+            return True
         else:
             # This error happens at EG AMs and is harmless. See ticket #321
 #            self.logger.debug("Can't replace hop link %s in path %s in template: AM HOP LINK %s; TEMPLATE HOP %s; TEMPLATE HOP LINK %s" % (link_id, path_id, am_link, template_hop, template_link))
-            pass
+            return False
 
     def findPathByID(self, stitching, path_id):
         if stitching is None:

@@ -63,6 +63,8 @@ DCN_AM_TYPE = 'dcn' # geni_am_type value from AMs that use the DCN codebase
 ORCA_AM_TYPE = 'orca' # geni_am_type value from AMs that use the Orca codebase
 PG_AM_TYPE = 'protogeni' # geni_am_type / am_type from ProtoGENI based AMs
 GRAM_AM_TYPE = 'gram' # geni_am_type value from AMs that use the GRAM codebase
+FOAM_AM_TYPE = 'foam' # geni_am_type value from some AMs that use the FOAM codebase
+OESS_AM_TYPE = 'oess' # geni_am_type value from AMs that use the OESS codebase
 
 # Max # of times to call the stitching service
 MAX_SCS_CALLS = 5
@@ -331,11 +333,13 @@ class StitchingHandler(object):
         # longer necessary (nor a good idea).
 
         # Create the SCS instance if it will be needed
-        if self.isStitching:
+        if self.isStitching and not self.opts.noSCS:
             if not "geni-scs.net.internet2.edu:8443" in self.opts.scsURL:
                 self.logger.info("Using SCS at %s", self.opts.scsURL)
             self.scsService = scs.Service(self.opts.scsURL, key=self.framework.key, cert=self.framework.cert, timeout=self.opts.ssltimeout, verbose=self.opts.verbosessl)
         self.scsCalls = 0
+        if self.isStitching and self.opts.noSCS:
+            self.logger.info("Not calling SCS on stitched topology per commandline option.")
 
         # Create singleton that knows about default sliver expirations by AM type
         defs.DefaultSliverExpirations.getInstance(self.config, self.logger)
@@ -1283,7 +1287,7 @@ class StitchingHandler(object):
 
         # Call SCS if needed
         self.scsCalls = self.scsCalls + 1
-        if self.isStitching:
+        if self.isStitching and not self.opts.noSCS:
             if self.scsCalls == 1:
                 self.logger.info("Calling SCS...")
             else:
@@ -1353,7 +1357,7 @@ class StitchingHandler(object):
         # Done pausing to let AMs free resources
 
         # Parse SCS Response, constructing objects and dependencies, validating return
-        if self.isStitching:
+        if self.isStitching and not self.opts.noSCS:
             self.parsedSCSRSpec, workflow_parser = self.parseSCSResponse(scsResponse)
             scsResponse = None # Just to note we are done with this here (keep no state)
         else:
@@ -1434,7 +1438,7 @@ class StitchingHandler(object):
         # the workflow
         self.ams_to_process = copy.copy(workflow_parser.aggs)
 
-        if self.isStitching:
+        if self.isStitching and not self.opts.noSCS:
             self.logger.debug("SCS workflow said to include resources from these aggregates:")
             for am in self.ams_to_process:
                 self.logger.debug("\t%s", am)
@@ -1452,16 +1456,6 @@ class StitchingHandler(object):
 
         # Add extra info about the aggregates to the AM objects
         self.add_am_info(self.ams_to_process)
-
-        # If using speaks for and have OESS in the list, bail
-        haveOESS = None
-        for am in self.ams_to_process:
-            if am.isOESS:
-                haveOESS = am
-                break
-        if haveOESS and self.opts.speaksfor:
-            self.logger.debug("%s required, is AL2S, but 'speaksfor' option specified", haveOESS)
-            raise StitchingError("Request requires AL2S but uses 'Speaks For' which is not supported (yet) at AL2S.")
 
         # FIXME: check each AM reachable, and we know the URL/API version to use
 
@@ -2204,48 +2198,69 @@ class StitchingHandler(object):
         return (sliceurn, sliceexp)
     # End of confirmSliceOK
 
-    # Ensure the link has 2 well formed property elements each with a capacity
+    # Ensure the link has well formed property elements for cross-AM links each with a capacity
+    # Really there could be multiple AMs on the link, and each cross-AM link could have different properties,
+    # and properties are unidirectional so capacities could differ in different directions
+    # For now, the first 2 different AMs get properties
     def addCapacityOneLink(self, link):
         # look for property elements
         if len(link.properties) > 2:
-            raise StitchingError("Your request RSpec is malformed: include either 2 or 0 property elements on link '%s'" % link.id)
+#            raise StitchingError("Your request RSpec is malformed: include either 2 or 0 property elements on link '%s'" % link.id)
+            self.logger.debug("Request RSpec has %d property elements on link '%s'", len(link.properties), link.id)
         # Get the 2 node IDs
         ifcs = link.interfaces
         if len(ifcs) < 2:
             self.logger.debug("Link '%s' doesn't have at least 2 interfaces? Has %d", link.id, len(ifcs))
+            # If there is a stitching extension path for this, then this is a stitched link.
+            # Theoretically that means we want a property so SCS can put this in the stitching extension,
+            # but the stitching extension already exists
             return
         if len(ifcs) > 2:
             self.logger.debug("Link '%s' has more than 2 interfaces (%d). Picking source and dest from the first 2 on different AMs.", link.id, len(ifcs))
-        node1ID = ifcs[0].client_id
-        node1AM = None
-        for node in self.parsedUserRequest.nodes:
-            if node1ID in node.interface_ids:
-                node1AM = node.amURN
-                break
+
+        # FIXME: Create a list of AM pairs, so I can look for 1 or 2 properties for each pair, and ensure
+        # each has a capacity. AM pairs means 2 interface_refs whose nodes are at different AMs
+
+        # Create a mapping of AM -> interface_id. Then can find the pairs of AMs and ensure there's a property for each,
+        # and use that interface_id for the property.
+        amToIfc = {}
+        for ifc in ifcs:
+            cid = ifc.client_id
+            idam = None
+            for node in self.parsedUserRequest.nodes:
+                if cid in node.interface_ids:
+                    idam = node.amURN
+                    break
+            if idam and idam not in amToIfc:
+                amToIfc[idam] = cid
+
+        self.logger.debug("Link '%s' has interfaces on %d AMs", link.id, len(amToIfc.keys()))
+        if len(amToIfc.keys()) > 0:
+            node1AM = amToIfc.keys()[0]
+            node1ID = amToIfc[node1AM]
 
         # Now find a 2nd interface on a different AM
         node2ID = None
         node2AM = None
-        for ifc in ifcs:
-            if ifc.client_id == node1ID:
-                continue
-            node2ID = ifc.client_id
-            node2AM = None
-            for node in self.parsedUserRequest.nodes:
-                if node2ID in node.interface_ids:
-                    node2AM = node.amURN
-                    break
+        if len(amToIfc.keys()) > 1:
+            keys = amToIfc.keys()
+            node2AM = keys[1]
             if node2AM == node1AM:
-                node2ID = None
-                node2AM = None
-                continue
-            else:
-                break
+                node2AM = keys[0]
+            node2ID = amToIfc[node2AM]
         if node2AM is None:
             # No 2nd interface on different AM found
             self.logger.debug("Link '%s' doesn't have interfaces on more than 1 AM ('%s')?" % (link.id, node1AM))
+            # Even if this is a stitched link, the stitching extensino would already have capacity
+            return
         else:
+            # FIXME: Eventually want all the pairs to have properties
             self.logger.debug("Link '%s' properties will be from '%s' to '%s'", link.id, node1ID, node2ID)
+
+        # If we get here, the link crosses 2+ AMs
+
+        # FIXME: Really I want properties between every pair of AMs (not nodes), and not
+        # just the first 2 different AMs
 
         # If there are no property elements
         if len(link.properties) == 0:
@@ -2260,55 +2275,61 @@ class StitchingHandler(object):
             link.properties = [s_p, d_p]
             return
 
+        # Error check properties:
+        for prop in link.properties:
+            if prop.source_id is None or prop.source_id == "":
+                raise StitchingError("Malformed property on link '%s' missing source_id attribute" % link.id)
+            if prop.dest_id is None or prop.dest_id == "":
+                raise StitchingError("Malformed property on link '%s' missing dest_id attribute" % link.id)
+            if prop.dest_id == prop.source_id:
+                raise StitchingError("Malformed property on link '%s' has matching source and dest_id: '%s'" % (link.id, prop.dest_id))
+
         # If the elements are there, error check them, adding property if necessary
+        # FIXME: Generalize this to find any pair of properties that is reciprocal to ensure that if 1 has a capacity, the other has same
         if len(link.properties) == 2:
             props = link.properties
             prop1S = props[0].source_id
             prop1D = props[0].dest_id
             prop2S = props[1].source_id
             prop2D = props[1].dest_id
-            if prop1S is None or prop1S == "":
-                raise StitchingError("Malformed property on link '%s' missing source_id attribute" % link.id)
-            if prop1D is None or prop1D == "":
-                raise StitchingError("Malformed property on link '%s' missing dest_id attribute" % link.id)
-            if prop1D == prop1S:
-                raise StitchingError("Malformed property on link '%s' has matching source and dest_id: %s" % (link.id, prop1D))
-            if prop2S is None or prop2S == "":
-                raise StitchingError("Malformed property on link '%s' missing source_id attribute" % link.id)
-            if prop2D is None or prop2D == "":
-                raise StitchingError("Malformed property on link '%s' missing dest_id attribute" % link.id)
-            if prop2D == prop2S:
-                raise StitchingError("Malformed property on link '%s' has matching source and dest_id: %s" % (link.id, prop2D))
             # FIXME: Compare to the interface_refs
             if prop1S != prop2D or prop1D != prop2S:
-                raise StitchingError("Malformed properties on link '%s': source and dest tags are not reversed" % link.id)
-            if props[0].capacity and not props[1].capacity:
-                props[1].capacity = props[0].capacity
-            if props[1].capacity and not props[0].capacity:
-                props[0].capacity = props[1].capacity
-            for prop in props:
-                if prop.capacity is None or prop.capacity == "":
-                    prop.capacity = self.opts.defaultCapacity
+#                raise StitchingError("Malformed properties on link '%s': source and dest tags are not reversed" % link.id)
+                # This could happen if >2 ifcs and 2 asymetric props
+                # But it could also mean a single property is duplicated
+                self.logger.debug("On link '%s': source and dest tags are not reversed" % link.id)
+            else:
+                if props[0].capacity and not props[1].capacity:
+                    props[1].capacity = props[0].capacity
+                if props[1].capacity and not props[0].capacity:
+                    props[0].capacity = props[1].capacity
+
                 # FIXME: Warn about really small or big capacities?
             return
         # End of handling have 2 current properties
 
-        # There is a single property tag
-        prop = link.properties[0]
-        if prop.source_id is None or prop.source_id == "":
-            raise StitchingError("Malformed property on link '%s' missing source_id attribute" % link.id)
-        if prop.dest_id is None or prop.dest_id == "":
-            raise StitchingError("Malformed property on link '%s' missing dest_id attribute" % link.id)
-        if prop.dest_id == prop.source_id:
-            raise StitchingError("Malformed property on link '%s' has matching source and dest_id: '%s'" % (link.id, prop.dest_id))
-        # FIXME: Compare to the interface_refs
-        if prop.capacity is None or prop.capacity == "":
-            prop.capacity = self.opts.defaultCapacity
+        for prop in link.properties:
+            # If this is a cross AM property, then it should have an explicit capacity
+            sourceAM = None
+            destAM = None
+            for node in self.parsedUserRequest.nodes:
+                if prop.source_id in node.interface_ids:
+                    sourceAM = node.amURN
+                if prop.dest_id in node.interface_ids:
+                    destAM = node.amURN
+                if sourceAM and destAM:
+                    break
+            if sourceAM and destAM and sourceAM != destAM:
+                if prop.capacity is None or prop.capacity == "":
+                    prop.capacity = self.opts.defaultCapacity
         # FIXME: Warn about really small or big capacities?
-        # Create the 2nd property with the source and dest reversed
-        prop2 = LinkProperty(prop.dest_id, prop.source_id, prop.latency, prop.packet_loss, prop.capacity)
-        link.properties = [prop, prop2]
-        self.logger.debug("Link '%s' added missing reverse property", link.id)
+
+        # FIXME: Do we need the reciprocal property?
+#        # Create the 2nd property with the source and dest reversed
+#        prop2 = LinkProperty(prop.dest_id, prop.source_id, prop.latency, prop.packet_loss, prop.capacity)
+#        link.properties = [prop, prop2]
+#        self.logger.debug("Link '%s' added missing reverse property", link.id)
+
     # End of addCapacityOneLink
 
     # Ensure all implicit AMs (from interface_ref->node->component_manager_id) are explicit on the link
@@ -3149,9 +3170,30 @@ class StitchingHandler(object):
                         elif GRAM_AM_TYPE in version[aggurl]['value']['geni_am_type']:
                             self.logger.debug("AM %s is GRAM", agg)
                             agg.isGRAM = True
+                        elif FOAM_AM_TYPE in version[aggurl]['value']['geni_am_type']:
+                            self.logger.debug("AM %s is FOAM", agg)
+                            agg.isFOAM = True
+                        elif OESS_AM_TYPE in version[aggurl]['value']['geni_am_type']:
+                            self.logger.debug("AM %s is OESS", agg)
+                            agg.isOESS = True
                     elif version[aggurl]['value'].has_key('geni_am_type') and ORCA_AM_TYPE in version[aggurl]['value']['geni_am_type']:
                             self.logger.debug("AM %s is Orca", agg)
                             agg.isEG = True
+                    elif version[aggurl]['value'].has_key('geni_am_type') and DCN_AM_TYPE in version[aggurl]['value']['geni_am_type']:
+                            self.logger.debug("AM %s is DCN", agg)
+                            agg.dcn = True
+                    elif version[aggurl]['value'].has_key('geni_am_type') and PG_AM_TYPE in version[aggurl]['value']['geni_am_type']:
+                            self.logger.debug("AM %s is ProtoGENI", agg)
+                            agg.isPG = True
+                    elif version[aggurl]['value'].has_key('geni_am_type') and GRAM_AM_TYPE in version[aggurl]['value']['geni_am_type']:
+                            self.logger.debug("AM %s is GRAM", agg)
+                            agg.isGRAM = True
+                    elif version[aggurl]['value'].has_key('geni_am_type') and FOAM_AM_TYPE in version[aggurl]['value']['geni_am_type']:
+                            self.logger.debug("AM %s is FOAM", agg)
+                            agg.isFOAM = True
+                    elif version[aggurl]['value'].has_key('geni_am_type') and OESS_AM_TYPE in version[aggurl]['value']['geni_am_type']:
+                            self.logger.debug("AM %s is OESS", agg)
+                            agg.isOESS = True
 
                     # This code block looks nice but doesn't work - the version object is not the full triple
 #                    elif version[aggurl].has_key['code'] and isinstance(version[aggurl]['code'], dict) and \
@@ -3375,6 +3417,8 @@ class StitchingHandler(object):
                     self.logger.debug("   A GRAM Aggregate")
                 if agg.isOESS:
                     self.logger.debug("   An OESS Aggregate")
+                if agg.isFOAM:
+                    self.logger.debug("   A FOAM Aggregate")
                 if agg.isEG:
                     self.logger.debug("   An Orca Aggregate")
                 if agg.isExoSM:
@@ -3718,6 +3762,7 @@ class StitchingHandler(object):
                 # FIXME: agg.allocateTries?
                 agg.dcn = oldAgg.dcn
                 agg.isOESS = oldAgg.isOESS
+                agg.isFOAM = oldAgg.isFOAM
                 agg.isGRAM = oldAgg.isGRAM
                 agg.isPG = oldAgg.isPG
                 agg.isEG = oldAgg.isEG

@@ -164,6 +164,11 @@ Full details on options for each step are described below.
    supply a matching -V option to that script.
    Supply the --debug argument for more detailed logging.
 
+   You may replace the sample aggregate when using AM API v2 or v3 by extending
+   `ReferenceAggregateManager`, and then either supplying the `-D`/`--delegate`
+   argument to `gcf-am.py`, or supplying a `delegate` option in the
+   `aggregate_manager` section of the `gcf_config` file.
+
 4. Run the GCF installation testing client:
 
    $ python src/gcf-test.py
@@ -282,8 +287,8 @@ credentials and certificates, and the GENI AM API.
 
 See http://groups.geni.net/geni/wiki/GeniApi
 
-Omni tutorials and further documentation are on the GCF Wiki:
-http://trac.gpolab.bbn.com/gcf. GCF and Omni source, and all
+Omni tutorials and further documentation are available on the wiki:
+https://github.com/GENI-NSF/geni-tools/wiki. GCF and Omni source, and all
 known issues in this package, are availble on Github:
 https://github.com/GENI-NSF/geni-tools.
 

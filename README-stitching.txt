@@ -318,6 +318,10 @@ Other options you should not need to use:
     See the comments at the top of the RSpec: `get_vlantag_from` indicates what other `hop` the given `hop`
     should take its VLAN tag from. `Have Reservation?` indicates if you have a reservation here. And
     `AM Depends on` indicates which other AMs must be reserved first before you make a reservation here.
+ - `--noSCS`: Do not call the SCS even on stitched topologies. This
+    might be useful to reserve a topology previously expanded using
+    `--noReservation`, or a topology which has a stitching extension
+    already and which for some reason the SCS gives an error on.
 
 == Tips and Details ==
 
@@ -366,7 +370,7 @@ In running stitcher, follow these various tips:
  in testing:
 {{{
 cd <omni install directory>
-export PYTHONPATH=$PYTHONPATH:.
+export PYTHONPATH=$PYTHONPATH:./src
 python src/gcf/omnilib/stitch/scs.py --listaggregates --key <path-to-key> --cert <path-to-cert>
 }}}
  - Stitching to fixed endpoints:
@@ -377,7 +381,8 @@ python src/gcf/omnilib/stitch/scs.py --listaggregates --key <path-to-key> --cert
     extension in your request RSpec, indicating as hop1 a GENI
     aggregate with compute resources, and the other end your switch or
     other fixed endpoint. This should correspond to a main body link
-    which has an interface at the GENI aggregate but no 2nd interface.
+    which has an interface at the GENI aggregate but no interface on a
+    2nd aggregate.
  - Stitching to ExoGENI aggregates
   - ExoGENI reservations can come from the specific rack, or from the
   ExoSM's allocation of resources at that rack. You can control in

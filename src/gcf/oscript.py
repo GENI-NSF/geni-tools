@@ -115,7 +115,7 @@ import optparse
 import os
 import shutil
 import sys
-import urllib
+import urllib2
 
 from .omnilib.util import OmniError, AMAPIError
 from .omnilib.handler import CallHandler
@@ -218,7 +218,8 @@ def load_agg_nick_config(opts, logger):
             except ConfigParser.Error as exc:
                 logger.error("agg_nick_cache file %s could not be parsed: %s"% (filename, str(exc)))
     if not readConfigFile:
-        raise OmniError, "Failed to read any possible agg_nick_cache file."
+        logger.error("Failed to read any possible agg_nick_cache file; Check your network connection and/or permissions to read/write '%s'.", opts.aggNickCacheName)
+        return {}
 
     config = load_aggregate_nicknames( config, confparser, filename, logger, opts )
     config = load_omni_defaults( config, confparser, filename, logger, opts )
@@ -485,7 +486,16 @@ def update_agg_nick_cache( opts, logger ):
         directory = os.path.dirname(opts.aggNickCacheName)
         if not os.path.exists( directory ):
             os.makedirs( directory )
-        urllib.urlretrieve( opts.aggNickDefinitiveLocation, tmpcache )
+        logger.debug("Attempting to refresh agg_nick_cache from %s...", opts.aggNickDefinitiveLocation)
+        # Do not use urllib here, because urllib interacts badly with M2Crypto
+        # which overrites the URLopener.open_https method in a way that makes opening https
+        # connections take 60 seconds where they should take 5.
+        # (we've imported M2Crypto here indirectly via sfa.trust.gid)
+        # See http://nostacktrace.com/dev/2011/2/4/no-love-for-the-monkey-patch.html
+        # urllib.urlretrieve( opts.aggNickDefinitiveLocation, tmpcache )
+        handle = urllib2.urlopen(opts.aggNickDefinitiveLocation)
+        with open (tmpcache, "w") as f:
+            f.write(handle.read())
         good = False
         if os.path.exists(tmpcache) and os.path.getsize(tmpcache) > 0:
             if os.path.exists(opts.aggNickCacheName) and os.path.getsize(opts.aggNickCacheName) > 0:
@@ -1044,7 +1054,7 @@ def getParser():
  \t\t\t nicknames \n\
  \t\t\t print_sliver_expirations <slicename> \n\
 \n\t See README-omni.txt for details.\n\
-\t And see the Omni website at http://trac.gpolab.bbn.com/gcf"
+\t And see the Omni website at https://github.com/GENI-NSF/geni-tools/wiki."
 
     parser = optparse.OptionParser(usage=usage, version="%prog: " + getOmniVersion())
 
@@ -1185,7 +1195,7 @@ def getParser():
                       default="~/.gcf/agg_nick_cache",
                       help="File where AggNick info will be cached, default is %default")
     angroup.add_option("--AggNickDefinitiveLocation", dest='aggNickDefinitiveLocation',
-                      default="http://trac.gpolab.bbn.com/gcf/raw-attachment/wiki/Omni/agg_nick_cache",
+                      default="https://raw.githubusercontent.com/GENI-NSF/geni-tools/master/agg_nick_cache.base",
                       help="Website with latest agg_nick_cache, default is %default. To force Omni to read this cache, delete your local AggNickCache or use --NoAggNickCache.")
     parser.add_option_group( angroup )
 

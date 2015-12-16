@@ -20,6 +20,18 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
+'''
+Utilities to generate and verify Speaks For credentials.
+Put geni-tools/src on the python path and run speaksfor_util.py -h for help on using
+this as a stand-alone tool to generate and verify credentials.
+Creating a speaks for cred requires having xmlsec1 on the path,
+and the signer will need to be signed by a trusted root.
+See create_speaks_for.
+
+Runtime code uses determine_speaks_for to validate a speaks for cred.
+That returns either the tool_cert (it wasn't a valid speaks for), or the user cert
+(validated speaks-for).
+'''
 
 from __future__ import absolute_import
 
@@ -220,6 +232,16 @@ def verify_speaks_for(cred, tool_gid, speaking_for_urn, \
         try:
             tool_gid.verify_chain(trusted_roots)
         except Exception, e:
+            if user_gid.get_issuer() == tool_gid.get_issuer() and user_gid.get_parent() and not tool_gid.get_parent():
+                if logger:
+                    logger.debug("Tool cert didn't verify (%s). Adding tool issuer (%s) as parent (taken from user_gid)", e, user_gid.get_parent().get_printable_subject())
+                tool_gid.set_parent(user_gid.get_parent())
+                try:
+                    tool_gid.verify_chain(trusted_roots)
+                    return True, user_gid, ""
+                except Exception, e2:
+                    if logger:
+                        logger.debug("Tool cert still doesn't verify: %s", e2)
             return False, None, \
                 "Tool cert not trusted: %s" % e
 
@@ -394,7 +416,7 @@ if __name__ == "__main__":
 
     parser = optparse.OptionParser()
     parser.add_option('--cred_file', 
-                      help='Name of credential file')
+                      help='Name of credential file to verify')
     parser.add_option('--tool_cert_file', 
                       help='Name of file containing tool certificate')
     parser.add_option('--user_urn', 
@@ -406,7 +428,7 @@ if __name__ == "__main__":
     parser.add_option('--user_key_file', 
                       help="filename of private key of signing user")
     parser.add_option('--trusted_roots_directory', 
-                      help='Directory of trusted root certs')
+                      help='Directory of trusted root certs for verifying')
     parser.add_option('--create',
                       help="name of file of ABAC speaksfor cred to create")
     parser.add_option('--useObject', action='store_true', default=False,
