@@ -1,7 +1,7 @@
 ### DO NOT MODIFY THIS FILE BY HAND ###
 # This file lives at: https://raw.githubusercontent.com/GENI-NSF/geni-tools/master/agg_nick_cache.base
 # - the master branch of the geni-tools Github repository
-# Last updated on December 9, 2015
+# Last updated on December 16, 2015
 
 [omni_defaults]
 # This section is for updating Omni defaults without updating Omni.
@@ -27,7 +27,7 @@ scs_url=https://geni-scs.net.internet2.edu:8443/geni/xmlrpc
 # Specify the latest version of Omni released, and a message
 # Expected format is "#,Message" EG: "2.8,Omni 2.8 was release 2/1/2015". No commas in the message.
 # If a newer version is available, Omni will log a message at INFO level.
-latest_omni_version=2.9,Omni 2.9 was released 5/27/2015. See https://github.com/GENI-NSF/geni-tools/wiki
+latest_omni_version=2.10,Omni 2.10 was released 12/16/2015. See https://github.com/GENI-NSF/geni-tools/wiki
 
 #------AM nicknames
 # Format :
