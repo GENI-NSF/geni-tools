@@ -82,7 +82,7 @@ DEFAULT_CAPACITY = 20000 # in Kbps
 # Call is the way another script might call this.
 # It initializes the logger, options, config (using omni functions),
 # and then dispatches to the stitch handler
-def call(argv, options=None):
+#def call(argv, options=None):
 
 #    if options is not None and not options.__class__==optparse.Values:
 #        raise OmniError("Invalid options argument to call: must be an optparse.Values object")
@@ -90,6 +90,7 @@ def call(argv, options=None):
 #    if argv is None or not type(argv) == list:
 #        raise OmniError("Invalid argv argument to call: must be a list")
 
+def getParser():
     ##############################################################################
     # Get a parser from omni that understands omni options
     ##############################################################################
@@ -240,9 +241,6 @@ def call(argv, options=None):
         # Have omni use our parser to parse the args, manipulating options as needed
         options, args = omni.parse_args(argv, parser=getParser())
 
-
-    # Have omni use our parser to parse the args, manipulating options as needed
-    options, args = omni.parse_args(argv, parser=parser)
 
     # If there is no fileDir, then we try to write to the CWD. In some installations, that will
     # fail. So test writing to CWD. If that fails, set fileDir to a temp dir to write files ther.
