@@ -1096,3 +1096,182 @@ class CHCallHandler(object):
 #########
 ## Helper functions follow
 
+#######################
+#### GD Additions #####
+#######################
+
+    def listkeys_gdstyle(self, args):
+        """Provides a list of SSH public keys registered at the CH for the specified user,
+        or the current user if not specified.
+        Not supported by all frameworks, and some frameworks insist on only the current user.
+        At some frameworks will return the caller's private SSH key if known.
+
+        Output directing options:
+        -o Save result in a file
+        -p (used with -o) Prefix for resulting filename
+        --outputfile If supplied, use this output file name
+        If not saving results to a file, they are logged.
+        If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the username whose keys are listed and the configuration
+        file name of the framework
+        e.g.: myprefix-jsmith-keys-portal.txt
+        """
+        username = None
+        if len(args) > 0:
+            username = args[0].strip()
+            if username == "":
+                username = None
+        if username is None and self.opts.speaksfor:
+            username = get_leaf(self.opts.speaksfor)
+        if username is None:
+            printusername = get_leaf(_get_user_urn(self.logger, self.framework.config))
+            if not printusername:
+                self._raise_omni_error("listkeys failed to find your username")
+        else:
+            printusername = username
+
+        retStr = ""
+        (keys, message) = self.framework.list_ssh_keys(username)
+        if keys is None or (len(keys) == 0 and message is not None):
+            keys = []
+            self.logger.error("Failed to list keys for you")
+            if message and message.strip() != "":
+                retStr += "Failed to list keys - Server error: %s. " % message
+            else:
+                retStr += "Failed to list keys - Server error. "
+
+        elif len(keys) > 0:
+            result="User '%s' has %d key(s): \n" % (printusername, len(keys))
+            i = 0
+            for key in keys:
+                if not key.has_key("public_key"):
+                    continue
+                i += 1
+                result += "    Key pair %d:\n" % i
+                result += "\tPublic key %d: %s\n" % (i, key["public_key"])
+                if key.has_key("private_key"):
+                    result += "\tPrivate key %d: \n%s\n" % (i, key["private_key"])
+#            result += "\t%s" % ("\n\t".join(keys))
+            # Save/print out result
+            header = None
+            filename = None
+            if self.opts.output:
+                filename = _construct_output_filename(self.opts, printusername, self.opts.framework, None, "keys", ".txt", 0)
+
+            _printResults(self.opts, self.logger, header, result, filename)
+            if filename:
+                retStr += "Saved user %s keys to file %s. " % (printusername, filename)
+            else:
+                retStr += "Printed user %s keys. " % printusername
+
+        else:
+            self.logger.info("User %s has NO keys.", printusername)
+
+        # summary
+        retStr += "Found %d key(s) for user %s.\n"%(len(keys), printusername)
+
+        return retStr, keys
+
+    def lookupuser (self, args):
+        if len(args) == 0 or args[0] == None or args[0].strip() == "":
+            self._raise_omni_error('lookupuser requires arg of userurn')
+
+        user_urn = args[0]
+        (user_details, msg) = self.framework.user_lookup_by_urn(user_urn)
+        return msg,user_details
+
+
+    def slice_uid_to_urn (self, args):
+        if len(args) == 0 or args[0] == None or args[0].strip() == "":
+            self._raise_omni_error('lookupslice_by_uid requires arg of slice uuid')
+
+        slice_uuid = args[0]
+        slice_urn = self.framework.slice_lookup_by_uuid(slice_uuid)
+        return slice_urn
+
+    def list_slice_details (self, args):
+        if len(args) == 0 or args[0] == None or args[0].strip() == "":
+            self._raise_omni_error('lookupslice_by_urn requires arg of slice urn')
+
+        slice_urn = args[0]
+        sliceDetails = self.framework.slice_lookup_by_urn(slice_urn)
+        return sliceDetails
+
+
+
+    def modifyslicemembership (self, args):
+        if len(args) == 0 or args[0] == None or args[0].strip() == "":
+            self._raise_omni_error('modifyslicemembership requires arg of userurn and membership json file of the format \
+"{\
+    "<UserURN>": "<Action> <Role>",\
+    "<UserURN>": "<Action> <Role>",\
+    "<UserURN>": "<Action> <Role>"\
+}"\
+where <Action>  = "Change to" | "Add to" | "Remove from Slice"\
+and <Role> = "Lead" | "Admin" | "Member" | "Auditor" except where the action is to "Remove from Slice" no role is required.\
+')
+
+        sliceurn = args[0]
+        memerbship_json_file = args[1]
+        (details, msg) = self.framework.modify_slice_membership(sliceurn,memerbship_json_file)
+        return msg,details
+
+    def listmyslices_with_role(self, args):
+        """Provides a list of slices of user provided as first
+        argument, or current user if no username supplied.
+        Not supported by all frameworks.
+
+        Output directing options:
+        -o Save result in a file
+        -p (used with -o) Prefix for resulting filename
+        --outputfile If supplied, use this output file name
+        If not saving results to a file, they are logged.
+        If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the username whose slices are listed and the configuration
+        file name of the framework
+        e.g.: myprefix-jsmith-slices-portal.txt
+        """
+        if len(args) > 0:
+            username = args[0].strip()
+        elif self.opts.speaksfor:
+            username = get_leaf(self.opts.speaksfor)
+        else:
+            username = get_leaf(_get_user_urn(self.logger, self.framework.config))
+            if not username:
+                self._raise_omni_error("listmyslices_with_role failed to find your username")
+
+        retStr = ""
+        (slices, message) = _do_ssl(self.framework, None, "List Slices from Slice Authority", self.framework.list_my_slices_with_role, username)
+        if slices is None:
+            # only end up here if call to _do_ssl failed
+            slices = {}
+            self.logger.error("Failed to list slices for user '%s'"%(username))
+            retStr += "Server error: %s. " % message
+        elif len(slices.keys()) > 0:
+            #slices = sorted(slices)
+            result="User '%s' has %d slice(s): \n" % (username, len(slices.keys()))
+            result += "\t%s" % ("\n\t".join(slices.keys()))
+            # Save/print out result
+            header = None
+            filename = None
+            if self.opts.output:
+                filename = _construct_output_filename(self.opts, username, self.opts.framework, None, "slices", ".txt", 0)
+
+            _printResults(self.opts, self.logger, header, result, filename)
+            if filename:
+                retStr += "Saved user %s slices to file %s. " % (username, filename)
+            else:
+                retStr += "Printed user %s slices. " % username
+        else:
+            self.logger.info("User '%s' has NO slices."%username)
+
+        # summary
+        retStr += "Found %d slice(s) for user '%s'. "%(len(slices.keys()), username)
+
+        return retStr, slices
+
+
+
+
