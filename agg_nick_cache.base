@@ -721,3 +721,25 @@ ukl-og3=urn:publicid:IDN+glab077.e4.ukl.german-lab.de:gcf+authority+am,https://g
 kaiserslautern-og=urn:publicid:IDN+glab077.e4.ukl.german-lab.de:gcf+authority+am,https://glab077.e4.ukl.german-lab.de:5002
 kaiserslautern-og2=urn:publicid:IDN+glab077.e4.ukl.german-lab.de:gcf+authority+am,https://glab077.e4.ukl.german-lab.de:5002
 kaiserslautern-og3=urn:publicid:IDN+glab077.e4.ukl.german-lab.de:gcf+authority+am,https://glab077.e4.ukl.german-lab.de:5001
+
+# =====
+# University of Michigan InstaGENI
+# =====
+umich-ig=urn:publicid:IDN+instageni.research.umich.edu+authority+cm,https://instageni.research.umich.edu:12369/protogeni/xmlrpc/am/2.0
+umich-ig1=urn:publicid:IDN+instageni.research.umich.edu+authority+cm,https://instageni.research.umich.edu:12369/protogeni/xmlrpc/am/1.0
+umich-ig2=urn:publicid:IDN+instageni.research.umich.edu+authority+cm,https://instageni.research.umich.edu:12369/protogeni/xmlrpc/am/2.0
+umich-ig3=urn:publicid:IDN+instageni.research.umich.edu+authority+cm,https://instageni.research.umich.edu:12369/protogeni/xmlrpc/am/3.0
+umich-ig-of=urn:publicid:IDN+openflow:foam:foam.instageni.research.umich.edu+authority+am,https://foam.instageni.research.umich.edu:3626/foam/gapi/2
+umich-ig-of1=urn:publicid:IDN+openflow:foam:foam.instageni.research.umich.edu+authority+am,https://foam.instageni.research.umich.edu:3626/foam/gapi/1
+umich-ig-of2=urn:publicid:IDN+openflow:foam:foam.instageni.research.umich.edu+authority+am,https://foam.instageni.research.umich.edu:3626/foam/gapi/2
+
+# =====
+# University of Kentucky MCV InstaGENI
+# =====
+ukymcv-ig=urn:publicid:IDN+mcv.sdn.uky.edu+authority+cm,https://mcv.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
+ukymcv-ig1=urn:publicid:IDN+mcv.sdn.uky.edu+authority+cm,https://mcv.sdn.uky.edu:12369/protogeni/xmlrpc/am/1.0
+ukymcv-ig2=urn:publicid:IDN+mcv.sdn.uky.edu+authority+cm,https://mcv.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
+ukymcv-ig3=urn:publicid:IDN+mcv.sdn.uky.edu+authority+cm,https://mcv.sdn.uky.edu:12369/protogeni/xmlrpc/am/3.0
+ukymcv-ig-of=urn:publicid:IDN+openflow:foam:foam.mcv.sdn.uky.edu+authority+am,https://foam.mcv.sdn.uky.edu:3626/foam/gapi/2
+ukymcv-ig-of1=urn:publicid:IDN+openflow:foam:foam.mcv.sdn.uky.edu+authority+am,https://foam.mcv.sdn.uky.edu:3626/foam/gapi/1
+ukymcv-ig-of2=urn:publicid:IDN+openflow:foam:foam.mcv.sdn.uky.edu+authority+am,https://foam.mcv.sdn.uky.edu:3626/foam/gapi/2
