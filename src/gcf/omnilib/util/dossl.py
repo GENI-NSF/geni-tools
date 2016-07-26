@@ -147,10 +147,10 @@ def _do_ssl(framework, suppresserrors, reason, fn, *args):
                 elif "plc" in issuer:
                     msg += "PlanetLab users should email PlanetLab support (support@planet-lab.org) to get a new user certificate."
                 elif "ch.geni" in issuer:
-                    msg += "GENI Clearinghouse users should email Portal help (portal-help@geni.net) to get a new certificate."
+                    msg += "GENI Portal users should log in to the portal to renew their certificate."
                 else:
                     msg += "Contact your certificate issuer: %s. " % issuer
-                    msg += "GENI Clearinghouse users should email Portal help (portal-help@geni.net) to get a new certificate. "
+                    msg += "GENI Portal users should log in to the portal to renew their certificate. "
                     msg += "ProtoGENI users should log in to their SA website and create and download a new certificate. "
                     msg += "PlanetLab users should email PlanetLab support (support@planet-lab.org) to get a new user certificate."
                 framework.logger.error("Can't do %s. %s", reason, msg)
