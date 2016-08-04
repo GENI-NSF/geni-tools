@@ -168,7 +168,7 @@ def main(argv=None):
             logging.getLogger('gcf-am').error(msg)
             sys.exit(msg)
 
-    multithread = None
+    multithread = False
     if hasattr(opts, 'multithread') and opts.multithread is not None and str(opts.multithread).strip() != "":
         if str(opts.multithread).strip().lower() == "true":
             multithread = True

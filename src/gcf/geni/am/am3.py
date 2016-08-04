@@ -1387,7 +1387,7 @@ class AggregateManagerServer(object):
                  trust_roots_dir=None,
                  ca_certs=None, base_name=None,
                  authorizer=None, resource_manager=None,
-                 delegate=None, multithread=None):
+                 delegate=None, multithread=False):
         # ca_certs arg here must be a file of concatenated certs
         if ca_certs is None:
             raise Exception('Missing CA Certs')
