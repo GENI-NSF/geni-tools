@@ -3,6 +3,7 @@
 gcf 2.11:
  * Remove bogus check for rspec tag (#885)
  * Properly remove prefix from signature refid in SFA credentials. (#890)
+ * Add multi-thread support for AM3 (#901)
  * Added unf-eg to agg_nick_cache.base. (#902)
 
 gcf 2.10:

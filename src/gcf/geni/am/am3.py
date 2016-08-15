@@ -54,6 +54,7 @@ from ..util.tz_util import tzd
 from ..util.urn_util import publicid_to_urn
 from ..util import urn_util as urn
 from ..SecureXMLRPCServer import SecureXMLRPCServer
+from ..SecureThreadedXMLRPCServer import SecureThreadedXMLRPCServer
 
 from ...sfa.trust.credential import Credential
 from ...sfa.trust.abac_credential import ABACCredential
@@ -1386,7 +1387,7 @@ class AggregateManagerServer(object):
                  trust_roots_dir=None,
                  ca_certs=None, base_name=None,
                  authorizer=None, resource_manager=None,
-                 delegate=None):
+                 delegate=None, multithread=False):
         # ca_certs arg here must be a file of concatenated certs
         if ca_certs is None:
             raise Exception('Missing CA Certs')
@@ -1401,7 +1402,12 @@ class AggregateManagerServer(object):
 
         # FIXED: set logRequests=true if --debug
         logRequest=logging.getLogger().getEffectiveLevel()==logging.DEBUG
-        self._server = SecureXMLRPCServer(addr, keyfile=keyfile,
+        if multithread:
+            self._server = SecureThreadedXMLRPCServer(addr, keyfile=keyfile,
+                                          certfile=certfile, ca_certs=ca_certs, 
+                                          logRequests=logRequest)
+        else:
+            self._server = SecureXMLRPCServer(addr, keyfile=keyfile,
                                           certfile=certfile, ca_certs=ca_certs, 
                                           logRequests=logRequest)
         aggregate_manager = AggregateManager(trust_roots_dir, delegate, 
