@@ -5,6 +5,7 @@ gcf 2.11:
  * Properly remove prefix from signature refid in SFA credentials. (#890)
  * Add multi-thread support for AM3 (#901)
  * Added unf-eg to agg_nick_cache.base. (#902)
+ * Added hawaii-ig, ullafayette, utdallas-ig, and uvm-ig to agg_nick_cache. (#906)
 
 gcf 2.10:
  * Changed references to trac.gpolab.bbn.com to point to Github.
