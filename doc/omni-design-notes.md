@@ -710,6 +710,8 @@ There are multiple support script included with geni-tools under `src` and `exam
 ## readyToLogin
 Use `sliverstatus` and the manifest to determine when compute resources are ready for use, and report the proper SSH commandline. See github for open issues.
 
+This script takes into account the differences between various AM types, making it more complex than you might imagine.
+
 ## omni-configure
 Run this on the Omni configuration bundle downloaded from the GENI portal to set up SSH and SSL keys and the omni.config file needed to run Omni.
 
@@ -719,8 +721,10 @@ Remove the passphrase from an SSL key
 ## deleteSliceCred
 Slice credentials can be delegated. A delegated slice credential may be a subset of the permissions in theory, though in practice all credentials allow doing anything. When using a delegated credential, the actor appears to be the owner of the resources and is responsible, as opposed to speaks for, where the original user retains responsibility. This script allows generating a delegated slice credential.
 
+The script is a little hard to use (lots of arguments). But this may just be a documentation problem.
+
 ## addMemberToSliceAndSlivers
-Update slice membership at the CH (not supported by all CHs) and then use the slice membership to install SSH keys (as listed by the CH) on the slivers, using the `poa` command. Note supported at all aggregates.
+Update slice membership at the CH (not supported by all CHs) and then use the slice membership to install SSH keys (as listed by the CH) on the slivers, using the `poa` command. Not supported at all aggregates.
 
 ## experiationofmyslices
 Essentially `print_sliver_expiration` on all slices listed at the CH
@@ -738,7 +742,7 @@ Note that there are limits to the AM API support of this GCF AM, such as some of
 
 You can do basic tests that the GCF AM/CH are working using `gcf-test`. Omni can talk to the GCF CH, and of course to the AM as it is just another aggregate; use `type=gcf` in your `omni_config`.
 
-`gen-certs.py` can be used to generate some testing certificates for the GCF CH and AM, and a test user or 2.
+`gen-certs.py` can be used to generate some testing certificates for the GCF CH and AM, and a test user or 2. This script should really be rewritten to use raw openssl, allowing us to get certificates with varying serial numbers, for example.
 
 The GCF code sits under `src/gcf/geni`.
 

@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2015 Raytheon BBN Technologies
+# Copyright (c) 2011-2016 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -22,4 +22,4 @@
 #----------------------------------------------------------------------
 
 # The current version of GCF and Omni. Update this with each new release
-GCF_VERSION="2.10"
+GCF_VERSION="2.11"
