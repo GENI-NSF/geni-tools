@@ -645,3 +645,34 @@ ukymcv-ig3=urn:publicid:IDN+mcv.sdn.uky.edu+authority+cm,https://mcv.sdn.uky.edu
 unf-eg=urn:publicid:IDN+exogeni.net:unfvmsite+authority+am,https://unf-hn.exogeni.net:11443/orca/xmlrpc
 unf-eg2=urn:publicid:IDN+exogeni.net:unfvmsite+authority+am,https://unf-hn.exogeni.net:11443/orca/xmlrpc
 
+# ======
+# University of Hawaii InstaGENI
+# ======
+hawaii-ig=urn:publicid:IDN+instageni.hawaii.edu+authority+cm,https://instageni.hawaii.edu:12369/protogeni/xmlrpc/am/2.0
+hawaii-ig1=urn:publicid:IDN+instageni.hawaii.edu+authority+cm,https://instageni.hawaii.edu:12369/protogeni/xmlrpc/am/1.0
+hawaii-ig2=urn:publicid:IDN+instageni.hawaii.edu+authority+cm,https://instageni.hawaii.edu:12369/protogeni/xmlrpc/am/2.0
+hawaii-ig3=urn:publicid:IDN+instageni.hawaii.edu+authority+cm,https://instageni.hawaii.edu:12369/protogeni/xmlrpc/am/3.0
+
+# ======
+# UVM InstaGENI
+# ======
+uvm-ig=urn:publicid:IDN+instageni.uvm.edu+authority+cm,https://instageni.uvm.edu:12369/protogeni/xmlrpc/am/2.0
+uvm-ig1=urn:publicid:IDN+instageni.uvm.edu+authority+cm,https://instageni.uvm.edu:12369/protogeni/xmlrpc/am/1.0
+uvm-ig2=urn:publicid:IDN+instageni.uvm.edu+authority+cm,https://instageni.uvm.edu:12369/protogeni/xmlrpc/am/2.0
+uvm-ig3=urn:publicid:IDN+instageni.uvm.edu+authority+cm,https://instageni.uvm.edu:12369/protogeni/xmlrpc/am/3.0
+
+# ======
+# UT Dallas InstaGENI
+# ======
+utdallas-ig=urn:publicid:IDN+instageni.utdallas.edu+authority+cm,https://instageni.utdallas.edu:12369/protogeni/xmlrpc/am/2.0
+utdallas-ig1=urn:publicid:IDN+instageni.utdallas.edu+authority+cm,https://instageni.utdallas.edu:12369/protogeni/xmlrpc/am/1.0
+utdallas-ig2=urn:publicid:IDN+instageni.utdallas.edu+authority+cm,https://instageni.utdallas.edu:12369/protogeni/xmlrpc/am/2.0
+utdallas-ig3=urn:publicid:IDN+instageni.utdallas.edu+authority+cm,https://instageni.utdallas.edu:12369/protogeni/xmlrpc/am/3.0
+
+# ======
+# UL Lafayette InstaGENI
+# ======
+ullafayette-ig=urn:publicid:IDN+instageni.louisiana.edu+authority+cm,https://instageni.louisiana.edu:12369/protogeni/xmlrpc/am/2.0
+ullafayette-ig1=urn:publicid:IDN+instageni.louisiana.edu+authority+cm,https://instageni.louisiana.edu:12369/protogeni/xmlrpc/am/1.0
+ullafayette-ig2=urn:publicid:IDN+instageni.louisiana.edu+authority+cm,https://instageni.louisiana.edu:12369/protogeni/xmlrpc/am/2.0
+ullafayette-ig3=urn:publicid:IDN+instageni.louisiana.edu+authority+cm,https://instageni.louisiana.edu:12369/protogeni/xmlrpc/am/3.0
