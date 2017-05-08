@@ -8,6 +8,7 @@ gcf 2.10:
  * Document how to create a release. (#871)
  * Add Debian and RPM packaging configuration (#849)
  * Update CentOS installation instructions (#853)
+ * Added hawaii-ig, utdallas-ig, ullafayette-ig, and uvm-ig to nick cache. (#906)
 
  * Omni
   * Continue anyway if no aggregate nickname cache can be loaded. (#822)
