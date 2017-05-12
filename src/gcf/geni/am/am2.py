@@ -132,7 +132,7 @@ class ReferenceAggregateManager(object):
         self._agg.add_resources([FakeVM(self._agg) for _ in range(3)])
         self._cred_verifier = geni.CredentialVerifier(root_cert)
         self._urn_authority = urn_authority
-        self._my_urn = publicid_to_urn("%s %s %s" % (self._urn_authority, 'authority', 'am'))
+        self._my_urn = publicid_to_urn("IDN %s %s %s" % (self._urn_authority, 'authority', 'am'))
         self.max_lease = datetime.timedelta(days=REFAM_MAXLEASE_DAYS)
         self.logger = logging.getLogger('gcf.am2')
         self.logger.info("Running %s AM v%d code version %s", self._am_type, self._api_version, GCF_VERSION)
