@@ -287,7 +287,7 @@ class ReferenceAggregateManager(object):
         self._slices = dict()
         self._agg = Aggregate()
         self._agg.add_resources([FakeVM(self._agg) for _ in range(20)])
-        self._my_urn = publicid_to_urn("%s %s %s" % (self._urn_authority, 'authority', 'am'))
+        self._my_urn = publicid_to_urn("IDN %s %s %s" % (self._urn_authority, 'authority', 'am'))
         self.max_lease = datetime.timedelta(minutes=REFAM_MAXLEASE_MINUTES)
         self.max_alloc = datetime.timedelta(seconds=ALLOCATE_EXPIRATION_SECONDS)
         self.logger = logging.getLogger('gcf.am3')
