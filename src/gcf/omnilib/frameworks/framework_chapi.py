@@ -2012,3 +2012,267 @@ class Framework(Framework_Base):
                 slivers_by_agg[agg_urn][sliver_urn] = sliver_info
 
         return slivers_by_agg
+
+###############
+## GD Additions
+###############
+
+    def user_lookup_by_urn (self, urn):
+        creds = []
+        if self.needcred:
+            uc, msg = self.get_user_cred(True)
+            if uc is not None:
+                creds.append(uc)
+
+        options = {'match':{'MEMBER_URN':urn},'filter':['MEMBER_EMAIL','MEMBER_FIRSTNAME','MEMBER_LASTNAME','MEMBER_UID','MEMBER_URN','MEMBER_USERNAME']}
+        creds, options = self._add_credentials_and_speaksfor(creds, options)
+        (data, fail) = _do_ssl(self, None, ("Lookup user at %s" % (self.ma_url())),\
+                                     self.ma().lookup,"MEMBER", creds, options)
+
+        if data["code"] != 0:
+            output = data["output"]
+            msg = "Error looking up user"
+            if output is not None and output.strip() != "":
+                msg = msg + ". %s" % output
+            self.logger.error(msg)
+            return None
+
+        return (data["value"], data["output"])
+
+    def slice_lookup_by_uuid(self, uid):
+        scred = []
+        # PG implementation needs a user cred
+        if self.needcred:
+            uc, msg = self.get_user_cred(True)
+            if uc is not None:
+                scred.append(uc)
+        options = {'match': 
+                   {'SLICE_UID': uid,
+                    'SLICE_EXPIRED': 'f',
+                    }}
+        options['filter'] = ['SLICE_URN','SLICE_UID','SLICE_EXPIRATION']
+        self.logger.debug("Submitting lookup_slices with options: %s", options)
+        scred, options = self._add_credentials_and_speaksfor(scred, options)
+        res = None
+        if not self.speakV2:
+            (res, message) = _do_ssl(self, None, ("Lookup slice_uid %s on %s %s" % (uid, self.fwtype,self.sa_url())),\
+                                         self.sa().lookup_slices, scred, options)
+        else:
+            (res, message) = _do_ssl(self, None, ("Lookup slice_uid %s on %s %s" % (uid, self.fwtype,self.sa_url())),\
+                                         self.sa().lookup, "SLICE", scred, options)
+
+        msg = None
+        urn = None
+        if res is not None:
+            if res['code'] == 0:
+                d = res['value']
+                if d is not None:
+                        return d
+                else:
+                    self.logger.error("Malformed response from lookup slice by uuid : %s", d)
+            else:
+                msg = "Server Error looking up slice %s" % uid
+                if res['code'] == 3 and "Unknown slice urns" in res['output']:
+                    msg += " - unknown slice"
+                else:
+                    msg += ". Code %d: %s" % ( res['code'], res['output'])
+                    if message and message.strip() != "":
+                        msg = msg + " (%s)" % message
+                if res.has_key('protogeni_error_url'):
+                    msg += " (Log url - look here for details on any failures: %s)" % res['protogeni_error_url']
+                self.logger.error(msg)
+        else:
+            msg = "Server Error looking up slice_uid %s" % uid
+            if message is not None and message.strip() != "":
+                msg = msg + ". %s" % message
+            self.logger.error(msg)
+
+        return None
+
+    def slice_lookup_by_urn(self, urn):
+        scred = []
+        # PG implementation needs a user cred
+        if self.needcred:
+            uc, msg = self.get_user_cred(True)
+            if uc is not None:
+                scred.append(uc)
+        options = {'match': 
+                   {'SLICE_URN': urn,
+                    'SLICE_EXPIRED': 'f',
+                    }}
+        options['filter'] = ['SLICE_URN','SLICE_UID','SLICE_EXPIRATION']
+        self.logger.debug("Submitting lookup_slices by urn with options: %s", options)
+        scred, options = self._add_credentials_and_speaksfor(scred, options)
+        res = None
+        if not self.speakV2:
+            (res, message) = _do_ssl(self, None, ("Lookup slice_urn %s on %s %s" % (urn, self.fwtype,self.sa_url())),\
+                                         self.sa().lookup_slices, scred, options)
+        else:
+            (res, message) = _do_ssl(self, None, ("Lookup slice_urn %s on %s %s" % (urn, self.fwtype,self.sa_url())),\
+                                         self.sa().lookup, "SLICE", scred, options)
+
+        msg = None
+        if res is not None:
+            if res['code'] == 0:
+                d = res['value']
+                if d is not None:
+                    if (len(d.keys()) == 1):
+                        return d
+                    else:
+                        self.logger.error("Slice_urn %s was not found - has it already expired?" % urn)
+                else:
+                    self.logger.error("Malformed response from lookup slice by urn : %s", d)
+            else:
+                msg = "Server Error looking up slice %s" % urn
+                if res['code'] == 3 and "Unknown slice urns" in res['output']:
+                    msg += " - unknown slice"
+                else:
+                    msg += ". Code %d: %s" % ( res['code'], res['output'])
+                    if message and message.strip() != "":
+                        msg = msg + " (%s)" % message
+                if res.has_key('protogeni_error_url'):
+                    msg += " (Log url - look here for details on any failures: %s)" % res['protogeni_error_url']
+                self.logger.error(msg)
+        else:
+            msg = "Server Error looking up slice_urn %s" % urn
+            if message is not None and message.strip() != "":
+                msg = msg + ". %s" % message
+            self.logger.error(msg)
+
+        return None
+
+    def list_my_slices_with_role(self, user):
+        '''List slices owned by the user (name or URN) provided, returning a list of slice URNs.'''
+
+        scred = []
+        # PG implementation needs a user cred
+        if self.needcred:
+            uc, msg = self.get_user_cred(True)
+            if uc is not None:
+                scred.append(uc)
+            else:
+                self.logger.debug("Failed to get user credential: %s", msg)
+
+        userurn = self.member_name_to_urn(user)
+
+        options = {'match': 
+                   {'SLICE_EXPIRED': 'f', # Seems to be ignored
+                        }}
+        scred, options = self._add_credentials_and_speaksfor(scred, options)
+
+        if not self.speakV2:
+            (res, message) = _do_ssl(self, None, ("List Slices for %s at %s %s" % (user, self.fwtype, self.sa_url())), 
+                                     self.sa().lookup_slices_for_member, userurn, scred, options)
+        else:
+            (res, message) = _do_ssl(self, None, ("List Slices for %s at %s %s" % (user, self.fwtype, self.sa_url())), 
+                                     self.sa().lookup_for_member, "SLICE", userurn, scred, options)
+
+
+        slices = None
+        if res is not None:
+            if res['code'] == 0:
+                slices = res['value']
+            else:
+                msg = "Failed to list slices for %s" % user
+                msg += ". Server said: %s" % res['output']
+                if res.has_key('protogeni_error_url'):
+                    msg += " (Log url - look here for details on any failures: %s)" % res['protogeni_error_url']
+                raise OmniError(msg)
+        else:
+            msg = "Failed to list slices for %s" % user
+            if message is not None and message.strip() != "":
+                msg += ": %s" % message
+            raise OmniError(msg)
+
+        # Return is a struct with the URN
+        #slicenames = list()
+        slicenames = {}
+        if slices and isinstance(slices, list):
+            for tup in slices:
+                slice = tup['SLICE_URN']
+                slicelower = string.lower(slice)
+                if not string.find(slicelower, "+slice+"):
+                    self.logger.debug("Skipping non slice URN '%s'", slice)
+                    continue
+                slicename = slice
+                # Returning this key is non-standard..
+                if tup.has_key('EXPIRED'):
+                    exp = tup['EXPIRED']
+                    if exp == True:
+                        self.logger.debug("Skipping expired slice %s", slice)
+                        continue
+                if tup.has_key('SLICE_ROLE'):
+                    role = string.lower(tup['SLICE_ROLE'])
+                else:
+                   role = ''
+                slicenames[slicename] = role
+        return slicenames
+
+
+
+
+    def modify_slice_membership(self, slice_urn, memberships_json_file):
+        import json
+        memberships = {}
+
+        try:
+                memberships = json.load(open(memberships_json_file,'r'))
+                if(len(memberships) == 0):
+                        mess = 'Nothing to do for any user'
+                        success = False
+                        return (success, mess)
+        except ValueError:
+                mess = 'Error decoding Memebership JSON'
+                success = False
+                return (success, mess)
+        except Exception:
+                raise
+                mess = 'Some Error reading Memebership JSON file'
+                success = False
+                return (success, mess)
+
+        member_urns = memberships.keys()
+        members_to_add =[]
+        members_to_remove = []
+        members_to_change = []
+        for member_urn in member_urns:
+                actions = memberships[member_urn]
+                if(actions.startswith('Add as ')):
+                        role = (actions[7:]).upper()
+                        members_to_add.append({'SLICE_MEMBER': member_urn,'SLICE_ROLE':role})
+                if(actions.startswith('Change to ')):
+                        role = (actions[10:]).upper()
+                        members_to_change.append({'SLICE_MEMBER': member_urn,'SLICE_ROLE':role})
+                if(actions.startswith('Remove from Slice')):
+                        members_to_remove.append(member_urn)
+        slice_urn = self.slice_name_to_urn(slice_urn)
+        creds = []
+        if self.needcred:
+            # FIXME: Neither user or slice cred work at PG. Which is correct?
+            sc = self.get_slice_cred_struct(slice_urn)
+            if sc is not None:
+                creds.append(sc)
+        options = {}
+        if(len(members_to_add) > 0):
+                options['members_to_add'] = members_to_add
+        if(len(members_to_remove) > 0):
+                options['members_to_remove'] = members_to_remove
+        if(len(members_to_change) > 0):
+                options['members_to_change'] = members_to_change
+        creds, options = self._add_credentials_and_speaksfor(creds, options)
+        res, mess = _do_ssl(self, None, "Modifying members %s to %s slice %s at %s" %  (str(member_urns), self.fwtype, slice_urn, self.sa_url()),
+                            self.sa().modify_slice_membership,
+                            slice_urn, creds, options)
+
+        # FIXME: do own result checking to detect DUPLICATE
+
+        logr = self._log_results((res, mess), 'Modify members %s to %s slice %s' % (str(member_urns), self.fwtype, slice_urn))
+        if logr == True:
+            success = logr
+        else:
+            success = False
+            mess = logr
+        return (success, mess)
+
+
+

@@ -82,14 +82,15 @@ DEFAULT_CAPACITY = 20000 # in Kbps
 # Call is the way another script might call this.
 # It initializes the logger, options, config (using omni functions),
 # and then dispatches to the stitch handler
-def call(argv, options=None):
+#def call(argv, options=None):
 
-    if options is not None and not options.__class__==optparse.Values:
-        raise OmniError("Invalid options argument to call: must be an optparse.Values object")
+#    if options is not None and not options.__class__==optparse.Values:
+#        raise OmniError("Invalid options argument to call: must be an optparse.Values object")
 
-    if argv is None or not type(argv) == list:
-        raise OmniError("Invalid argv argument to call: must be a list")
+#    if argv is None or not type(argv) == list:
+#        raise OmniError("Invalid argv argument to call: must be a list")
 
+def getParser():
     ##############################################################################
     # Get a parser from omni that understands omni options
     ##############################################################################
@@ -219,8 +220,27 @@ def call(argv, options=None):
             #print "Read from logging config from .py into tmp file %s" % lcfile
     parser.set_defaults(logconfig=lcfile)
 
-    # Have omni use our parser to parse the args, manipulating options as needed
-    options, args = omni.parse_args(argv, parser=parser)
+    return parser
+
+# Call is the way another script might call this.
+# It initializes the logger, options, config (using omni functions),
+# and then dispatches to the stitch handler
+def call(argv, options=None):
+
+    script_mode = False
+    if argv is None or not type(argv) == list:
+        raise OmniError("Invalid argv argument to call: must be a list")
+
+    if options is not None and not options.__class__== optparse.Values:
+        raise OmniError("Invalid options argument to call: must be an optparse.Values object")
+    elif(options is not None and options.__class__== optparse.Values):
+        args = argv
+        script_mode = True
+    else:
+        # We assume here that this routine has been called as a library
+        # Have omni use our parser to parse the args, manipulating options as needed
+        options, args = omni.parse_args(argv, parser=getParser())
+
 
     # If there is no fileDir, then we try to write to the CWD. In some installations, that will
     # fail. So test writing to CWD. If that fails, set fileDir to a temp dir to write files ther.
@@ -409,14 +429,15 @@ def call(argv, options=None):
     Aggregate.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS = options.ionRetryIntervalSecs
     Aggregate.SLIVERSTATUS_POLL_INTERVAL_SEC = options.ionStatusIntervalSecs
 
-    nondefOpts = omni.getOptsUsed(parser, options)
-    if options.debug:
-        logger.info(omni.getSystemInfo() + "\nStitcher: " + omni.getOmniVersion())
-        logger.info("Running stitcher ... %s Args: %s" % (nondefOpts, " ".join(args)))
-    else:
-        # Force this to the debug log file only
-        logger.debug(omni.getSystemInfo() + "\nStitcher: " + omni.getOmniVersion())
-        logger.debug("Running stitcher ... %s Args: %s" % (nondefOpts, " ".join(args)))
+    if not script_mode:
+      nondefOpts = omni.getOptsUsed(parser, options)
+      if options.debug:
+          logger.info(omni.getSystemInfo() + "\nStitcher: " + omni.getOmniVersion())
+          logger.info("Running stitcher ... %s Args: %s" % (nondefOpts, " ".join(args)))
+      else:
+          # Force this to the debug log file only
+          logger.debug(omni.getSystemInfo() + "\nStitcher: " + omni.getOmniVersion())
+          logger.debug("Running stitcher ... %s Args: %s" % (nondefOpts, " ".join(args)))
 
     omni.checkForUpdates(config, logger)
 
