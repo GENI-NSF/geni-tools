@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2015 Raytheon BBN Technologies
+# Copyright (c) 2011-2016 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -329,14 +329,11 @@ def is_rspec_string( rspec, rspec_namespace=None, rspec_schema=None,
     if not is_wellformed_xml( rspec, logger ):
         return False
     
-    # (2) Check if rspec is a valid XML document
-    #   (a) a snippet of XML starting with <rspec>, or
-    #   (b) a snippet of XML starting with <resv_rspec>
-    if ('<rspec' not in rspec) and \
-        ('<resv_rspec' not in rspec):
-        if logger:
-            logger.debug("RSpec string invalid: no rspec element")
-        return False
+    # (2) This was a textual check for an 'rspec' element which is
+    #     bogus because it doesn't take namespaces into account
+    #     and is easily fooled. Replace this with a proper check
+    #     that the outermost tag is 'rspec' and be sensitive to
+    #     XML namespaces.
 
     # (3) Validate rspec against schema
     if rspec_namespace and rspec_schema:

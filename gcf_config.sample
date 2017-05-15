@@ -68,6 +68,12 @@ name=am1
 # If a -D/--delegate option is supplied, that takes precedence
 # delegate=gcf.geni.am.am2.ReferenceAggregateManager
 
+# By default (false) the Aggregate API will accept only one connection at the same time
+# Set this to 'true' if you want to enable multi-threaded XMLRPC server
+# Be sure your (delegate) code is designed to handle multiple requests at the same time (concurrence)
+# This option only works for AM Version 3
+multithread=false
+
 # Address that the AM listens on
 host=127.0.0.1
 port=8001

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2012-2015 Raytheon BBN Technologies
+# Copyright (c) 2012-2016 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -168,6 +168,16 @@ def main(argv=None):
             logging.getLogger('gcf-am').error(msg)
             sys.exit(msg)
 
+    multithread = False
+    if hasattr(opts, 'multithread') and opts.multithread is not None and str(opts.multithread).strip() != "":
+        if str(opts.multithread).strip().lower() == "true":
+            multithread = True
+        elif str(opts.multithread).strip().lower() == "false":
+            multithread = False
+        else:
+            multithread = False
+            logging.getLogger('gcf-am').warning("Invalid argument for 'multithread', set default : false")
+
     # here rootcadir is supposed to be a single file with multiple
     # certs possibly concatenated together
     comboCertsFile = geni.CredentialVerifier.getCAsFileFromDir(getAbsPath(opts.rootcadir))
@@ -200,7 +210,7 @@ def main(argv=None):
                                                      base_name=config['global']['base_name'],
                                                      authorizer=authorizer,
                                                      resource_manager=resource_manager,
-                                                     delegate=delegate)
+                                                     delegate=delegate, multithread=multithread)
     else:
         msg = "Unknown API version: %d. Valid choices are \"1\", \"2\", or \"3\""
         sys.exit(msg % (opts.api_version))
