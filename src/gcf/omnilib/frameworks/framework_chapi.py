@@ -875,8 +875,8 @@ class Framework(Framework_Base):
                     continue
                 slicename = slice
                 # Returning this key is non-standard..
-                if tup.has_key('EXPIRED'):
-                    exp = tup['EXPIRED']
+                if tup.has_key('SLICE_EXPIRED'):
+                    exp = tup['SLICE_EXPIRED']
                     if exp == True:
                         self.logger.debug("Skipping expired slice %s", slice)
                         continue
@@ -885,7 +885,8 @@ class Framework(Framework_Base):
 
     def list_my_projects(self, user):
         '''List projects owned by the user (name or URN) provided, returning a list of structs, containing
-        PROJECT_URN, PROJECT_UID, EXPIRED, and PROJECT_ROLE. EXPIRED is a boolean.'''
+        PROJECT_URN, PROJECT_UID, PROJECT_EXPIRED, and PROJECT_ROLE.
+        PROJECT_EXPIRED is a boolean.'''
 
         if not self.useProjects:
             msg = "%s at %s does not support projects: no projects to list" % (self.fwtype, self.sa_url())

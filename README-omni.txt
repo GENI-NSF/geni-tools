@@ -1209,7 +1209,8 @@ project. Supply `--debug` or `--devmode` to see a listing of your
 expired projects as well.
 
 Return object is a list of structs, containing
-`PROJECT_URN`, `PROJECT_UID`, `EXPIRED`, and `PROJECT_ROLE`. `EXPIRED` is a boolean.
+`PROJECT_URN`, `PROJECT_UID`, `PROJECT_EXPIRED`, and `PROJECT_ROLE`.
+`PROJECT_EXPIRED` is a boolean.
 
 Output directing options:
  * `-o` Save result in a file

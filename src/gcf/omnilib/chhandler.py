@@ -415,7 +415,8 @@ class CHCallHandler(object):
         Not supported by all frameworks.
 
         Return object is a list of structs, containing
-        PROJECT_URN, PROJECT_UID, EXPIRED, and PROJECT_ROLE. EXPIRED is a boolean.
+        PROJECT_URN, PROJECT_UID, PROJECT_EXPIRED, and PROJECT_ROLE.
+        PROJECT_EXPIRED is a boolean.
 
         Output directing options:
         -o Save result in a file
@@ -470,8 +471,8 @@ class CHCallHandler(object):
                 projectname = nameFromURN(project)
 
                 # Returning this key is non-standard..
-                if tup.has_key('EXPIRED'):
-                    exp = tup['EXPIRED']
+                if tup.has_key('PROJECT_EXPIRED'):
+                    exp = tup['PROJECT_EXPIRED']
                     if exp == True:
                         expired = True
                 if tup.has_key('PROJECT_ROLE'):

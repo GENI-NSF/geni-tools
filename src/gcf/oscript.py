@@ -89,8 +89,8 @@ from __future__ import absolute_import
        [string Boolean] = omni.py deleteslice SLICENAME
        [string listOfSliceURNs] = omni.py listslices USER
        [string listOfSliceURNs] = omni.py listmyslices USER
-       [string listOfProjectDictionaries (PROJECT_URN, PROJECT_UID, PROJECT_ROLE, EXPIRED)] = omni.py listprojects USER
-       [string listOfProjectDictionaries (PROJECT_URN, PROJECT_UID, PROJECT_ROLE, EXPIRED)] = omni.py listmyprojects USER
+       [string listOfProjectDictionaries (PROJECT_URN, PROJECT_UID, PROJECT_ROLE, PROJECT_EXPIRED)] = omni.py listprojects USER
+       [string listOfProjectDictionaries (PROJECT_URN, PROJECT_UID, PROJECT_ROLE, PROJECT_EXPIRED)] = omni.py listmyprojects USER
        [string listOfSSHKeyPairs] = omni.py listmykeys
        [string listOfSSHKeyPairs] = omni.py listkeys USER
        [string stringCred] = omni.py getusercred
