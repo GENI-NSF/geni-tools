@@ -408,15 +408,6 @@ sl-eg-of1=urn:publicid:IDN+openflow:foam:sl-hn.exogeni.net+authority+am,https://
 sl-eg-of2=urn:publicid:IDN+openflow:foam:sl-hn.exogeni.net+authority+am,https://sl-hn.exogeni.net:3626/foam/gapi/2
 
 # ======
-# UC Davis ExoGENI
-# ======
-ucdavis-eg=urn:publicid:IDN+exogeni.net:ucdvmsite+authority+am,https://ucd-hn.exogeni.net:11443/orca/xmlrpc
-ucdavis-eg2=urn:publicid:IDN+exogeni.net:ucdvmsite+authority+am,https://ucd-hn.exogeni.net:11443/orca/xmlrpc
-ucdavis-eg-of=urn:publicid:IDN+openflow:foam:ucd-hn.exogeni.net+authority+am,https://ucd-hn.exogeni.net:3626/foam/gapi/2
-ucdavis-eg-of1=urn:publicid:IDN+openflow:foam:ucd-hn.exogeni.net+authority+am,https://ucd-hn.exogeni.net:3626/foam/gapi/1
-ucdavis-eg-of2=urn:publicid:IDN+openflow:foam:ucd-hn.exogeni.net+authority+am,https://ucd-hn.exogeni.net:3626/foam/gapi/2
-
-# ======
 # U of Florida ExoGENI
 # ======
 ufl-eg=urn:publicid:IDN+exogeni.net:uflvmsite+authority+am,https://ufl-hn.exogeni.net:11443/orca/xmlrpc
