@@ -41,21 +41,21 @@ from ...sfa.trust.credential import Credential
 class Framework_Base():
     """
     Framework_Base is an abstract class that identifies the minimal set of functions
-    that must be implemented in order to add a control framework to omni.  
-    
+    that must be implemented in order to add a control framework to omni.
+
     Instructions for adding a new framework:
-    
+
     Create "framework_X" in the frameworks directory, where X is your control framework.
-    
+
     Create a Framework class in the file that inherits "Framework_Base" and fill out each of the functions.
-    
+
     Edit the sample "omni_config" file and add a section for your framework, giving the section
     the same name as X used in framework_X.  For instance, 'sfa' or 'gcf'.  Your framework's section
-    of the omni config *MUST* have a cert and key entry, which omni will use when talking to 
+    of the omni config *MUST* have a cert and key entry, which omni will use when talking to
     the GENI Aggregate managers.
-    
+
     """
-    
+
     def __init__(self, config):
         self.cert = getAbsPath(config['cert'])
         if not os.path.exists(self.cert):
@@ -78,7 +78,7 @@ class Framework_Base():
         --usercredfile to be handled properly.
         Returns the usercred - in XML string format.
         """
-        
+
         try:
             if self.user_cred_struct is not None:
                 pass
@@ -135,7 +135,7 @@ class Framework_Base():
             logger.info("NOT getting user credential from file %s - file doesn't exist or is empty", opts.usercredfile)
 
         return cred
-        
+
     def get_version(self):
         """
         Returns a dict of the GetVersion return from the control framework. And an error message if any.
@@ -147,14 +147,14 @@ class Framework_Base():
         Returns a user credential from the control framework as a string. And an error message if any.
         """
         raise NotImplementedError('get_user_cred')
-    
+
     def get_slice_cred(self, urn):
         """
         Retrieve a slice with the given urn and returns the signed credential as a string.
         """
         raise NotImplementedError('get_slice_cred')
-    
-    def create_slice(self, urn):    
+
+    def create_slice(self, urn):
         """
         If the slice already exists in the framework, it returns that.  Otherwise it creates the slice
         and returns the new slice as a string.
@@ -314,11 +314,11 @@ class Framework_Base():
     def add_member_to_slice(self, slice_urn, member_name, role = 'MEMBER'):
         raise NotImplementedError('add_member_to_slice')
 
-    # remove a member from a slice 
+    # remove a member from a slice
     def remove_member_from_slice(self, slice_urn, member_name):
         raise NotImplementedError('remove_member_from_slice')
 
-    # Record new slivers at the CH database 
+    # Record new slivers at the CH database
     # write new sliver_info to the database using chapi
     # Manifest is the XML when using APIv1&2 and none otherwise
     # expiration is the slice expiration
@@ -353,4 +353,3 @@ class Framework_Base():
     # Compare with list_sliverinfo_urns which only returns the sliver URNs
     def list_sliver_infos_for_slice(self, slice_urn):
         return {}
-        

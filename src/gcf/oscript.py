@@ -37,7 +37,7 @@ from __future__ import absolute_import
 
     Typical usage:
     omni.py sfa listresources
-    
+
     The currently supported control frameworks (clearinghouse implementations)
     are SFA (i.e. PlanetLab), PG and GCF.
 
@@ -99,10 +99,10 @@ from __future__ import absolute_import
        [string listOfMemberDictionaries (PROJECT_MEMBER (URN), EMAIL, PROJECT_ROLE, PROJECT_MEMBER_UID)] = omni.py listprojectmembers PROJECTNAME
        [string listOfMemberDictionaries (KEYS, URN, EMAIL, ROLE)] = omni.py listslicemembers SLICENAME
        [string Boolean] = omni.py addslicemember SLICENAME USER [ROLE]
-       [string Boolean] = omni.py removeslicemember SLICENAME USER 
+       [string Boolean] = omni.py removeslicemember SLICENAME USER
 
       Other functions:
-       [string dictionary] = omni.py nicknames # List aggregate and rspec nicknames    
+       [string dictionary] = omni.py nicknames # List aggregate and rspec nicknames
        [string dictionary] = omni.py print_sliver_expirations SLICENAME
 """
 
@@ -134,8 +134,8 @@ from .omnilib.frameworks import framework_sfa
 from .omnilib.frameworks import framework_chapi
 from .gcf_version import GCF_VERSION
 
-#DEFAULT_RSPEC_LOCATION = "http://www.gpolab.bbn.com/experiment-support"               
-#DEFAULT_RSPEC_EXTENSION = "xml"                
+#DEFAULT_RSPEC_LOCATION = "http://www.gpolab.bbn.com/experiment-support"
+#DEFAULT_RSPEC_EXTENSION = "xml"
 
 def countSuccess( successList, failList ):
     """Intended to be used with 'renewsliver', 'deletesliver', and
@@ -172,7 +172,7 @@ def load_agg_nick_config(opts, logger):
 
     # Load up the config file
     configfiles = [os.path.join(parent_dir, 'agg_nick_cache.base')]
-    
+
     aggNickCacheExists = False
     # if aggNickCacheName defined on commandline exists, check it first
     if os.path.exists( opts.aggNickCacheName ):
@@ -196,10 +196,10 @@ def load_agg_nick_config(opts, logger):
 
     readConfigFile = False
     # Find the first valid config file
-    for cf in configfiles:         
+    for cf in configfiles:
         filename = os.path.expanduser(cf)
         if os.path.exists(filename):
-            config = {}       
+            config = {}
 
             # Did we find a valid config file?
             if not os.path.exists(filename):
@@ -275,7 +275,7 @@ def load_config(opts, logger, config={}, filename=None):
         filename = locate_config(opts, logger, config)
 
     logger.info("Loading config file '%s'", filename)
-    
+
     confparser = ConfigParser.RawConfigParser()
     try:
         confparser.read(filename)
@@ -288,13 +288,13 @@ def load_config(opts, logger, config={}, filename=None):
     config['omni'] = {}
     for (key,val) in confparser.items('omni'):
         config['omni'][key] = val
-        
-    # Load up the users the user wants us to see        
+
+    # Load up the users the user wants us to see
     config['users'] = []
     if 'users' in config['omni']:
         if config['omni']['users'].strip() is not '' :
             for user in config['omni']['users'].split(','):
-                if user.strip() is not '' : 
+                if user.strip() is not '' :
                     d = {}
                     for (key,val) in confparser.items(user.strip()):
                         d[key] = val
@@ -314,9 +314,9 @@ def load_config(opts, logger, config={}, filename=None):
             if temp == "":
                 continue
             if key == "default_rspec_location":
-                config['default_rspec_location'] = temp      
+                config['default_rspec_location'] = temp
             elif key == "default_rspec_extension":
-                config['default_rspec_extension'] = temp                
+                config['default_rspec_extension'] = temp
             else:
                 config['rspec_nicknames'][key] = temp
 
@@ -363,7 +363,7 @@ def load_config(opts, logger, config={}, filename=None):
     if not confparser.has_section(cf):
         logger.error("Missing framework '%s' in configuration file" % cf )
         raise OmniError, "Missing framework '%s' in configuration file" % cf
-    
+
     # Copy the control framework into a dictionary
     config['selected_framework'] = {}
     for (key,val) in confparser.items(cf):
@@ -470,7 +470,7 @@ def load_framework(config, opts):
     framework_mod = __import__('%s.omnilib.frameworks.framework_%s' % (prefix, cf_type), fromlist=['%s.omnilib.frameworks' % (prefix)])
     config['selected_framework']['logger'] = config['logger']
     framework = framework_mod.Framework(config['selected_framework'], opts)
-    return framework    
+    return framework
 
 def update_agg_nick_cache( opts, logger ):
     """Try to download the definitive version of `agg_nick_cache` and
@@ -601,8 +601,8 @@ def call(argv, options=None, verbose=False, dictLoggingConfig=None):
     not supplied, any logging config filename provided using the option --logconfig will be applied.
     Callers can control omni logs (suppressing console printing for example) using python logging.
 
-    Return is a list of 2 items: a human readable string summarizing the result 
-    (possibly an error message), and the result object (may be None on error). The result 
+    Return is a list of 2 items: a human readable string summarizing the result
+    (possibly an error message), and the result object (may be None on error). The result
     object type varies by underlying command called.
 
     Can call functions like this:
@@ -827,11 +827,11 @@ def getOptsUsed(parser, opts, logger=None):
     return nondef
 
 def API_call( framework, config, args, opts, verbose=False ):
-    """Call the function from the given args list. 
+    """Call the function from the given args list.
     Apply the options from the given optparse.Values opts argument
     If verbose, print the command and the summary.
-    Return is a list of 2 items: a human readable string summarizing the result 
-    (possibly an error message), and the result object (may be None on error). The result 
+    Return is a list of 2 items: a human readable string summarizing the result
+    (possibly an error message), and the result object (may be None on error). The result
     object type varies by underlying command called.
     """
 
@@ -874,7 +874,7 @@ def API_call( framework, config, args, opts, verbose=False ):
 #        print retItem
         logger.info( " " + "="*54 )
     # end of if verbose
-    
+
     return retVal, retItem
 
 def configure_logging(opts, dictConfig=None):
@@ -910,7 +910,7 @@ def configure_logging(opts, dictConfig=None):
     if opts.debug:
         level = logging.DEBUG
         optlevel = 'DEBUG'
-    
+
     deft = {}
 
     # Add the ability to use %(logfilename)s in the logging config
@@ -1069,7 +1069,7 @@ def getParser():
                       help="Config file name (aka `omni_config`)", metavar="FILE")
     basicgroup.add_option("-f", "--framework", default=os.getenv("GENI_FRAMEWORK", ""),
                       help="Control framework to use for creation/deletion of slices")
-    basicgroup.add_option("-r", "--project", 
+    basicgroup.add_option("-r", "--project",
                       help="Name of project. (For use with pgch framework.)")
     basicgroup.add_option("--alap", action="store_true", default=False,
                           help="Request slivers be renewed as close to the requested time as possible, instead of failing if the requested time is not possible. Default is False.")
@@ -1151,10 +1151,10 @@ def getParser():
     filegroup.add_option("--outputfile",  default=None, metavar="OUTPUT_FILENAME",
                       help="Name of file to write output to (instead of Omni picked name). '%a' will be replaced by servername, '%s' by slicename if any. Implies -o. Note that for multiple aggregates, without a '%a' in the name, only the last aggregate output will remain in the file. Will ignore -p.")
     filegroup.add_option("--usercredfile", default=os.getenv("GENI_USERCRED", None), metavar="USER_CRED_FILENAME",
-                      help="Name of user credential file to read from if it exists, or save to when running like '--usercredfile " + 
+                      help="Name of user credential file to read from if it exists, or save to when running like '--usercredfile " +
                          "myUserCred.xml -o getusercred'. Defaults to value of 'GENI_USERCRED' environment variable if defined.")
     filegroup.add_option("--slicecredfile", default=os.getenv("GENI_SLICECRED", None), metavar="SLICE_CRED_FILENAME",
-                      help="Name of slice credential file to read from if it exists, or save to when running like '--slicecredfile " + 
+                      help="Name of slice credential file to read from if it exists, or save to when running like '--slicecredfile " +
                          "mySliceCred.xml -o getslicecred mySliceName'. Defaults to value of 'GENI_SLICECRED' environment variable if defined.")
     parser.add_option_group( filegroup )
 
@@ -1221,7 +1221,7 @@ def getParser():
                       help="In AM API v2, if an AM returns a non-0 (failure) result code, raise an AMAPIError. Default is %default. For use by scripts.")
     devgroup.add_option("--maxBusyRetries", default=4, action="store", type="int",
                       help="Max times to retry AM or CH calls on getting a 'busy' error. Default: %default")
-    devgroup.add_option("--no-compress", dest='geni_compressed', 
+    devgroup.add_option("--no-compress", dest='geni_compressed',
                       default=True, action="store_false",
                       help="Do not compress returned values")
     devgroup.add_option("--abac", default=False, action="store_true",
@@ -1287,7 +1287,7 @@ def parse_args(argv, options=None, parser=None):
     try:
         indays = int(options.GetVersionCacheAge)
     except Exception, e:
-        raise OmniError, "Failed to parse GetVersionCacheAge: %s" % e 
+        raise OmniError, "Failed to parse GetVersionCacheAge: %s" % e
     options.GetVersionCacheOldestDate = datetime.datetime.utcnow() - datetime.timedelta(days=indays)
 
     options.getversionCacheName = os.path.normcase(os.path.expanduser(options.getversionCacheName))
@@ -1300,7 +1300,7 @@ def parse_args(argv, options=None, parser=None):
     try:
         indays = int(options.AggNickCacheAge)
     except Exception, e:
-        raise OmniError, "Failed to parse AggNickCacheAge: %s" % e 
+        raise OmniError, "Failed to parse AggNickCacheAge: %s" % e
     options.AggNickCacheOldestDate = datetime.datetime.utcnow() - datetime.timedelta(days=indays)
 
     options.aggNickCacheName = os.path.normcase(os.path.expanduser(options.aggNickCacheName))
