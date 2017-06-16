@@ -3,7 +3,7 @@
 from __future__ import absolute_import
 
 #----------------------------------------------------------------------
-# Copyright (c) 2012-2016 Raytheon BBN Technologies
+# Copyright (c) 2012-2017 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -80,7 +80,7 @@ class CHCallHandler(object):
     def _handle(self, args):
         if len(args) == 0:
             self._raise_omni_error('Insufficient number of arguments - Missing command to run')
-        
+
         call = args[0].lower()
         # disallow calling private methods
         if call.startswith('_'):
@@ -160,9 +160,9 @@ class CHCallHandler(object):
             aggCnt += 1
             agg_nickname = _lookupAggNick(self, urn)
             if agg_nickname:
-                pretty_result += "  Aggregate %d:\n \t%s \n \t%s \n \t%s\n" % (aggCnt, agg_nickname, urn, url) 
+                pretty_result += "  Aggregate %d:\n \t%s \n \t%s \n \t%s\n" % (aggCnt, agg_nickname, urn, url)
             else:
-                pretty_result += "  Aggregate %d:\n \t%s \n \t%s\n" % (aggCnt, urn, url) 
+                pretty_result += "  Aggregate %d:\n \t%s \n \t%s\n" % (aggCnt, urn, url)
             retVal[urn] = url
 
         # Save/print out result
@@ -217,11 +217,11 @@ class CHCallHandler(object):
                 self.logger.warn(msg + " - but continuing...")
             else:
                 self._raise_omni_error(msg)
-        
+
         (slice_cred, message) = _do_ssl(self.framework, None, "Create Slice %s" % urn, self.framework.create_slice, urn)
         if slice_cred:
             slice_exp = credutils.get_cred_exp(self.logger, slice_cred)
-            printStr = "Created slice with Name %s, URN %s, Expiration %s" % (name, urn, slice_exp) 
+            printStr = "Created slice with Name %s, URN %s, Expiration %s" % (name, urn, slice_exp)
             retVal += printStr+"\n"
             self.logger.info( printStr )
             if self.opts.api_version >= 3:
@@ -235,7 +235,7 @@ class CHCallHandler(object):
             success = urn
 
         else:
-            printStr = "Create Slice Failed for slice name %s." % (name) 
+            printStr = "Create Slice Failed for slice name %s." % (name)
             if message != "":
                 printStr += " " + message
             retVal += printStr+"\n"
@@ -244,7 +244,7 @@ class CHCallHandler(object):
             if not self.logger.isEnabledFor(logging.DEBUG):
                 self.logger.warn( "   Try re-running with --debug for more information." )
         return retVal, success
-        
+
     def renewslice(self, args):
         """Renew the slice at the clearinghouse so that the slivers can be
         renewed.
@@ -415,7 +415,8 @@ class CHCallHandler(object):
         Not supported by all frameworks.
 
         Return object is a list of structs, containing
-        PROJECT_URN, PROJECT_UID, EXPIRED, and PROJECT_ROLE. EXPIRED is a boolean.
+        PROJECT_URN, PROJECT_UID, PROJECT_EXPIRED, and PROJECT_ROLE.
+        PROJECT_EXPIRED is a boolean.
 
         Output directing options:
         -o Save result in a file
@@ -470,8 +471,8 @@ class CHCallHandler(object):
                 projectname = nameFromURN(project)
 
                 # Returning this key is non-standard..
-                if tup.has_key('EXPIRED'):
-                    exp = tup['EXPIRED']
+                if tup.has_key('PROJECT_EXPIRED'):
+                    exp = tup['PROJECT_EXPIRED']
                     if exp == True:
                         expired = True
                 if tup.has_key('PROJECT_ROLE'):
@@ -687,7 +688,7 @@ class CHCallHandler(object):
         e.g.:
           Get slice mytest credential from slice authority, save to a file:
             omni.py -o getslicecred mytest
-          
+
           Get slice mytest credential from slice authority, save to a file with prefix mystuff:
             omni.py -o -p mystuff getslicecred mytest
 
@@ -808,7 +809,7 @@ class CHCallHandler(object):
         at the clearinghouse. Note this is non-authoritative information.
         Argument: slice name or URN
         Return: String printout of slivers by aggregate, with the sliver expiration if known, AND
-        A dictionary by aggregate URN of a dictionary by sliver URN of the sliver info records, 
+        A dictionary by aggregate URN of a dictionary by sliver URN of the sliver info records,
         each of which is a dictionary possibly containing:
          - SLIVER_INFO_URN
          - SLIVER_INFO_SLICE_URN
@@ -1057,7 +1058,7 @@ class CHCallHandler(object):
 
     def removeslicemember(self, args):
         """Remove a user from a slice.
-        Args: slicename username 
+        Args: slicename username
         Return summary string and whether successful
         """
         if len(args) != 2 and len(args) != 3:
@@ -1095,4 +1096,3 @@ class CHCallHandler(object):
 
 #########
 ## Helper functions follow
-
