@@ -705,3 +705,11 @@ umass-eg2=urn:publicid:IDN+exogeni.net:umassvmsite+authority+am,https://umass-hn
 # ======
 wsu-eg=urn:publicid:IDN+exogeni.net:wsuvmsite+authority+am,https://wsu-hn.exogeni.net:11443/orca/xmlrpc
 wsu-eg2=urn:publicid:IDN+exogeni.net:wsuvmsite+authority+am,https://wsu-hn.exogeni.net:11443/orca/xmlrpc
+
+# ======
+# VCU InstaGENI
+# ======
+vcu-ig=urn:publicid:IDN+vcu.instageni.net+authority+cm,https://vcu.instageni.net:12369/protogeni/xmlrpc/am/2.0
+vcu-ig1=urn:publicid:IDN+vcu.instageni.net+authority+cm,https://vcu.instageni.net:12369/protogeni/xmlrpc/am/1.0
+vcu-ig2=urn:publicid:IDN+vcu.instageni.net+authority+cm,https://vcu.instageni.net:12369/protogeni/xmlrpc/am/2.0
+vcu-ig3=urn:publicid:IDN+vcu.instageni.net+authority+cm,https://vcu.instageni.net:12369/protogeni/xmlrpc/am/3.0
