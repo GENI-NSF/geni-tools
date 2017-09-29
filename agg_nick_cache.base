@@ -713,3 +713,11 @@ vcu-ig=urn:publicid:IDN+vcu.instageni.net+authority+cm,https://vcu.instageni.net
 vcu-ig1=urn:publicid:IDN+vcu.instageni.net+authority+cm,https://vcu.instageni.net:12369/protogeni/xmlrpc/am/1.0
 vcu-ig2=urn:publicid:IDN+vcu.instageni.net+authority+cm,https://vcu.instageni.net:12369/protogeni/xmlrpc/am/2.0
 vcu-ig3=urn:publicid:IDN+vcu.instageni.net+authority+cm,https://vcu.instageni.net:12369/protogeni/xmlrpc/am/3.0
+
+# ======
+# Virginia Tech InstaGENI
+# ======
+vt-ig=urn:publicid:IDN+instageni.arc.vt.edu+authority+cm,https://instageni.arc.vt.edu:12369/protogeni/xmlrpc/am/2.0
+vt-ig1=urn:publicid:IDN+instageni.arc.vt.edu+authority+cm,https://instageni.arc.vt.edu:12369/protogeni/xmlrpc/am/1.0
+vt-ig2=urn:publicid:IDN+instageni.arc.vt.edu+authority+cm,https://instageni.arc.vt.edu:12369/protogeni/xmlrpc/am/2.0
+vti-ig3=urn:publicid:IDN+instageni.arc.vt.edu+authority+cm,https://instageni.arc.vt.edu:12369/protogeni/xmlrpc/am/3.0
