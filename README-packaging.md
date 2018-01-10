@@ -84,6 +84,24 @@ rpmbuild -ba geni-tools.spec
 This will generate the following files:
  * The rpm: `"${HOME}"/rpmbuild/RPMS/noarch/geni-tools-2.11-1.el6.noarch.rpm`
  * The source rpm: `"${HOME}"/rpmbuild/SRPMS/geni-tools-2.11-1.el6.src.rpm`
+ 
+ ```
+ NOTE: If you have an error during the rpmbuild process, that looks like
+ + ./configure --build=x86_64-redhat-linux-gnu --host=x86_64-redhat-linux-gnu --program-prefix= --disable-dependency-tracking --prefix=/usr --exec-prefix=/usr --bindir=/usr/bin --sbindir=/usr/sbin --sysconfdir=/etc --datadir=/usr/share --includedir=/usr/include --libdir=/usr/lib64 --libexecdir=/usr/libexec --localstatedir=/var --sharedstatedir=/var/lib --mandir=/usr/share/man --infodir=/usr/share/info
+/var/tmp/rpm-tmp.vO7CvR: line 39: ./configure: No such file or directory
+error: Bad exit status from /var/tmp/rpm-tmp.vO7CvR (%build)
+
+It could be due to a missing "configure" script in the tar.gz file. You will have to first
+cd "${HOME}"
+VERSION=2.11
+tar zxf geni-tools-${VERSION}.tar.gz
+cd "${HOME}"/geni-tools-${VERSION}
+./autogen.sh
+cd "${HOME}"
+tar czf geni-tools-${VERSION}.tar.gz geni-tools-${VERSION}
+
+Use this newly generated tar file, copy/move the tar file as done before and redo the rpmbuild steps again.  
+ ```
 
 # Creating a yum repository
 
