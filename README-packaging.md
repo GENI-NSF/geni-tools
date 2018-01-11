@@ -69,6 +69,21 @@ rpmdev-setuptree
 Download the geni-tools tar file. Check for the file on the releases tab at
 the [GitHub project page](https://github.com/GENI-NSF/geni-tools).
 
+Alternatively, instead of downloading the geni-tools tar file, you can create
+it as follows:
+
+```
+git clone https://github.com/GENI-NSF/geni-tools.git
+cd geni-tools
+
+# Optionally checkout a branch other than the default
+
+./autogen.sh
+./configure
+make dist
+
+```
+
 Once the tar file has been downloaded,
 follow these steps to build the package:
 
