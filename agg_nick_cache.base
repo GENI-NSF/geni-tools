@@ -113,15 +113,6 @@ renci-eg-of2=urn:publicid:IDN+openflow:foam:rci-hn.exogeni.net+authority+am,http
 eg-sm=urn:publicid:IDN+exogeni.net+authority+am,https://geni.renci.org:11443/orca/xmlrpc
 
 # InstaGENI AMs
-ig-utah=urn:publicid:IDN+utah.geniracks.net+authority+cm,https://boss.utah.geniracks.net:12369/protogeni/xmlrpc/am/2.0
-ig-utah1=urn:publicid:IDN+utah.geniracks.net+authority+cm,https://boss.utah.geniracks.net:12369/protogeni/xmlrpc/am/1.0
-ig-utah2=urn:publicid:IDN+utah.geniracks.net+authority+cm,https://boss.utah.geniracks.net:12369/protogeni/xmlrpc/am/2.0
-ig-utah3=urn:publicid:IDN+utah.geniracks.net+authority+cm,https://boss.utah.geniracks.net:12369/protogeni/xmlrpc/am/3.0
-utah-ig=urn:publicid:IDN+utah.geniracks.net+authority+cm,https://boss.utah.geniracks.net:12369/protogeni/xmlrpc/am/2.0
-utah1-ig=urn:publicid:IDN+utah.geniracks.net+authority+cm,https://boss.utah.geniracks.net:12369/protogeni/xmlrpc/am/1.0
-utah2-ig=urn:publicid:IDN+utah.geniracks.net+authority+cm,https://boss.utah.geniracks.net:12369/protogeni/xmlrpc/am/2.0
-utah3-ig=urn:publicid:IDN+utah.geniracks.net+authority+cm,https://boss.utah.geniracks.net:12369/protogeni/xmlrpc/am/3.0
-
 gpo-ig=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
 gpo1-ig=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/1.0
 gpo2-ig=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
@@ -721,3 +712,20 @@ vt-ig=urn:publicid:IDN+instageni.arc.vt.edu+authority+cm,https://instageni.arc.v
 vt-ig1=urn:publicid:IDN+instageni.arc.vt.edu+authority+cm,https://instageni.arc.vt.edu:12369/protogeni/xmlrpc/am/1.0
 vt-ig2=urn:publicid:IDN+instageni.arc.vt.edu+authority+cm,https://instageni.arc.vt.edu:12369/protogeni/xmlrpc/am/2.0
 vti-ig3=urn:publicid:IDN+instageni.arc.vt.edu+authority+cm,https://instageni.arc.vt.edu:12369/protogeni/xmlrpc/am/3.0
+
+# ======
+# Ohio State University InstaGENI
+# ======
+osu-ig=urn:publicid:IDN+instageni.osu.edu+authority+cm,https://instageni.osu.edu:12369/protogeni/xmlrpc/am/2.0
+osu-ig1=urn:publicid:IDN+instageni.osu.edu+authority+cm,https://instageni.osu.edu:12369/protogeni/xmlrpc/am/1.0
+osu-ig2=urn:publicid:IDN+instageni.osu.edu+authority+cm,https://instageni.osu.edu:12369/protogeni/xmlrpc/am/2.0
+osu-ig3=urn:publicid:IDN+instageni.osu.edu+authority+cm,https://instageni.osu.edu:12369/protogeni/xmlrpc/am/3.0
+
+
+# ======
+# Old Dominion University InstaGENI
+# ======
+odu-ig=urn:publicid:IDN+instageni.odu.edu+authority+cm,https://instageni.odu.edu:12369/protogeni/xmlrpc/am/2.0
+odu-ig1=urn:publicid:IDN+instageni.odu.edu+authority+cm,https://instageni.odu.edu:12369/protogeni/xmlrpc/am/1.0
+odu-ig2=urn:publicid:IDN+instageni.odu.edu+authority+cm,https://instageni.odu.edu:12369/protogeni/xmlrpc/am/2.0
+odu-ig3=urn:publicid:IDN+instageni.odu.edu+authority+cm,https://instageni.odu.edu:12369/protogeni/xmlrpc/am/3.0
