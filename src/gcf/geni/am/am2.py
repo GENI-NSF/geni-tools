@@ -854,7 +854,8 @@ class AggregateManagerServer(object):
                  trust_roots_dir=None,
                  ca_certs=None, base_name=None,
                  authorizer=None, resource_manager=None,
-                 delegate=None):
+                 delegate=None,
+                 custom_request_handler_class = None):
         # ca_certs arg here must be a file of concatenated certs
         if ca_certs is None:
             raise Exception('Missing CA Certs')
@@ -867,8 +868,12 @@ class AggregateManagerServer(object):
             delegate = ReferenceAggregateManager(trust_roots_dir, base_name, 
                                                  server_url)
         # FIXME: set logRequests=true if --debug
-        self._server = SecureXMLRPCServer(addr, keyfile=keyfile,
-                                          certfile=certfile, ca_certs=ca_certs)
+        if custom_request_handler_class is not None:
+            self._server = SecureXMLRPCServer(addr, requestHandler=custom_request_handler_class, keyfile=keyfile,
+                                              certfile=certfile, ca_certs=ca_certs)
+        else:
+            self._server = SecureXMLRPCServer(addr, keyfile=keyfile,
+                                              certfile=certfile, ca_certs=ca_certs)
         aggregate_manager = AggregateManager(trust_roots_dir, delegate, 
                                              authorizer, resource_manager)
         self._server.register_instance(aggregate_manager)

@@ -182,6 +182,12 @@ def main(argv=None):
     # certs possibly concatenated together
     comboCertsFile = geni.CredentialVerifier.getCAsFileFromDir(getAbsPath(opts.rootcadir))
 
+    try:
+        custom_request_handler_class = delegate.custom_request_handler_class
+    except AttributeError:
+        # no custom request handler
+        custom_request_handler_class = None
+
     if opts.api_version == 1:
         # rootcadir is dir of multiple certificates
         delegate = geni.ReferenceAggregateManager(getAbsPath(opts.rootcadir))
@@ -200,7 +206,8 @@ def main(argv=None):
                                                      base_name=config['global']['base_name'], 
                                                      authorizer=authorizer,
                                                      resource_manager=resource_manager,
-                                                     delegate=delegate)
+                                                     delegate=delegate,
+                                                     custom_request_handler_class = custom_request_handler_class)
     elif opts.api_version == 3:
         ams = gcf.geni.am.am3.AggregateManagerServer((opts.host, int(opts.port)),
                                                      keyfile=keyfile,
@@ -210,7 +217,8 @@ def main(argv=None):
                                                      base_name=config['global']['base_name'],
                                                      authorizer=authorizer,
                                                      resource_manager=resource_manager,
-                                                     delegate=delegate, multithread=multithread)
+                                                     delegate=delegate, multithread=multithread,
+                                                     custom_request_handler_class = custom_request_handler_class)
     else:
         msg = "Unknown API version: %d. Valid choices are \"1\", \"2\", or \"3\""
         sys.exit(msg % (opts.api_version))
