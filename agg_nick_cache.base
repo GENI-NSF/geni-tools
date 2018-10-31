@@ -159,14 +159,6 @@ northwestern2-ig=urn:publicid:IDN+instageni.northwestern.edu+authority+cm,https:
 northwestern3-ig=urn:publicid:IDN+instageni.northwestern.edu+authority+cm,https://instageni.northwestern.edu:12369/protogeni/xmlrpc/am/3.0
 
 # ============================================
-# Utah Downtown Data Center InstaGENI Rack
-# ============================================
-utahddc-ig=urn:publicid:IDN+utahddc.geniracks.net+authority+cm,https://boss.utahddc.geniracks.net:12369/protogeni/xmlrpc/am/2.0
-utahddc-ig1=urn:publicid:IDN+utahddc.geniracks.net+authority+cm,https://boss.utahddc.geniracks.net:12369/protogeni/xmlrpc/am/1.0
-utahddc-ig2=urn:publicid:IDN+utahddc.geniracks.net+authority+cm,https://boss.utahddc.geniracks.net:12369/protogeni/xmlrpc/am/2.0
-utahddc-ig3=urn:publicid:IDN+utahddc.geniracks.net+authority+cm,https://boss.utahddc.geniracks.net:12369/protogeni/xmlrpc/am/3.0
-
-# ============================================
 # Georgia Tech InstaGENI Rack
 # ============================================
 gatech-ig=urn:publicid:IDN+instageni.rnoc.gatech.edu+authority+cm,https://instageni.rnoc.gatech.edu:12369/protogeni/xmlrpc/am/2.0
