@@ -391,6 +391,16 @@ sl-eg-of1=urn:publicid:IDN+openflow:foam:sl-hn.exogeni.net+authority+am,https://
 sl-eg-of2=urn:publicid:IDN+openflow:foam:sl-hn.exogeni.net+authority+am,https://sl-hn.exogeni.net:3626/foam/gapi/2
 
 # ======
+# LAT ExoGENI
+# ======
+lat-eg=urn:publicid:IDN+exogeni.net:latvmsite+authority+am,https://lat-hn.exogeni.net:11443/orca/xmlrpc
+lat-eg2=urn:publicid:IDN+exogeni.net:latvmsite+authority+am,https://lat-hn.exogeni.net:11443/orca/xmlrpc
+lat-eg-of=urn:publicid:IDN+openflow:foam:lat-hn.exogeni.net+authority+am,https://lat-hn.exogeni.net:3626/foam/gapi/2
+lat-eg-of1=urn:publicid:IDN+openflow:foam:lat-hn.exogeni.net+authority+am,https://lat-hn.exogeni.net:3626/foam/gapi/1
+lat-eg-of2=urn:publicid:IDN+openflow:foam:lat-hn.exogeni.net+authority+am,https://lat-hn.exogeni.net:3626/foam/gapi/2
+
+
+# ======
 # U of Florida ExoGENI
 # ======
 ufl-eg=urn:publicid:IDN+exogeni.net:uflvmsite+authority+am,https://ufl-hn.exogeni.net:11443/orca/xmlrpc
