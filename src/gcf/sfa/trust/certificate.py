@@ -544,7 +544,8 @@ class Certificate:
             self.add_extension('basicConstraints', 1, 'CA:TRUE')
         else:
             self.add_extension('basicConstraints', 1, 'CA:FALSE')
-
+            self.add_extension('extendedKeyUsage', 0, 'serverAuth,clientAuth,timeStamping,emailProtection,codeSigning')
+            # Adding the EKU here assuming these are user/slice certificates where CA=False
 
 
     ##
