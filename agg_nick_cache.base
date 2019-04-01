@@ -11,10 +11,10 @@
 # URL for the SCS server
 # May be over-ridden using the commandline option --scsURL
 # 1/5/2019: Use the SCS run by Tom and Xi's Team at MAX under the geni.net domain
-scs_url=https//scs.geni.net:8081/geni/xmlrpc
+scs_url=http//scs.geni.net:8081/geni/xmlrpc
 # Portal runs python2.6 which doesn't respect the connection closed vs keep-alive that the SCS uses
 # So use the non SSL connection
-#scs_url=http://geni-scs.net.internet2.edu:8081/geni/xmlrpc
+#scs_url=https://geni-scs.net.internet2.edu:8081/geni/xmlrpc
 
 # Default initial sliver expiration times
 # done by aggregate type / category
