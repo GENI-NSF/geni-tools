@@ -153,13 +153,34 @@ def main(argv=None):
         resource_manager = \
             getInstanceFromClassname(opts.authorizer_resource_manager)
 
+    # by default, the agregate manager will expect to be reached through https protocol
+    # and handle the tls client authentication itself but the python classes used to do
+    # this are not suitable for production use (as per python's doc).
+    # Therefore allow for the server to sit behind an apache (or other) frontend doing the
+    # tls client authentification and only see requests that are forwarded to it, with the
+    # authenticated client certificate sent to it as an http header
+    proto = 'https'
+    if hasattr(opts, 'proto') and opts.proto is not None and str(opts.proto).strip() != "":
+        if str(opts.proto).strip().lower() == "http":
+            proto = 'http'
+        elif str(opts.proto).strip().lower() == "https":
+            proto = 'https'
+        else:
+            proto = 'https'
+            logging.getLogger('gcf-am').warning("Invalid argument for 'proto', set default : https")
+
+    certheader='X-Geni-Client-Cert'
+    if proto is 'http':
+        if hasattr(opts, 'certheader') and opts.certheader is not None and str(opts.certheader).strip() != "":
+            certheader=str(opts.certheader).strip()
+
     delegate=None
     if hasattr(opts, 'delegate') and opts.delegate is not None and str(opts.delegate).strip() != "":
         try:
             delegate = getInstanceFromClassname(opts.delegate, 
                                                 getAbsPath(opts.rootcadir), 
                                                 config['global']['base_name'],
-                                                "https://%s:%d/" % (opts.host, int(opts.port)),
+                                                "%s://%s:%d/" % (proto, opts.host, int(opts.port)),
                                                 **vars(opts)
                                             )
         except AttributeError, e:
@@ -210,7 +231,8 @@ def main(argv=None):
                                                      base_name=config['global']['base_name'],
                                                      authorizer=authorizer,
                                                      resource_manager=resource_manager,
-                                                     delegate=delegate, multithread=multithread)
+                                                     delegate=delegate, multithread=multithread,
+                                                     proto=proto, certheader=certheader)
     else:
         msg = "Unknown API version: %d. Valid choices are \"1\", \"2\", or \"3\""
         sys.exit(msg % (opts.api_version))

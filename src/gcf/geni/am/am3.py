@@ -53,6 +53,7 @@ from ... import geni
 from ..util.tz_util import tzd
 from ..util.urn_util import publicid_to_urn
 from ..util import urn_util as urn
+from ..XMLRPCServer import XMLRPCServer
 from ..SecureXMLRPCServer import SecureXMLRPCServer
 from ..SecureThreadedXMLRPCServer import SecureThreadedXMLRPCServer
 
@@ -1387,29 +1388,37 @@ class AggregateManagerServer(object):
                  trust_roots_dir=None,
                  ca_certs=None, base_name=None,
                  authorizer=None, resource_manager=None,
-                 delegate=None, multithread=False):
-        # ca_certs arg here must be a file of concatenated certs
-        if ca_certs is None:
-            raise Exception('Missing CA Certs')
-        elif not os.path.isfile(os.path.expanduser(ca_certs)):
-            raise Exception('CA Certs must be an existing file of accepted root certs: %s' % ca_certs)
+                 delegate=None, multithread=False,
+                 proto='https', certheader=None):
+        use_https=proto=='https'
+        if use_https:
+            # ca_certs arg here must be a file of concatenated certs
+            if ca_certs is None:
+                raise Exception('Missing CA Certs')
+            elif not os.path.isfile(os.path.expanduser(ca_certs)):
+                raise Exception('CA Certs must be an existing file of accepted root certs: %s' % ca_certs)
 
         # Decode the addr into a URL. Is there a pythonic way to do this?
-        server_url = "https://%s:%d/" % addr
+        server_url = "%s://%s:%d/" % (proto, addr[0], addr[1])
         if delegate is None:
             delegate = ReferenceAggregateManager(trust_roots_dir, base_name,
                                                  server_url)
 
         # FIXED: set logRequests=true if --debug
         logRequest=logging.getLogger().getEffectiveLevel()==logging.DEBUG
-        if multithread:
+        if multithread and use_https:
             self._server = SecureThreadedXMLRPCServer(addr, keyfile=keyfile,
                                           certfile=certfile, ca_certs=ca_certs, 
                                           logRequests=logRequest)
-        else:
+        elif not multithread and use_https:
             self._server = SecureXMLRPCServer(addr, keyfile=keyfile,
                                           certfile=certfile, ca_certs=ca_certs, 
                                           logRequests=logRequest)
+        else:
+            self._server = XMLRPCServer(addr,
+                                        logRequests=logRequest,
+                                        certheader=certheader)
+
         aggregate_manager = AggregateManager(trust_roots_dir, delegate, 
                                              authorizer, resource_manager)
         self._server.register_instance(aggregate_manager)
