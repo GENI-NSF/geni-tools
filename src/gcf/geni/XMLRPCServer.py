@@ -53,6 +53,7 @@ class XMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
     """
 
     def parse_request(self):
+        parse_success=True
         SimpleXMLRPCRequestHandler.parse_request(self)
         client_cert_string=self.headers.get(self.server.certheader_name, "")
         # going through headers in python loose end of line caraters
@@ -63,6 +64,7 @@ class XMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
 
         if client_cert_string is "":
             self.server.pem_cert = None
+            parse_success=False
             self.send_error(400, "Bad request - client cert required")
         else:
             self.server.pem_cert = client_cert_string
@@ -70,7 +72,7 @@ class XMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
         if self.server.logRequests:
             client_cert=Certificate(string=client_cert_string)
             self.log_message("Got call from client cert: %s", client_cert.get_printable_subject())
-        return True
+        return parse_success
 
 
 
