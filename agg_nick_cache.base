@@ -394,10 +394,8 @@ sl-eg-of2=urn:publicid:IDN+openflow:foam:sl-hn.exogeni.net+authority+am,https://
 # LAT ExoGENI
 # ======
 lat-eg=urn:publicid:IDN+exogeni.net:latvmsite+authority+am,https://lat-hn.exogeni.net:11443/orca/xmlrpc
-lat-eg2=urn:publicid:IDN+exogeni.net:latvmsite+authority+am,https://lat-hn.exogeni.net:11443/orca/xmlrpc
-lat-eg-of=urn:publicid:IDN+openflow:foam:lat-hn.exogeni.net+authority+am,https://lat-hn.exogeni.net:3626/foam/gapi/2
-lat-eg-of1=urn:publicid:IDN+openflow:foam:lat-hn.exogeni.net+authority+am,https://lat-hn.exogeni.net:3626/foam/gapi/1
-lat-eg-of2=urn:publicid:IDN+openflow:foam:lat-hn.exogeni.net+authority+am,https://lat-hn.exogeni.net:3626/foam/gapi/2
+eg-lat=urn:publicid:IDN+exogeni.net:latvmsite+authority+am,https://lat-hn.exogeni.net:11443/orca/xmlrpc
+
 
 
 # ======
@@ -731,3 +729,17 @@ odu-ig=urn:publicid:IDN+instageni.odu.edu+authority+cm,https://instageni.odu.edu
 odu-ig1=urn:publicid:IDN+instageni.odu.edu+authority+cm,https://instageni.odu.edu:12369/protogeni/xmlrpc/am/1.0
 odu-ig2=urn:publicid:IDN+instageni.odu.edu+authority+cm,https://instageni.odu.edu:12369/protogeni/xmlrpc/am/2.0
 odu-ig3=urn:publicid:IDN+instageni.odu.edu+authority+cm,https://instageni.odu.edu:12369/protogeni/xmlrpc/am/3.0
+
+# ====
+# MAKI Protogeni
+# ====
+maki-pg=urn:publicid:IDN+maki02.maki.e-technik.tu-darmstadt.de+authority+cm,https://maki02.maki.e-technik.tu-darmstadt.de:12369/protogeni/xmlrpc/am/2.0
+maki-pg1=urn:publicid:IDN+maki02.maki.e-technik.tu-darmstadt.de+authority+cm,https://maki02.maki.e-technik.tu-darmstadt.de:12369/protogeni/xmlrpc/am/1.0
+maki-pg2=urn:publicid:IDN+maki02.maki.e-technik.tu-darmstadt.de,https://maki02.maki.e-technik.tu-darmstadt.de:12369/protogeni/xmlrpc/am/2.0
+maki-pg3=urn:publicid:IDN+maki02.maki.e-technik.tu-darmstadt.de+authority+cm,https://maki02.maki.e-technik.tu-darmstadt.de:12369/protogeni/xmlrpc/am/3.0
+
+# ====
+# NCSU ExoGENI
+# ====
+ncsu-eg=urn:publicid:IDN+exogeni.net:ncsuvmsite+authority+am,https://ncsu-hn.exogeni.net:11443/orca/xmlrpc
+eg-ncsu=urn:publicid:IDN+exogeni.net:ncsuvmsite+authority+am,https://ncsu-hn.exogeni.net:11443/orca/xmlrpc
