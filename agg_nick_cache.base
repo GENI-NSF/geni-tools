@@ -733,10 +733,10 @@ odu-ig3=urn:publicid:IDN+instageni.odu.edu+authority+cm,https://instageni.odu.ed
 # ====
 # MAKI Protogeni
 # ====
-maki-pg=urn:publicid:IDN+maki02.maki.e-technik.tu-darmstadt.de+authority+cm,https://maki02.maki.e-technik.tu-darmstadt.de:12369/protogeni/xmlrpc/am/2.0
-maki-pg1=urn:publicid:IDN+maki02.maki.e-technik.tu-darmstadt.de+authority+cm,https://maki02.maki.e-technik.tu-darmstadt.de:12369/protogeni/xmlrpc/am/1.0
-maki-pg2=urn:publicid:IDN+maki02.maki.e-technik.tu-darmstadt.de,https://maki02.maki.e-technik.tu-darmstadt.de:12369/protogeni/xmlrpc/am/2.0
-maki-pg3=urn:publicid:IDN+maki02.maki.e-technik.tu-darmstadt.de+authority+cm,https://maki02.maki.e-technik.tu-darmstadt.de:12369/protogeni/xmlrpc/am/3.0
+maki-pg=urn:publicid:IDN+maki.e-technik.tu-darmstadt.de+authority+cm,https://maki02.maki.e-technik.tu-darmstadt.de:12369/protogeni/xmlrpc/am/2.0
+maki-pg1=urn:publicid:IDN+maki.e-technik.tu-darmstadt.de+authority+cm,https://maki02.maki.e-technik.tu-darmstadt.de:12369/protogeni/xmlrpc/am/1.0
+maki-pg2=urn:publicid:IDN+maki.e-technik.tu-darmstadt.de+authority+cm,https://maki02.maki.e-technik.tu-darmstadt.de:12369/protogeni/xmlrpc/am/2.0
+maki-pg3=urn:publicid:IDN+maki.e-technik.tu-darmstadt.de+authority+cm,https://maki02.maki.e-technik.tu-darmstadt.de:12369/protogeni/xmlrpc/am/3.0
 
 # ====
 # NCSU ExoGENI
