@@ -24,6 +24,7 @@
 from __future__ import absolute_import
 
 import os
+import logging
 import traceback
 
 from ...sfa.trust.gid import GID
@@ -157,11 +158,16 @@ class AMMethodContext:
             self._logger.exception("AM API Error in %s" % self._method_name)
             self._result=self._api_error(value);
         elif type:
-            self._logger.error("Generic Error in %s" % self._method_name)
+            self._logger.error("Generic Error of type %s in %s" % (str(type),self._method_name))
             self._handleError(value)
 
-        self._logger.info("Result from %s: %s", self._method_name, 
-                          self._result)
+        if self._logger.isEnabledFor(logging.DEBUG):
+            self._logger.info("Result from %s: %s", self._method_name,
+                              self._result)
+        else:
+            self._logger.info("Result from %s: %s... (turn on debug to get all the output)",
+                              self._method_name,
+                              str(self._result)[0:800])
 
     # Return a GENI_style error return for given exception/traceback
     def _errorReturn(self, e):
