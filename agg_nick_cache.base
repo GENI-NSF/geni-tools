@@ -112,25 +112,29 @@ renci-eg-of2=urn:publicid:IDN+openflow:foam:rci-hn.exogeni.net+authority+am,http
 # ExoSM
 eg-sm=urn:publicid:IDN+exogeni.net+authority+am,https://geni.renci.org:11443/orca/xmlrpc
 
-# InstaGENI AMs
-gpo-ig=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
-gpo1-ig=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/1.0
-gpo2-ig=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
-gpo3-ig=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/3.0
-ig-gpo=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
-ig-gpo1=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/1.0
-ig-gpo2=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
-ig-gpo3=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/3.0
-ig-bbn=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
-ig-bbn1=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/1.0
-ig-bbn2=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
-ig-bbn3=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/3.0
+# ============================================
+# GPO InstaGENI Rack
+# ============================================
+gpo-ig=urn:publicid:IDN+bbn.instageni.net+authority+cm,https://boss.bbn.instageni.net:12369/protogeni/xmlrpc/am/2.0
+gpo1-ig=urn:publicid:IDN+bbn.instageni.net+authority+cm,https://boss.bbn.instageni.net:12369/protogeni/xmlrpc/am/1.0
+gpo2-ig=urn:publicid:IDN+bbn.instageni.net+authority+cm,https://boss.bbn.instageni.net:12369/protogeni/xmlrpc/am/2.0
+gpo3-ig=urn:publicid:IDN+bbn.instageni.net+authority+cm,https://boss.bbn.instageni.net:12369/protogeni/xmlrpc/am/3.0
+ig-gpo=urn:publicid:IDN+bbn.instageni.net+authority+cm,https://boss.bbn.instageni.net:12369/protogeni/xmlrpc/am/2.0
+ig-gpo1=urn:publicid:IDN+bbn.instageni.net+authority+cm,https://boss.bbn.instageni.net:12369/protogeni/xmlrpc/am/1.0
+ig-gpo2=urn:publicid:IDN+bbn.instageni.net+authority+cm,https://boss.bbn.instageni.net:12369/protogeni/xmlrpc/am/2.0
+ig-gpo3=urn:publicid:IDN+bbn.instageni.net+authority+cm,https://boss.bbn.instageni.net:12369/protogeni/xmlrpc/am/3.0
+ig-bbn=urn:publicid:IDN+bbn.instageni.net+authority+cm,https://boss.bbn.instageni.net:12369/protogeni/xmlrpc/am/2.0
+ig-bbn1=urn:publicid:IDN+bbn.instageni.net+authority+cm,https://boss.bbn.instageni.net:12369/protogeni/xmlrpc/am/1.0
+ig-bbn2=urn:publicid:IDN+bbn.instageni.net+authority+cm,https://boss.bbn.instageni.net:12369/protogeni/xmlrpc/am/2.0
+ig-bbn3=urn:publicid:IDN+bbn.instageni.net+authority+cm,https://boss.bbn.instageni.net:12369/protogeni/xmlrpc/am/3.0
 
+# ============================================
+# Kentucky InstaGENI Rack
+# ============================================
 ig-ky=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
 ig-ky1=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/1.0
 ig-ky2=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
 ig-ky3=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/3.0
-
 ig-uky=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
 ig-uky1=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/1.0
 ig-uky2=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
@@ -140,6 +144,9 @@ uky1-ig=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.e
 uky2-ig=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
 uky3-ig=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/3.0
 
+# ============================================
+# Kettering InstaGENI Rack
+# ============================================
 ig-kettering=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kettering.edu:12369/protogeni/xmlrpc/am
 ig-kettering1=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kettering.edu:12369/protogeni/xmlrpc/am/1.0
 ig-kettering2=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kettering.edu:12369/protogeni/xmlrpc/am/2.0
@@ -149,6 +156,9 @@ kettering1-ig=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kett
 kettering2-ig=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kettering.edu:12369/protogeni/xmlrpc/am/2.0
 kettering3-ig=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kettering.edu:12369/protogeni/xmlrpc/am/3.0
 
+# ============================================
+# Northwestern InstaGENI Rack
+# ============================================
 ig-northwestern=urn:publicid:IDN+instageni.northwestern.edu+authority+cm,https://instageni.northwestern.edu:12369/protogeni/xmlrpc/am
 ig-northwestern1=urn:publicid:IDN+instageni.northwestern.edu+authority+cm,https://instageni.northwestern.edu:12369/protogeni/xmlrpc/am/1.0
 ig-northwestern2=urn:publicid:IDN+instageni.northwestern.edu+authority+cm,https://instageni.northwestern.edu:12369/protogeni/xmlrpc/am/2.0
