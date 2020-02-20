@@ -383,15 +383,6 @@ ucla-ig2=urn:publicid:IDN+instageni.idre.ucla.edu+authority+cm,https://instageni
 ucla-ig3=urn:publicid:IDN+instageni.idre.ucla.edu+authority+cm,https://instageni.idre.ucla.edu:12369/protogeni/xmlrpc/am/3.0
 
 # ======
-# Oakland Scientific Facility (OSF) ExoGENI
-# ======
-osf-eg=urn:publicid:IDN+exogeni.net:osfvmsite+authority+am,https://osf-hn.exogeni.net:11443/orca/xmlrpc
-osf-eg2=urn:publicid:IDN+exogeni.net:osfvmsite+authority+am,https://osf-hn.exogeni.net:11443/orca/xmlrpc
-osf-eg-of=urn:publicid:IDN+openflow:foam:osf-hn.exogeni.net+authority+am,https://osf-hn.exogeni.net:3626/foam/gapi/2
-osf-eg-of1=urn:publicid:IDN+openflow:foam:osf-hn.exogeni.net+authority+am,https://osf-hn.exogeni.net:3626/foam/gapi/1
-osf-eg-of2=urn:publicid:IDN+openflow:foam:osf-hn.exogeni.net+authority+am,https://osf-hn.exogeni.net:3626/foam/gapi/2
-
-# ======
 # Starlight ExoGENI
 # ======
 sl-eg=urn:publicid:IDN+exogeni.net:slvmsite+authority+am,https://sl-hn.exogeni.net:11443/orca/xmlrpc
@@ -416,20 +407,6 @@ ufl-eg2=urn:publicid:IDN+exogeni.net:uflvmsite+authority+am,https://ufl-hn.exoge
 ufl-eg-of=urn:publicid:IDN+openflow:foam:ufl-hn.exogeni.net+authority+am,https://ufl-hn.exogeni.net:3626/foam/gapi/2
 ufl-eg-of1=urn:publicid:IDN+openflow:foam:ufl-hn.exogeni.net+authority+am,https://ufl-hn.exogeni.net:3626/foam/gapi/1
 ufl-eg-of2=urn:publicid:IDN+openflow:foam:ufl-hn.exogeni.net+authority+am,https://ufl-hn.exogeni.net:3626/foam/gapi/2
-
-# ======
-# Clemson GRAM / OpenGENI
-# ======
-clemson-og=urn:publicid:IDN+clemson-clemson-control-1.clemson.edu+authority+am,https://clemson-clemson-control-1.clemson.edu:5002
-clemson-og2=urn:publicid:IDN+clemson-clemson-control-1.clemson.edu+authority+am,https://clemson-clemson-control-1.clemson.edu:5002
-clemson-og3=urn:publicid:IDN+clemson-clemson-control-1.clemson.edu+authority+am,https://clemson-clemson-control-1.clemson.edu:5001/
-
-# ======
-# GPO GRAM / OpenGENI
-# ======
-gpo-og=urn:publicid:IDN+bbn-cam-ctrl-1.gpolab.bbn.com+authority+am,https://bbn-cam-ctrl-1.gpolab.bbn.com:5002
-gpo-og2=urn:publicid:IDN+bbn-cam-ctrl-1.gpolab.bbn.com+authority+am,https://bbn-cam-ctrl-1.gpolab.bbn.com:5002
-gpo-og3=urn:publicid:IDN+bbn-cam-ctrl-1.gpolab.bbn.com+authority+am,https://bbn-cam-ctrl-1.gpolab.bbn.com:5001/
 
 # January, 2015
 # ======
@@ -501,12 +478,6 @@ im-vw2=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ila
 im-vw2-1=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/1.0
 im-vw2-2=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
 im-vw2-3=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/3.0
-
-# ====
-# NICTA ExoGENI
-# ====
-nicta-eg=urn:publicid:IDN+exogeni.net:nictavmsite+authority+am,https://nicta-hn.exogeni.net:11443/orca/xmlrpc
-nicta-eg2=urn:publicid:IDN+exogeni.net:nictavmsite+authority+am,https://nicta-hn.exogeni.net:11443/orca/xmlrpc
 
 # ======
 # West Virginia Network (WV Net) ExoGENI
@@ -601,16 +572,6 @@ im-wilab=urn:publicid:IDN+wilab2.ilabt.iminds.be+authority+cm,https://www.wilab2
 im-wilab1=urn:publicid:IDN+wilab2.ilabt.iminds.be+authority+cm,https://www.wilab2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/1.0
 im-wilab2=urn:publicid:IDN+wilab2.ilabt.iminds.be+authority+cm,https://www.wilab2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
 im-wilab3=urn:publicid:IDN+wilab2.ilabt.iminds.be+authority+cm,https://www.wilab2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/3.0
-
-# ======
-# Kaiserslautern (UKL) OpenGENI
-# ======
-ukl-og=urn:publicid:IDN+glab077.e4.ukl.german-lab.de:gcf+authority+am,https://glab077.e4.ukl.german-lab.de:5002
-ukl-og2=urn:publicid:IDN+glab077.e4.ukl.german-lab.de:gcf+authority+am,https://glab077.e4.ukl.german-lab.de:5002
-ukl-og3=urn:publicid:IDN+glab077.e4.ukl.german-lab.de:gcf+authority+am,https://glab077.e4.ukl.german-lab.de:5001
-kaiserslautern-og=urn:publicid:IDN+glab077.e4.ukl.german-lab.de:gcf+authority+am,https://glab077.e4.ukl.german-lab.de:5002
-kaiserslautern-og2=urn:publicid:IDN+glab077.e4.ukl.german-lab.de:gcf+authority+am,https://glab077.e4.ukl.german-lab.de:5002
-kaiserslautern-og3=urn:publicid:IDN+glab077.e4.ukl.german-lab.de:gcf+authority+am,https://glab077.e4.ukl.german-lab.de:5001
 
 # =====
 # University of Michigan InstaGENI
