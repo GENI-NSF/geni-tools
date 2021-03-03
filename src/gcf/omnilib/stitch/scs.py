@@ -99,7 +99,7 @@ class Service(object):
 
         # As a sample of how to do make_client specifying the SSL version / ciphers (these are the defaults though):
 #        import ssl
-#        server = make_client(self.url, keyfile=self.key, certfile=self.cert, verbose=self.verbose, timeout=self.timeout, ssl_version=ssl.PROTOCOL_TLSv1, ciphers="HIGH:MEDIUM:!ADH:!SSLv2:!MD5:!RC4:@STRENGTH")
+#        server = make_client(self.url, keyfile=self.key, certfile=self.cert, verbose=self.verbose, timeout=self.timeout, ssl_version=ssl.PROTOCOL_TLS, ciphers="HIGH:MEDIUM:!ADH:!SSLv2:!MD5:!RC4:@STRENGTH")
 
         try:
             result = server.GetVersion()

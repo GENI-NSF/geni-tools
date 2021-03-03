@@ -97,8 +97,8 @@ class SecureXMLRPCServer(SimpleXMLRPCServer):
                                       certfile=certfile,
                                       server_side=True,
                                       cert_reqs=ssl.CERT_REQUIRED,
-#                                      ssl_version=ssl.PROTOCOL_TLSv1,
-                                      ssl_version=ssl.PROTOCOL_SSLv23, # Ideally we'd accept any TLS but no SSL. Sigh.
+                                      ssl_version=ssl.PROTOCOL_TLS,
+#                                      ssl_version=ssl.PROTOCOL_SSLv23, # Ideally we'd accept any TLS but no SSL. Sigh.
                                       ca_certs=ca_certs)
 #                                      ciphers='HIGH:MEDIUM:!ADH:!SSLv2:!MD5:!RC4:@STRENGTH') # Hopefully this effectively excludes SSLv2 and 3?
         if bind_and_activate:

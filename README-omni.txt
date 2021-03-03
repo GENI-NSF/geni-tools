@@ -40,6 +40,9 @@ For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: https://github.com/GENI-NSF/geni-tools/wiki/Omni
 
 == Release Notes ==
+New in v2.11
+ * Due to the chnages in the underlying OpenSSL versions some minor changes to SSL protocol versions were implemented.
+   These changes were needed to make omni run on newer Operating Systems using the updated OpenSSL version
 
 New in v2.10:
  * Continue anyway if no aggregate nickname cache can be loaded. (#822)
