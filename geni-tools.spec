@@ -1,11 +1,11 @@
 Name:           geni-tools
-Version:        2.10
+Version:        2.11
 Release:        1%{?dist}
 Summary:        GENI command line tools
 BuildArch:      noarch
 License:        GENI Public License
 URL:            https://github.com/GENI-NSF/geni-tools
-Source0:        https://github.com/GENI-NSF/geni-tools/releases/download/v2.10/geni-tools-2.10.tar.gz
+Source0:        https://github.com/GENI-NSF/geni-tools/releases/download/v2.11/geni-tools-2.11.tar.gz
 Group:          Applications/Internet
 Requires:       m2crypto
 Requires:       python-dateutil
