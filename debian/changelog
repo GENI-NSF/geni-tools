@@ -1,4 +1,8 @@
-geni-tools (2.10-1) UNRELEASED; urgency=medium
+geni-tools (2.11-0) UNRELEASED; urgency=medium
+
+  * Changes with version 2.11
+
+ -- Hussamuddin Nasir <hussam.nasir@uky.edu>  Thu, 04 March 2021 10:07:00 -0400
 
   * TBD for version 2.10
 
