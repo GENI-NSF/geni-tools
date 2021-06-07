@@ -239,13 +239,6 @@ uh-eg2=urn:publicid:IDN+exogeni.net:uhvmsite+authority+am,https://uh-hn.exogeni.
 fiu-eg=urn:publicid:IDN+exogeni.net:fiuvmsite+authority+am,https://fiu-hn.exogeni.net:11443/orca/xmlrpc
 fiu-eg2=urn:publicid:IDN+exogeni.net:fiuvmsite+authority+am,https://fiu-hn.exogeni.net:11443/orca/xmlrpc
 
-# ============================================
-# MAX Regional Network
-# ============================================
-max=urn:publicid:IDN+dragon.maxgigapop.net+authority+am,http://max-myplc.dragon.maxgigapop.net:12346
-max2=urn:publicid:IDN+dragon.maxgigapop.net+authority+am,http://max-myplc.dragon.maxgigapop.net:12346
-
-
 # =======
 # New Aggregates September, 2014
 # IG: CENIC, OHMETRODC, Princeton, Rutgers, UKy #2, UCLA
@@ -388,7 +381,7 @@ apt3=urn:publicid:IDN+apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12
 # ====
 # AL2S (OESS)
 # ====
-al2s=urn:publicid:IDN+al2s.internet2.edu+authority+am,https://geni-al2s.net.internet2.edu:3626/foam/gapi/2
+al2s=urn:publicid:IDN+al2s.internet2.edu+authority+am,https://geni-al2s.geni.net:3626/foam/gapi/2
 
 # ====
 # iMinds Virtual Wall 2
