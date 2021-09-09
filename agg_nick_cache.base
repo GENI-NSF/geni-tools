@@ -34,17 +34,9 @@ latest_omni_version=2.11,Omni 2.11 was released 03/04/2021. See https://github.c
 # Nickname=URN, URL
 # URN is optional
 [aggregate_nicknames]
-
-# ProtoGENI AMs
-#pg-utah=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0
-#pg-utah1=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/1.0
-#pg-utah2=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0
-#pg-utah3=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/3.0
-#utah-pg=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0
-#utah1-pg=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/1.0
-#utah2-pg=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0
-#utah3-pg=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/3.0
-
+# =====================
+# KENTUCKY PROTOGENI
+# =====================
 pg-ky=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/2.0
 pg-ky1=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/1.0
 pg-ky2=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/2.0
@@ -57,23 +49,6 @@ uky-pg=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:1
 uky1-pg=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/1.0
 uky2-pg=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/2.0
 uky3-pg=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/3.0
-
-# Public PlanetLab AM
-#plc=urn:publicid:IDN+plc+authority+cm,https://www.planet-lab.org:12346/
-#plcv3=urn:publicid:IDN+plc+authority+cm,https://sfav3.planet-lab.org:12346/
-#plc3=urn:publicid:IDN+plc+authority+cm,https://sfav3.planet-lab.org:12346/
-
-
-# ExoGENI AMs, including OpenFlow ExoGENI AMs
-# On URNs, note that each EG rack has xxxvmsite and xxxNet
-# And the same component_managers are available through the ExoSM
-gpo-eg=urn:publicid:IDN+exogeni.net:bbnvmsite+authority+am,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
-eg-gpo=urn:publicid:IDN+exogeni.net:bbnvmsite+authority+am,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
-eg-bbn=urn:publicid:IDN+exogeni.net:bbnvmsite+authority+am,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
-eg-renci=urn:publicid:IDN+exogeni.net:rcivmsite+authority+am,https://rci-hn.exogeni.net:11443/orca/xmlrpc
-
-# ExoSM
-eg-sm=urn:publicid:IDN+exogeni.net+authority+am,https://geni.renci.org:11443/orca/xmlrpc
 
 # ============================================
 # GPO InstaGENI Rack
@@ -227,25 +202,6 @@ stanford-ig1=urn:publicid:IDN+instageni.stanford.edu+authority+cm,https://instag
 stanford-ig2=urn:publicid:IDN+instageni.stanford.edu+authority+cm,https://instageni.stanford.edu:12369/protogeni/xmlrpc/am/2.0
 stanford-ig3=urn:publicid:IDN+instageni.stanford.edu+authority+cm,https://instageni.stanford.edu:12369/protogeni/xmlrpc/am/3.0
 
-# ============================================
-# University of Houston ExoGENI
-# ============================================
-uh-eg=urn:publicid:IDN+exogeni.net:uhvmsite+authority+am,https://uh-hn.exogeni.net:11443/orca/xmlrpc
-uh-eg2=urn:publicid:IDN+exogeni.net:uhvmsite+authority+am,https://uh-hn.exogeni.net:11443/orca/xmlrpc
-
-# ============================================
-# Florida International University ExoGENI
-# ============================================
-fiu-eg=urn:publicid:IDN+exogeni.net:fiuvmsite+authority+am,https://fiu-hn.exogeni.net:11443/orca/xmlrpc
-fiu-eg2=urn:publicid:IDN+exogeni.net:fiuvmsite+authority+am,https://fiu-hn.exogeni.net:11443/orca/xmlrpc
-
-# =======
-# New Aggregates September, 2014
-# IG: CENIC, OHMETRODC, Princeton, Rutgers, UKy #2, UCLA
-# EG: OSF, Starlight, UC Davis
-# OG: Clemson, GPO
-# =======
-
 # ======
 # CENIC
 # ======
@@ -310,90 +266,11 @@ ucla-ig1=urn:publicid:IDN+instageni.idre.ucla.edu+authority+cm,https://instageni
 ucla-ig2=urn:publicid:IDN+instageni.idre.ucla.edu+authority+cm,https://instageni.idre.ucla.edu:12369/protogeni/xmlrpc/am/2.0
 ucla-ig3=urn:publicid:IDN+instageni.idre.ucla.edu+authority+cm,https://instageni.idre.ucla.edu:12369/protogeni/xmlrpc/am/3.0
 
-# ======
-# Starlight ExoGENI
-# ======
-sl-eg=urn:publicid:IDN+exogeni.net:slvmsite+authority+am,https://sl-hn.exogeni.net:11443/orca/xmlrpc
-sl-eg2=urn:publicid:IDN+exogeni.net:slvmsite+authority+am,https://sl-hn.exogeni.net:11443/orca/xmlrpc
-
-# ======
-# LAT ExoGENI
-# ======
-lat-eg=urn:publicid:IDN+exogeni.net:latvmsite+authority+am,https://lat-hn.exogeni.net:11443/orca/xmlrpc
-eg-lat=urn:publicid:IDN+exogeni.net:latvmsite+authority+am,https://lat-hn.exogeni.net:11443/orca/xmlrpc
-
-
-
-# ======
-# U of Florida ExoGENI
-# ======
-ufl-eg=urn:publicid:IDN+exogeni.net:uflvmsite+authority+am,https://ufl-hn.exogeni.net:11443/orca/xmlrpc
-ufl-eg2=urn:publicid:IDN+exogeni.net:uflvmsite+authority+am,https://ufl-hn.exogeni.net:11443/orca/xmlrpc
-
-# January, 2015
-# ======
-# Texas A&M ExoGENI
-# ======
-tamu-eg=urn:publicid:IDN+exogeni.net:tamuvmsite+authority+am,https://tamu-hn.exogeni.net:11443/orca/xmlrpc
-tamu-eg2=urn:publicid:IDN+exogeni.net:tamuvmsite+authority+am,https://tamu-hn.exogeni.net:11443/orca/xmlrpc
-
-# ======
-# Wayne State ExoGENI
-# ======
-wsu-eg=urn:publicid:IDN+exogeni.net:wsuvmsite+authority+am,https://wsu-hn.exogeni.net:11443/orca/xmlrpc
-wsu-eg2=urn:publicid:IDN+exogeni.net:wsuvmsite+authority+am,https://wsu-hn.exogeni.net:11443/orca/xmlrpc
-
-# =====
-# Utah CloudLab (cloudlab.us)
-# =====
-utah-clab=urn:publicid:IDN+utah.cloudlab.us+authority+cm,https://boss.utah.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
-clab-utah=urn:publicid:IDN+utah.cloudlab.us+authority+cm,https://boss.utah.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
-utah-clab1=urn:publicid:IDN+utah.cloudlab.us+authority+cm,https://boss.utah.cloudlab.us:12369/protogeni/xmlrpc/am/1.0
-utah-clab2=urn:publicid:IDN+utah.cloudlab.us+authority+cm,https://boss.utah.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
-utah-clab3=urn:publicid:IDN+utah.cloudlab.us+authority+cm,https://boss.utah.cloudlab.us:12369/protogeni/xmlrpc/am/3.0
-
-# =====
-# Clemson CloudLab (cloudlab.us)
-# =====
-clemson-clab=urn:publicid:IDN+clemson.cloudlab.us+authority+cm,https://boss.clemson.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
-clab-clemson=urn:publicid:IDN+clemson.cloudlab.us+authority+cm,https://boss.clemson.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
-clemson-clab1=urn:publicid:IDN+clemson.cloudlab.us+authority+cm,https://boss.clemson.cloudlab.us:12369/protogeni/xmlrpc/am/1.0
-clemson-clab2=urn:publicid:IDN+clemson.cloudlab.us+authority+cm,https://boss.clemson.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
-clemson-clab3=urn:publicid:IDN+clemson.cloudlab.us+authority+cm,https://boss.clemson.cloudlab.us:12369/protogeni/xmlrpc/am/3.0
-
-# =====
-# Wisconsin CloudLab (cloudlab.us)
-# =====
-wisconsin-clab=urn:publicid:IDN+wisc.cloudlab.us+authority+cm,https://boss.wisc.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
-clab-wisconsin=urn:publicid:IDN+wisc.cloudlab.us+authority+cm,https://boss.wisc.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
-wisconsin-clab1=urn:publicid:IDN+wisc.cloudlab.us+authority+cm,https://boss.wisc.cloudlab.us:12369/protogeni/xmlrpc/am/1.0
-wisconsin-clab2=urn:publicid:IDN+wisc.cloudlab.us+authority+cm,https://boss.wisc.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
-wisconsin-clab3=urn:publicid:IDN+wisc.cloudlab.us+authority+cm,https://boss.wisc.cloudlab.us:12369/protogeni/xmlrpc/am/3.0
-
-# ====
-# Apt (https://www.aptlab.net/)
-# ====
-apt=urn:publicid:IDN+apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/2.0
-apt1=urn:publicid:IDN+apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/1.0
-apt2=urn:publicid:IDN+apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/2.0
-apt3=urn:publicid:IDN+apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/3.0
-
 # ====
 # AL2S (OESS)
 # ====
 al2s=urn:publicid:IDN+al2s.internet2.edu+authority+am,https://geni-al2s.geni.net:3626/foam/gapi/2
 
-# ====
-# iMinds Virtual Wall 2
-# ====
-wall2=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
-wall2-1=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/1.0
-wall2-2=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
-wall2-3=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/3.0
-im-vw2=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
-im-vw2-1=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/1.0
-im-vw2-2=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
-im-vw2-3=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/3.0
 
 # New Aggregates February, 2015
 
@@ -446,34 +323,6 @@ uchicago-ig2=urn:publicid:IDN+geni.uchicago.edu+authority+cm,https://geni.uchica
 uchicago-ig3=urn:publicid:IDN+geni.uchicago.edu+authority+cm,https://geni.uchicago.edu:12369/protogeni/xmlrpc/am/3.0
 
 # =====
-# Utah stitching aggregate, providing L2 connectivity to Utah IG, Utah DDC, PG Utah, and Cloudlab
-# =====
-utah-stitch=urn:publicid:IDN+stitch.geniracks.net+authority+cm,https://boss.stitch.geniracks.net:12369/protogeni/xmlrpc/am/2.0
-utah-stitch1=urn:publicid:IDN+stitch.geniracks.net+authority+cm,https://boss.stitch.geniracks.net:12369/protogeni/xmlrpc/am/1.0
-utah-stitch2=urn:publicid:IDN+stitch.geniracks.net+authority+cm,https://boss.stitch.geniracks.net:12369/protogeni/xmlrpc/am/2.0
-utah-stitch3=urn:publicid:IDN+stitch.geniracks.net+authority+cm,https://boss.stitch.geniracks.net:12369/protogeni/xmlrpc/am/3.0
-
-# ====
-# iMinds Virtual Wall 1
-# ====
-wall1=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
-wall1-1=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/1.0
-wall1-2=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
-wall1-3=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/3.0
-im-vw1=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
-im-vw1-1=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/1.0
-im-vw1-2=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
-im-vw1-3=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/3.0
-
-# ====
-# iMinds iLab.t Wireless lab
-# ====
-im-wilab=urn:publicid:IDN+wilab2.ilabt.iminds.be+authority+cm,https://www.wilab2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
-im-wilab1=urn:publicid:IDN+wilab2.ilabt.iminds.be+authority+cm,https://www.wilab2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/1.0
-im-wilab2=urn:publicid:IDN+wilab2.ilabt.iminds.be+authority+cm,https://www.wilab2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
-im-wilab3=urn:publicid:IDN+wilab2.ilabt.iminds.be+authority+cm,https://www.wilab2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/3.0
-
-# =====
 # University of Michigan InstaGENI
 # =====
 umich-ig=urn:publicid:IDN+instageni.research.umich.edu+authority+cm,https://instageni.research.umich.edu:12369/protogeni/xmlrpc/am/2.0
@@ -488,15 +337,6 @@ ukymcv-ig=urn:publicid:IDN+mcv.sdn.uky.edu+authority+cm,https://mcv.sdn.uky.edu:
 ukymcv-ig1=urn:publicid:IDN+mcv.sdn.uky.edu+authority+cm,https://mcv.sdn.uky.edu:12369/protogeni/xmlrpc/am/1.0
 ukymcv-ig2=urn:publicid:IDN+mcv.sdn.uky.edu+authority+cm,https://mcv.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
 ukymcv-ig3=urn:publicid:IDN+mcv.sdn.uky.edu+authority+cm,https://mcv.sdn.uky.edu:12369/protogeni/xmlrpc/am/3.0
-
-
-# New Aggregate August, 2016
-
-# ======
-# UNF ExoGENI
-# ======
-unf-eg=urn:publicid:IDN+exogeni.net:unfvmsite+authority+am,https://unf-hn.exogeni.net:11443/orca/xmlrpc
-unf-eg2=urn:publicid:IDN+exogeni.net:unfvmsite+authority+am,https://unf-hn.exogeni.net:11443/orca/xmlrpc
 
 # ======
 # University of Hawaii InstaGENI
@@ -529,36 +369,6 @@ ucsd-ig=urn:publicid:IDN+instageni.ucsd.edu+authority+cm,https://instageni.ucsd.
 ucsd-ig1=urn:publicid:IDN+instageni.ucsd.edu+authority+cm,https://instageni.ucsd.edu:12369/protogeni/xmlrpc/am/1.0
 ucsd-ig2=urn:publicid:IDN+instageni.ucsd.edu+authority+cm,https://instageni.ucsd.edu:12369/protogeni/xmlrpc/am/2.0
 ucsd-ig3=urn:publicid:IDN+instageni.ucsd.edu+authority+cm,https://instageni.ucsd.edu:12369/protogeni/xmlrpc/am/3.0
-
-# ======
-# PSC ExoGENI
-# ======
-psc-eg=urn:publicid:IDN+exogeni.net:pscvmsite+authority+am,https://psc-hn.exogeni.net:11443/orca/xmlrpc
-psc-eg2=urn:publicid:IDN+exogeni.net:pscvmsite+authority+am,https://psc-hn.exogeni.net:11443/orca/xmlrpc
-
-# ======
-# UAF ExoGENI
-# ======
-uaf-eg=urn:publicid:IDN+exogeni.net:uafvmsite+authority+am,https://uaf-hn.exogeni.net:11443/orca/xmlrpc
-uaf-eg2=urn:publicid:IDN+exogeni.net:uafvmsite+authority+am,https://uaf-hn.exogeni.net:11443/orca/xmlrpc
-
-# ======
-# GWU ExoGENI
-# ======
-gwu-eg=urn:publicid:IDN+exogeni.net:gwuvmsite+authority+am,https://gwu-hn.exogeni.net:11443/orca/xmlrpc
-gwu-eg2=urn:publicid:IDN+exogeni.net:gwuvmsite+authority+am,https://gwu-hn.exogeni.net:11443/orca/xmlrpc
-
-# ======
-# UMASS ExoGENI
-# ======
-umass-eg=urn:publicid:IDN+exogeni.net:umassvmsite+authority+am,https://umass-hn.exogeni.net:11443/orca/xmlrpc
-umass-eg2=urn:publicid:IDN+exogeni.net:umassvmsite+authority+am,https://umass-hn.exogeni.net:11443/orca/xmlrpc
-
-# ======
-# WSU ExoGENI
-# ======
-wsu-eg=urn:publicid:IDN+exogeni.net:wsuvmsite+authority+am,https://wsu-hn.exogeni.net:11443/orca/xmlrpc
-wsu-eg2=urn:publicid:IDN+exogeni.net:wsuvmsite+authority+am,https://wsu-hn.exogeni.net:11443/orca/xmlrpc
 
 # ======
 # VCU InstaGENI
@@ -601,8 +411,142 @@ maki-pg1=urn:publicid:IDN+maki.e-technik.tu-darmstadt.de+authority+cm,https://ma
 maki-pg2=urn:publicid:IDN+maki.e-technik.tu-darmstadt.de+authority+cm,https://maki02.maki.e-technik.tu-darmstadt.de:12369/protogeni/xmlrpc/am/2.0
 maki-pg3=urn:publicid:IDN+maki.e-technik.tu-darmstadt.de+authority+cm,https://maki02.maki.e-technik.tu-darmstadt.de:12369/protogeni/xmlrpc/am/3.0
 
+
+# ExoGENI AMs
+# On URNs, note that each EG rack has xxxvmsite and xxxNet
+# And the same component_managers are available through the ExoSM
+
+# ==============
+# RENCI ExoGENI
+# ==============
+eg-renci=urn:publicid:IDN+exogeni.net:rcivmsite+authority+am,https://rci-hn.exogeni.net:11443/orca/xmlrpc
+
+# =======
+# ExoSM
+# =======
+eg-sm=urn:publicid:IDN+exogeni.net+authority+am,https://geni.renci.org:11443/orca/xmlrpc
+
+# ======
+# UMASS ExoGENI
+# ======
+umass-eg=urn:publicid:IDN+exogeni.net:umassvmsite+authority+am,https://umass-hn.exogeni.net:11443/orca/xmlrpc
+umass-eg2=urn:publicid:IDN+exogeni.net:umassvmsite+authority+am,https://umass-hn.exogeni.net:11443/orca/xmlrpc
+
+# ======
+# WSU ExoGENI
+# ======
+wsu-eg=urn:publicid:IDN+exogeni.net:wsuvmsite+authority+am,https://wsu-hn.exogeni.net:11443/orca/xmlrpc
+wsu-eg2=urn:publicid:IDN+exogeni.net:wsuvmsite+authority+am,https://wsu-hn.exogeni.net:11443/orca/xmlrpc
+
+# ======
+# Starlight ExoGENI
+# ======
+sl-eg=urn:publicid:IDN+exogeni.net:slvmsite+authority+am,https://sl-hn.exogeni.net:11443/orca/xmlrpc
+sl-eg2=urn:publicid:IDN+exogeni.net:slvmsite+authority+am,https://sl-hn.exogeni.net:11443/orca/xmlrpc
+
+# ============================================
+# University of Houston ExoGENI
+# ============================================
+uh-eg=urn:publicid:IDN+exogeni.net:uhvmsite+authority+am,https://uh-hn.exogeni.net:11443/orca/xmlrpc
+uh-eg2=urn:publicid:IDN+exogeni.net:uhvmsite+authority+am,https://uh-hn.exogeni.net:11443/orca/xmlrpc
+
+# ============================================
+# Florida International University ExoGENI
+# ============================================
+fiu-eg=urn:publicid:IDN+exogeni.net:fiuvmsite+authority+am,https://fiu-hn.exogeni.net:11443/orca/xmlrpc
+fiu-eg2=urn:publicid:IDN+exogeni.net:fiuvmsite+authority+am,https://fiu-hn.exogeni.net:11443/orca/xmlrpc
+
+# ======
+# Texas A&M ExoGENI
+# ======
+tamu-eg=urn:publicid:IDN+exogeni.net:tamuvmsite+authority+am,https://tamu-hn.exogeni.net:11443/orca/xmlrpc
+tamu-eg2=urn:publicid:IDN+exogeni.net:tamuvmsite+authority+am,https://tamu-hn.exogeni.net:11443/orca/xmlrpc
+
+
+# DEPRECATED DUE TO SSL ISSUE
 # ====
-# NCSU ExoGENI
+# iMinds Virtual Wall 1
 # ====
-ncsu-eg=urn:publicid:IDN+exogeni.net:ncsuvmsite+authority+am,https://ncsu-hn.exogeni.net:11443/orca/xmlrpc
-eg-ncsu=urn:publicid:IDN+exogeni.net:ncsuvmsite+authority+am,https://ncsu-hn.exogeni.net:11443/orca/xmlrpc
+#wall1=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
+#wall1-1=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/1.0
+#wall1-2=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
+#wall1-3=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/3.0
+#im-vw1=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
+#im-vw1-1=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/1.0
+#im-vw1-2=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
+#im-vw1-3=urn:publicid:IDN+wall1.ilabt.iminds.be+authority+cm,https://www.wall1.ilabt.iminds.be:12369/protogeni/xmlrpc/am/3.0
+
+# ====
+# iMinds iLab.t Wireless lab
+# ====
+#im-wilab=urn:publicid:IDN+wilab2.ilabt.iminds.be+authority+cm,https://www.wilab2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
+#im-wilab1=urn:publicid:IDN+wilab2.ilabt.iminds.be+authority+cm,https://www.wilab2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/1.0
+#im-wilab2=urn:publicid:IDN+wilab2.ilabt.iminds.be+authority+cm,https://www.wilab2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
+#im-wilab3=urn:publicid:IDN+wilab2.ilabt.iminds.be+authority+cm,https://www.wilab2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/3.0
+
+# ====
+# iMinds Virtual Wall 2
+# ====
+#wall2=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
+#wall2-1=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/1.0
+#wall2-2=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
+#wall2-3=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/3.0
+#im-vw2=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
+#im-vw2-1=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/1.0
+#im-vw2-2=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/2.0
+#im-vw2-3=urn:publicid:IDN+wall2.ilabt.iminds.be+authority+cm,https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/3.0
+
+
+# DEPRECATED DUE TO DENIAL OF GENI PORTAL CH ACCOUNTS VIA GENI API
+# ProtoGENI AMs
+#pg-utah=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0
+#pg-utah1=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/1.0
+#pg-utah2=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0
+#pg-utah3=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/3.0
+#utah-pg=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0
+#utah1-pg=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/1.0
+#utah2-pg=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0
+#utah3-pg=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/3.0
+
+# =====
+# Utah CloudLab (cloudlab.us)
+# =====
+#utah-clab=urn:publicid:IDN+utah.cloudlab.us+authority+cm,https://boss.utah.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
+#clab-utah=urn:publicid:IDN+utah.cloudlab.us+authority+cm,https://boss.utah.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
+#utah-clab1=urn:publicid:IDN+utah.cloudlab.us+authority+cm,https://boss.utah.cloudlab.us:12369/protogeni/xmlrpc/am/1.0
+#utah-clab2=urn:publicid:IDN+utah.cloudlab.us+authority+cm,https://boss.utah.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
+#utah-clab3=urn:publicid:IDN+utah.cloudlab.us+authority+cm,https://boss.utah.cloudlab.us:12369/protogeni/xmlrpc/am/3.0
+
+# =====
+# Clemson CloudLab (cloudlab.us)
+# =====
+#clemson-clab=urn:publicid:IDN+clemson.cloudlab.us+authority+cm,https://boss.clemson.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
+#clab-clemson=urn:publicid:IDN+clemson.cloudlab.us+authority+cm,https://boss.clemson.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
+#clemson-clab1=urn:publicid:IDN+clemson.cloudlab.us+authority+cm,https://boss.clemson.cloudlab.us:12369/protogeni/xmlrpc/am/1.0
+#clemson-clab2=urn:publicid:IDN+clemson.cloudlab.us+authority+cm,https://boss.clemson.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
+#clemson-clab3=urn:publicid:IDN+clemson.cloudlab.us+authority+cm,https://boss.clemson.cloudlab.us:12369/protogeni/xmlrpc/am/3.0
+
+# =====
+# Wisconsin CloudLab (cloudlab.us)
+# =====
+#wisconsin-clab=urn:publicid:IDN+wisc.cloudlab.us+authority+cm,https://boss.wisc.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
+#clab-wisconsin=urn:publicid:IDN+wisc.cloudlab.us+authority+cm,https://boss.wisc.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
+#wisconsin-clab1=urn:publicid:IDN+wisc.cloudlab.us+authority+cm,https://boss.wisc.cloudlab.us:12369/protogeni/xmlrpc/am/1.0
+#wisconsin-clab2=urn:publicid:IDN+wisc.cloudlab.us+authority+cm,https://boss.wisc.cloudlab.us:12369/protogeni/xmlrpc/am/2.0
+#wisconsin-clab3=urn:publicid:IDN+wisc.cloudlab.us+authority+cm,https://boss.wisc.cloudlab.us:12369/protogeni/xmlrpc/am/3.0
+
+# ====
+# Apt (https://www.aptlab.net/)
+# ====
+#apt=urn:publicid:IDN+apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/2.0
+#apt1=urn:publicid:IDN+apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/1.0
+#apt2=urn:publicid:IDN+apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/2.0
+#apt3=urn:publicid:IDN+apt.emulab.net+authority+cm,https://boss.apt.emulab.net:12369/protogeni/xmlrpc/am/3.0
+
+# =====
+# Utah stitching aggregate, providing L2 connectivity to Utah IG, Utah DDC, PG Utah, and Cloudlab
+# =====
+#utah-stitch=urn:publicid:IDN+stitch.geniracks.net+authority+cm,https://boss.stitch.geniracks.net:12369/protogeni/xmlrpc/am/2.0
+#utah-stitch1=urn:publicid:IDN+stitch.geniracks.net+authority+cm,https://boss.stitch.geniracks.net:12369/protogeni/xmlrpc/am/1.0
+#utah-stitch2=urn:publicid:IDN+stitch.geniracks.net+authority+cm,https://boss.stitch.geniracks.net:12369/protogeni/xmlrpc/am/2.0
+#utah-stitch3=urn:publicid:IDN+stitch.geniracks.net+authority+cm,https://boss.stitch.geniracks.net:12369/protogeni/xmlrpc/am/3.0
