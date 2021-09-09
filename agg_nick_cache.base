@@ -433,12 +433,6 @@ umass-eg=urn:publicid:IDN+exogeni.net:umassvmsite+authority+am,https://umass-hn.
 umass-eg2=urn:publicid:IDN+exogeni.net:umassvmsite+authority+am,https://umass-hn.exogeni.net:11443/orca/xmlrpc
 
 # ======
-# WSU ExoGENI
-# ======
-wsu-eg=urn:publicid:IDN+exogeni.net:wsuvmsite+authority+am,https://wsu-hn.exogeni.net:11443/orca/xmlrpc
-wsu-eg2=urn:publicid:IDN+exogeni.net:wsuvmsite+authority+am,https://wsu-hn.exogeni.net:11443/orca/xmlrpc
-
-# ======
 # Starlight ExoGENI
 # ======
 sl-eg=urn:publicid:IDN+exogeni.net:slvmsite+authority+am,https://sl-hn.exogeni.net:11443/orca/xmlrpc
