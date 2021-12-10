@@ -416,45 +416,10 @@ maki-pg3=urn:publicid:IDN+maki.e-technik.tu-darmstadt.de+authority+cm,https://ma
 # On URNs, note that each EG rack has xxxvmsite and xxxNet
 # And the same component_managers are available through the ExoSM
 
-# ==============
-# RENCI ExoGENI
-# ==============
-eg-renci=urn:publicid:IDN+exogeni.net:rcivmsite+authority+am,https://rci-hn.exogeni.net:11443/orca/xmlrpc
-
 # =======
 # ExoSM
 # =======
 eg-sm=urn:publicid:IDN+exogeni.net+authority+am,https://geni.renci.org:11443/orca/xmlrpc
-
-# ======
-# UMASS ExoGENI
-# ======
-umass-eg=urn:publicid:IDN+exogeni.net:umassvmsite+authority+am,https://umass-hn.exogeni.net:11443/orca/xmlrpc
-umass-eg2=urn:publicid:IDN+exogeni.net:umassvmsite+authority+am,https://umass-hn.exogeni.net:11443/orca/xmlrpc
-
-# ======
-# Starlight ExoGENI
-# ======
-sl-eg=urn:publicid:IDN+exogeni.net:slvmsite+authority+am,https://sl-hn.exogeni.net:11443/orca/xmlrpc
-sl-eg2=urn:publicid:IDN+exogeni.net:slvmsite+authority+am,https://sl-hn.exogeni.net:11443/orca/xmlrpc
-
-# ============================================
-# University of Houston ExoGENI
-# ============================================
-uh-eg=urn:publicid:IDN+exogeni.net:uhvmsite+authority+am,https://uh-hn.exogeni.net:11443/orca/xmlrpc
-uh-eg2=urn:publicid:IDN+exogeni.net:uhvmsite+authority+am,https://uh-hn.exogeni.net:11443/orca/xmlrpc
-
-# ============================================
-# Florida International University ExoGENI
-# ============================================
-fiu-eg=urn:publicid:IDN+exogeni.net:fiuvmsite+authority+am,https://fiu-hn.exogeni.net:11443/orca/xmlrpc
-fiu-eg2=urn:publicid:IDN+exogeni.net:fiuvmsite+authority+am,https://fiu-hn.exogeni.net:11443/orca/xmlrpc
-
-# ======
-# Texas A&M ExoGENI
-# ======
-tamu-eg=urn:publicid:IDN+exogeni.net:tamuvmsite+authority+am,https://tamu-hn.exogeni.net:11443/orca/xmlrpc
-tamu-eg2=urn:publicid:IDN+exogeni.net:tamuvmsite+authority+am,https://tamu-hn.exogeni.net:11443/orca/xmlrpc
 
 
 # DEPRECATED DUE TO SSL ISSUE
