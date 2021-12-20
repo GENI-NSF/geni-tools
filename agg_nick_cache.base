@@ -411,17 +411,6 @@ maki-pg1=urn:publicid:IDN+maki.e-technik.tu-darmstadt.de+authority+cm,https://ma
 maki-pg2=urn:publicid:IDN+maki.e-technik.tu-darmstadt.de+authority+cm,https://maki02.maki.e-technik.tu-darmstadt.de:12369/protogeni/xmlrpc/am/2.0
 maki-pg3=urn:publicid:IDN+maki.e-technik.tu-darmstadt.de+authority+cm,https://maki02.maki.e-technik.tu-darmstadt.de:12369/protogeni/xmlrpc/am/3.0
 
-
-# ExoGENI AMs
-# On URNs, note that each EG rack has xxxvmsite and xxxNet
-# And the same component_managers are available through the ExoSM
-
-# =======
-# ExoSM
-# =======
-eg-sm=urn:publicid:IDN+exogeni.net+authority+am,https://geni.renci.org:11443/orca/xmlrpc
-
-
 # DEPRECATED DUE TO SSL ISSUE
 # ====
 # iMinds Virtual Wall 1
