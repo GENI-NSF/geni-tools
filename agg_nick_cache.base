@@ -34,22 +34,6 @@ latest_omni_version=2.11,Omni 2.11 was released 03/04/2021. See https://github.c
 # Nickname=URN, URL
 # URN is optional
 [aggregate_nicknames]
-# =====================
-# KENTUCKY PROTOGENI
-# =====================
-pg-ky=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/2.0
-pg-ky1=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/1.0
-pg-ky2=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/2.0
-pg-ky3=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/3.0
-pg-uky=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/2.0
-pg-uky1=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/1.0
-pg-uky2=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/2.0
-pg-uky3=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/3.0
-uky-pg=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/2.0
-uky1-pg=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/1.0
-uky2-pg=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/2.0
-uky3-pg=urn:publicid:IDN+uky.emulab.net+authority+cm,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/3.0
-
 # ============================================
 # GPO InstaGENI Rack
 # ============================================
@@ -251,14 +235,6 @@ rutgers-ig2=urn:publicid:IDN+instageni.rutgers.edu+authority+cm,https://instagen
 rutgers-ig3=urn:publicid:IDN+instageni.rutgers.edu+authority+cm,https://instageni.rutgers.edu:12369/protogeni/xmlrpc/am/3.0
 
 # ======
-# U Kentucky Parking Structure (PKS2) InstaGENI
-# ======
-ukypks2-ig=urn:publicid:IDN+pks2.sdn.uky.edu+authority+cm,https://pks2.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
-ukypks2-ig1=urn:publicid:IDN+pks2.sdn.uky.edu+authority+cm,https://pks2.sdn.uky.edu:12369/protogeni/xmlrpc/am/1.0
-ukypks2-ig2=urn:publicid:IDN+pks2.sdn.uky.edu+authority+cm,https://pks2.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
-ukypks2-ig3=urn:publicid:IDN+pks2.sdn.uky.edu+authority+cm,https://pks2.sdn.uky.edu:12369/protogeni/xmlrpc/am/3.0
-
-# ======
 # UCLA InstaGENI
 # ======
 ucla-ig=urn:publicid:IDN+instageni.idre.ucla.edu+authority+cm,https://instageni.idre.ucla.edu:12369/protogeni/xmlrpc/am/2.0
@@ -297,14 +273,6 @@ umkc-ig=urn:publicid:IDN+instageni.umkc.edu+authority+cm,https://instageni.umkc.
 umkc-ig1=urn:publicid:IDN+instageni.umkc.edu+authority+cm,https://instageni.umkc.edu:12369/protogeni/xmlrpc/am/1.0
 umkc-ig2=urn:publicid:IDN+instageni.umkc.edu+authority+cm,https://instageni.umkc.edu:12369/protogeni/xmlrpc/am/2.0
 umkc-ig3=urn:publicid:IDN+instageni.umkc.edu+authority+cm,https://instageni.umkc.edu:12369/protogeni/xmlrpc/am/3.0
-
-# =====
-# University of Tennessee at Chattanooga InstaGENI
-# =====
-utc-ig=urn:publicid:IDN+instageni.utc.edu+authority+cm,https://instageni.utc.edu:12369/protogeni/xmlrpc/am/2.0
-utc-ig1=urn:publicid:IDN+instageni.utc.edu+authority+cm,https://instageni.utc.edu:12369/protogeni/xmlrpc/am/1.0
-utc-ig2=urn:publicid:IDN+instageni.utc.edu+authority+cm,https://instageni.utc.edu:12369/protogeni/xmlrpc/am/2.0
-utc-ig3=urn:publicid:IDN+instageni.utc.edu+authority+cm,https://instageni.utc.edu:12369/protogeni/xmlrpc/am/3.0
 
 # =====
 # University of Washington InstaGENI
